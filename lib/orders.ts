@@ -97,3 +97,26 @@ export async function createOrder(orderData: CreateOrderInput) {
     error: 'Unable to submit the order. The orders table is not available in the current Supabase schema.',
   };
 }
+
+export async function updateOrderStatus(
+  orderId: string,
+  status: 'pending' | 'preparing' | 'completed' | 'cancelled',
+) {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ status })
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message || 'Unable to update order status.' };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to update order status.';
+    return { success: false, error: message };
+  }
+}
