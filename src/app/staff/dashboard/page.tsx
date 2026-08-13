@@ -7,7 +7,7 @@ const STAFF_ROLES = [
   { id: '2', role: 'Cafeteria', password: 'cafe-password-123' },
   { id: '3', role: 'Restaurant', password: 'rest-password-123' },
   { id: '4', role: 'Pool', password: 'pool-password-123' },
-  { id: '5', role: 'Sauna', password: 'sauna-password-123' },
+  
   { id: '6', role: 'Spa', password: 'spa-password-123' },
   { id: '7', role: 'Gym', password: 'gym-password-123' },
 ];
