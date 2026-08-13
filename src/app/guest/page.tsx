@@ -2,9 +2,11 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Clock3, MapPin, Sparkles } from 'lucide-react';
 import ResortServiceCard from '@/components/ResortServiceCard';
-import { RESORT_SERVICES } from '@/data/resort-services';
+import { getResortServices } from '@/lib/resortServices';
 
-export default function GuestServicesPage() {
+export default async function GuestServicesPage() {
+  const services = await getResortServices();
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0C0B09] text-white pb-16">
       <header className="relative overflow-hidden border-b border-white/10 bg-[#17120D]">
@@ -20,8 +22,8 @@ export default function GuestServicesPage() {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 md:px-6 py-8 md:py-12">
-        <div className="mb-8 flex items-end justify-between gap-5"><div><p className="text-[10px] font-black uppercase tracking-[.26em] text-white/35">Explore the resort</p><h2 className="mt-2 text-3xl md:text-4xl font-black tracking-[-.04em]">Services & experiences</h2></div><span className="hidden sm:block text-xs text-white/35">{RESORT_SERVICES.length} experiences</span></div>
-        <section className="grid gap-5 md:grid-cols-2">{RESORT_SERVICES.map((service, index) => <ResortServiceCard key={service.id} service={service} index={index} />)}</section>
+        <div className="mb-8 flex items-end justify-between gap-5"><div><p className="text-[10px] font-black uppercase tracking-[.26em] text-white/35">Explore the resort</p><h2 className="mt-2 text-3xl md:text-4xl font-black tracking-[-.04em]">Services & experiences</h2></div><span className="hidden sm:block text-xs text-white/35">{services.length} experiences</span></div>
+        <section className="grid gap-5 md:grid-cols-2">{services.map((service, index) => <ResortServiceCard key={service.id} service={service} index={index} />)}</section>
         <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/[.035] p-6 md:p-8"><div className="max-w-3xl"><p className="text-[10px] font-black uppercase tracking-[.24em] text-[#F2B84B]">The Haile way</p><h3 className="mt-2 text-2xl md:text-3xl font-black tracking-[-.03em]">Hospitality, comfort and Ethiopian soul.</h3><p className="mt-3 text-sm leading-relaxed text-white/50">The service catalog follows the official Haile Hotels & Resorts service categories and experience themes, while keeping the guest interface focused and easy to use.</p></div><div className="mt-6"><Link href="/guest/my-activity" className="inline-flex rounded-full border border-white/10 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[.12em] text-white/70">My activity</Link></div></section>
       </main>
     </div>

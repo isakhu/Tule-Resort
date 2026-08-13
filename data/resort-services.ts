@@ -12,10 +12,10 @@ export interface ResortService {
   features: string[];
 }
 
-// Service names and positioning are mapped from the official Haile Hotels & Resorts website.
+// Offline fallback service names and positioning are mapped from the official Haile Hotels & Resorts website.
 // Image URLs below are safe visual placeholders; replace them with licensed official assets
 // uploaded to Supabase Storage before production if the official images are not licensed for hotlinking.
-export const RESORT_SERVICES: ResortService[] = [
+export const FALLBACK_RESORT_SERVICES: ResortService[] = [
   {
     id: 'restaurant',
     name: 'Restaurant & Bar',
@@ -106,6 +106,3 @@ export const RESORT_SERVICES: ResortService[] = [
   },
 ];
 
-export function getResortService(serviceId: string) {
-  return RESORT_SERVICES.find((service) => service.id === serviceId);
-}
