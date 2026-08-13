@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Minus, Plus, ShoppingBag, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { menuItems } from '@/data/menu-items';
+import { createOrder } from '@/lib/orders';
 
 type Cart = Record<string, number>;
 
@@ -13,6 +14,8 @@ export default function GuestOrderPage() {
   const [guestName, setGuestName] = useState('');
   const [roomNumber, setRoomNumber] = useState('');
   const [phone, setPhone] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     try {
@@ -47,10 +50,41 @@ export default function GuestOrderPage() {
 
   const clearCart = () => setCart({});
 
-  const submitOrder = (event: React.FormEvent) => {
+  const submitOrder = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selected.length || !guestName.trim() || !roomNumber.trim() || !phone.trim()) return;
+
+    setSubmitError('');
+    setIsSubmitting(true);
+
+    const result = await createOrder({
+      guest_name: guestName,
+      room_number: roomNumber,
+      items: selected.map((item) => ({
+        id: item.id,
+        menu_item_id: item.id,
+        name: item.name,
+        quantity: cart[item.id] ?? 0,
+        price: item.price,
+      })),
+      total_amount: totalPrice,
+      service_type: 'restaurant',
+      special_instructions: `Guest phone: ${phone}`,
+      status: 'pending',
+    });
+
+    setIsSubmitting(false);
+
+    if (!result.success) {
+      setSubmitError(result.error ?? 'Order submission failed. Please try again.');
+      return;
+    }
+
     setSubmitted(true);
+    setCart({});
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('haile-resort-cart');
+    }
   };
 
   if (submitted) {
@@ -69,7 +103,7 @@ export default function GuestOrderPage() {
             <Link href="/guest/restaurant" className="flex-1 rounded-full bg-white text-stone-950 px-5 py-3 text-xs font-black uppercase tracking-[.14em]">
               Back to menu
             </Link>
-            <button type="button" onClick={() => { setSubmitted(false); setCart({}); }} className="flex-1 rounded-full border border-white/10 bg-white/10 px-5 py-3 text-xs font-black uppercase tracking-[.14em]">
+            <button type="button" onClick={() => { setSubmitted(false); setCart({}); setGuestName(''); setRoomNumber(''); setPhone(''); }} className="flex-1 rounded-full border border-white/10 bg-white/10 px-5 py-3 text-xs font-black uppercase tracking-[.14em]">
               New order
             </button>
           </div>
@@ -144,7 +178,7 @@ export default function GuestOrderPage() {
         <section className="rounded-[2rem] border border-white/10 bg-white/[.04] p-5 md:p-6 h-fit lg:sticky lg:top-24">
           <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#E56B4D]">Guest details</p>
           <h2 className="mt-1 text-2xl font-black">Send to resort staff</h2>
-          <p className="mt-2 text-xs leading-relaxed text-white/45">This is the next order layer. Once the backend is connected, these details can go directly to the right department.</p>
+          <p className="mt-2 text-xs leading-relaxed text-white/45">These details are sent through the live order pipeline and stored in Supabase when the backend is available.</p>
 
           <form onSubmit={submitOrder} className="mt-6 space-y-4">
             <label className="block">
@@ -160,13 +194,19 @@ export default function GuestOrderPage() {
               <input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-[#F2B84B]" placeholder="+251..." required />
             </label>
 
+            {submitError ? (
+              <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                {submitError}
+              </div>
+            ) : null}
+
             <div className="pt-3 border-t border-white/10 flex items-end justify-between gap-4">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[.18em] text-white/35">Grand total</p>
                 <p className="mt-1 text-3xl font-black">{totalPrice.toLocaleString()} <span className="text-xs text-white/45">ETB</span></p>
               </div>
-              <button disabled={!selected.length} type="submit" className="rounded-full bg-[#F2B84B] px-5 py-3 text-xs font-black uppercase tracking-[.12em] text-stone-950 disabled:cursor-not-allowed disabled:opacity-30">
-                Submit order
+              <button disabled={!selected.length || isSubmitting} type="submit" className="rounded-full bg-[#F2B84B] px-5 py-3 text-xs font-black uppercase tracking-[.12em] text-stone-950 disabled:cursor-not-allowed disabled:opacity-30">
+                {isSubmitting ? 'Submitting...' : 'Submit order'}
               </button>
             </div>
           </form>

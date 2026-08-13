@@ -20,6 +20,9 @@ type SupabaseMenuRow = {
   price?: number | string | null;
   image_url?: string | null;
   description?: string | null;
+  is_active?: boolean | null;
+  is_available?: boolean | null;
+  dietary_tags?: string[] | null;
 };
 
 type CartEntry = {
@@ -79,6 +82,8 @@ export default function ServicePage() {
           price: Number(row.price ?? 0),
           imageUrl: row.image_url ?? FALLBACK_IMAGE,
           description: row.description ?? '',
+          isAvailable: row.is_available ?? row.is_active ?? true,
+          dietaryTags: Array.isArray(row.dietary_tags) ? row.dietary_tags.filter((tag): tag is string => typeof tag === 'string') : [],
         }));
 
         setItems(mapped);
