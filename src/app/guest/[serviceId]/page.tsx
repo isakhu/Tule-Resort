@@ -1,34 +1,307 @@
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Heart, Loader2, Minus, Plus, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowUpRight, CalendarDays, CheckCircle2, ChevronRight, Clock3, Sparkles } from 'lucide-react';
-import VisualResortMenu from '@/components/VisualResortMenu';
-import { getResortService } from '@/data/resort-services';
+import { notFound, useParams } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import type { MenuItem } from '@/lib/menu';
 
-export default async function ServicePage({ params }: { params: Promise<{ serviceId: string }> }) {
-  const { serviceId } = await params;
-  const service = getResortService(serviceId);
+const SERVICES: Record<string, { name: string; type: 'orderable' | 'bookable' | 'request' }> = {
+  cafeteria: { name: 'Cafeteria', type: 'orderable' },
+  restaurant: { name: 'Restaurant & Bar', type: 'orderable' },
+};
 
-  if (!service) {
-    return <div className="min-h-screen bg-[#0C0B09] text-white grid place-items-center"><Link href="/guest" className="rounded-full bg-white px-5 py-3 text-sm font-bold text-stone-950">Back to guest services</Link></div>;
-  }
+type SupabaseMenuRow = {
+  id?: string | number | null;
+  name?: string | null;
+  amharic_name?: string | null;
+  category?: string | null;
+  price?: number | string | null;
+  image_url?: string | null;
+  description?: string | null;
+};
 
-  if (service.type === 'orderable' && service.id === 'restaurant') {
-    return <VisualResortMenu serviceName={service.name} />;
-  }
+type CartEntry = {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  imageUrl: string;
+  amharicName: string;
+};
+
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80';
+
+function getCartKey() {
+  return 'haile-resort-cart';
+}
+
+export default function ServicePage() {
+  const params = useParams<{ serviceId: string }>();
+  const serviceId = params?.serviceId ?? '';
+  const [items, setItems] = useState<MenuItem[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [favorites, setFavorites] = useState<Record<string, boolean>>({});
+
+  const service = SERVICES[serviceId];
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadMenu() {
+      try {
+        setLoading(true);
+        setError('');
+
+        const { data, error: fetchError } = await supabase
+          .from('menu_items')
+          .select('*')
+          .eq('is_active', true)
+          .eq('department', serviceId)
+          .order('category', { ascending: true })
+          .order('name', { ascending: true });
+
+        if (!mounted) return;
+
+        if (fetchError) {
+          throw fetchError;
+        }
+
+        const mapped: MenuItem[] = (data ?? []).map((row: SupabaseMenuRow) => ({
+          id: String(row.id ?? ''),
+          name: row.name ?? 'Untitled item',
+          amharicName: row.amharic_name ?? '',
+          category: row.category ?? 'General',
+          price: Number(row.price ?? 0),
+          imageUrl: row.image_url ?? FALLBACK_IMAGE,
+          description: row.description ?? '',
+        }));
+
+        setItems(mapped);
+        setActiveCategory('All');
+      } catch {
+        if (!mounted) return;
+        setError('Unable to load the menu. Please try again.');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    if (!serviceId) {
+      return;
+    }
+
+    void loadMenu();
+
+    return () => {
+      mounted = false;
+    };
+  }, [serviceId]);
+
+  const categories = useMemo(() => {
+    const unique = Array.from(new Set(items.map((item) => item.category).filter(Boolean)));
+    return ['All', ...unique];
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    if (activeCategory === 'All') return items;
+    return items.filter((item) => item.category === activeCategory);
+  }, [activeCategory, items]);
+
+  if (!service) return notFound();
+
+  const updateQuantity = (itemId: string, direction: 'inc' | 'dec') => {
+    setQuantities((prev) => {
+      const current = prev[itemId] ?? 1;
+      const next = direction === 'inc' ? current + 1 : Math.max(1, current - 1);
+      return { ...prev, [itemId]: next };
+    });
+  };
+
+  const addToOrder = (item: MenuItem) => {
+    if (typeof window === 'undefined') return;
+
+    const quantity = quantities[item.id] ?? 1;
+    const existing = JSON.parse(localStorage.getItem(getCartKey()) ?? '[]') as CartEntry[];
+    const foundIndex = existing.findIndex((entry) => entry.id === item.id);
+
+    if (foundIndex >= 0) {
+      existing[foundIndex].quantity += quantity;
+    } else {
+      existing.push({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity,
+        imageUrl: item.imageUrl,
+        amharicName: item.amharicName,
+      });
+    }
+
+    localStorage.setItem(getCartKey(), JSON.stringify(existing));
+  };
 
   return (
-    <div className="min-h-screen bg-[#0C0B09] text-white pb-16">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0C0B09]/90 backdrop-blur-xl"><div className="mx-auto max-w-6xl px-4 md:px-6 py-4 flex items-center justify-between gap-4"><Link href="/guest" className="inline-flex items-center gap-2 text-sm font-bold text-white/65 hover:text-white"><ArrowLeft className="h-4 w-4" />Guest services</Link><span className="hidden sm:inline text-[10px] font-black uppercase tracking-[.2em] text-white/35">Haile Resort • {service.eyebrow}</span></div></header>
-      <main className="mx-auto max-w-6xl px-4 md:px-6 py-7 md:py-12">
-        <section className="relative min-h-[520px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15130F] shadow-[0_30px_90px_rgba(0,0,0,.35)]">
-          <img src={service.imageUrl} alt={service.name} className="absolute inset-0 h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,.08)_0%,rgba(0,0,0,.18)_35%,rgba(0,0,0,.92)_100%)]" />
-          <div className="absolute inset-x-5 bottom-5 md:inset-x-10 md:bottom-10 max-w-3xl"><p className="text-[10px] font-black uppercase tracking-[.25em]" style={{ color: service.accent }}>{service.eyebrow}</p><h1 className="mt-2 text-5xl md:text-7xl font-black tracking-[-.06em] leading-[.88]">{service.name}</h1><p className="mt-5 max-w-2xl text-sm md:text-base leading-relaxed text-white/70">{service.description}</p><div className="mt-5 flex flex-wrap gap-2">{service.features.map((feature) => <span key={feature} className="rounded-full border border-white/10 bg-black/30 px-3 py-2 text-[10px] font-bold text-white/75 backdrop-blur-md">{feature}</span>)}</div></div>
-        </section>
+    <div className="min-h-screen bg-[#120f0d] text-[#f7efe3]">
+      <header className="relative overflow-hidden border-b border-white/10 bg-[#1d1713]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(217,154,61,0.22),transparent_46%)]" />
+        <div className="relative mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <Link href="/guest" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#f3d9a0] backdrop-blur-sm transition hover:bg-white/10">
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Link>
 
-        <section className="mt-6 grid gap-5 lg:grid-cols-[1.4fr_.6fr]">
-          <div className="rounded-[2rem] border border-white/10 bg-white/[.035] p-6 md:p-8"><div className="flex items-center gap-3"><span className="h-11 w-11 rounded-2xl bg-white/10 flex items-center justify-center"><Sparkles className="h-5 w-5" style={{ color: service.accent }} /></span><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/35">Guest experience</p><h2 className="text-xl font-black">Designed around your stay</h2></div></div><p className="mt-5 text-sm leading-relaxed text-white/55">This service page uses the official Haile service category as its content reference while keeping actions inside your guest application. Connect a real booking or request workflow when the corresponding Supabase data is ready.</p><div className="mt-6 grid gap-3 sm:grid-cols-2">{service.features.map((feature) => <div key={feature} className="flex items-center gap-3 rounded-2xl bg-white/5 p-4"><CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: service.accent }} /><span className="text-xs font-bold text-white/70">{feature}</span></div>)}</div></div>
-          <aside className="rounded-[2rem] border border-white/10 bg-white/[.035] p-6 md:p-8"><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/35">Next step</p><h3 className="mt-2 text-2xl font-black">{service.type === 'bookable' ? 'Request a booking' : service.type === 'request' ? 'Send a request' : 'Explore details'}</h3><p className="mt-3 text-xs leading-relaxed text-white/45">Use the guest workflow for this service. Live rates and availability are not invented here.</p><Link href={service.type === 'request' ? `/guest/${service.id}/request` : '/guest/my-activity'} className="mt-6 flex items-center justify-between rounded-full px-5 py-3 text-xs font-black uppercase tracking-[.12em] text-stone-950" style={{ backgroundColor: service.accent }}>{service.type === 'request' ? 'Submit request' : 'Continue'}<ChevronRight className="h-4 w-4" /></Link><div className="mt-4 flex items-center gap-2 text-[10px] text-white/30"><Clock3 className="h-3.5 w-3.5" />Availability requires a connected source</div><a href={service.sourceUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold text-white/45 hover:text-white">Official information<ArrowUpRight className="h-3.5 w-3.5" /></a></aside>
-        </section>
+            <button className="inline-flex items-center gap-2 rounded-full bg-[#c98d39] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-[#1a120d] shadow-lg shadow-[#c98d39]/25 transition hover:scale-[1.02]">
+              <ShoppingCart className="h-4 w-4" />
+              Review Order
+            </button>
+          </div>
+
+          <div className="pb-4 pt-2">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.28em] text-[#d9b16a]">Haile Resort</p>
+            <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">{service.name}</h1>
+            <p className="mt-3 max-w-2xl text-sm text-[#e8dcc7] sm:text-base">Curated dishes, seasonal flavors, and warm Ethiopian hospitality.</p>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+        {!loading && !error && categories.length > 1 && (
+          <div className="mb-6 overflow-x-auto pb-2">
+            <div className="flex min-w-max gap-2">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setActiveCategory(category)}
+                  className={`rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] transition ${
+                    activeCategory === category
+                      ? 'border-[#d9b16a] bg-[#d9b16a] text-[#1b130d]'
+                      : 'border-white/10 bg-[#1d1713] text-[#e8dcc7] hover:border-[#d9b16a]/60 hover:text-white'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {loading && (
+          <div className="flex min-h-[280px] items-center justify-center rounded-[28px] border border-white/10 bg-[#171311]">
+            <div className="flex items-center gap-3 text-[#f2d7a1]">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm font-medium">Loading menu...</span>
+            </div>
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="rounded-[28px] border border-[#d9b16a]/30 bg-[#1d1713] p-8 text-center">
+            <p className="text-lg font-semibold text-white">{error}</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-4 rounded-full bg-[#d9b16a] px-5 py-2 text-sm font-bold text-[#1b130d]"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && filteredItems.length === 0 && (
+          <div className="rounded-[28px] border border-white/10 bg-[#171311] p-8 text-center text-[#e8dcc7]">
+            No menu items are currently available.
+          </div>
+        )}
+
+        {!loading && !error && filteredItems.length > 0 && (
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {filteredItems.map((item) => {
+              const quantity = quantities[item.id] ?? 1;
+
+              return (
+                <article
+                  key={item.id}
+                  className="group overflow-hidden rounded-[28px] border border-white/10 bg-[#171311] shadow-[0_20px_45px_rgba(0,0,0,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#d9b16a]/60"
+                >
+                  <div className="relative h-60 overflow-hidden">
+                    <img
+                      src={item.imageUrl || FALLBACK_IMAGE}
+                      alt={item.name}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      onError={(event) => {
+                        event.currentTarget.src = FALLBACK_IMAGE;
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#120f0d]/80 via-transparent to-transparent" />
+
+                    <button
+                      type="button"
+                      onClick={() => setFavorites((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
+                      className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-[#120f0d]/45 backdrop-blur-sm text-white transition hover:bg-[#120f0d]/70"
+                      aria-label={`Favorite ${item.name}`}
+                    >
+                      <Heart className={`h-4 w-4 ${favorites[item.id] ? 'fill-[#f7b267] text-[#f7b267]' : 'text-white'}`} />
+                    </button>
+
+                    <div className="absolute left-4 top-4 rounded-full border border-[#f2d7a1]/30 bg-[#1d1713]/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#f2d7a1]">
+                      {item.category}
+                    </div>
+
+                    <div className="absolute bottom-4 right-4 rounded-xl bg-[#c98d39] px-3 py-2 text-lg font-black text-[#1a120d] shadow-lg shadow-[#c98d39]/30">
+                      {item.price} Br
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 p-5">
+                    <div>
+                      <h2 className="text-2xl font-black leading-tight text-white">{item.name}</h2>
+                      <p className="mt-1 text-base text-[#d9b16a]">{item.amharicName || '—'}</p>
+                    </div>
+
+                    <p className="text-sm leading-6 text-[#d8cfc2]">{item.description}</p>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="inline-flex items-center rounded-full border border-white/10 bg-[#201a16] p-1">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.id, 'dec')}
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-[#f7efe3] transition hover:bg-white/5"
+                          aria-label={`Decrease quantity for ${item.name}`}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span className="min-w-8 text-center text-sm font-bold text-white">{quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.id, 'inc')}
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-[#f7efe3] transition hover:bg-white/5"
+                          aria-label={`Increase quantity for ${item.name}`}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => addToOrder(item)}
+                        className="rounded-full bg-[#f4d29d] px-4 py-2.5 text-xs font-black uppercase tracking-[0.2em] text-[#1a120d] transition hover:bg-[#f8dca8]"
+                      >
+                        Add to order
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </main>
     </div>
   );
