@@ -1,65 +1,35 @@
-import React from 'react';
-import { notFound } from 'next/navigation';
-import { menuItems } from '@/data/menu-items'; // Adjust path if needed
-import { ArrowLeft, ShoppingCart, Info } from 'lucide-react';
 import Link from 'next/link';
-
-// Mock service mapping
-const SERVICES: Record<string, { name: string; type: 'orderable' | 'bookable' | 'request' }> = {
-  'cafeteria': { name: 'Cafeteria', type: 'orderable' },
-  'restaurant': { name: 'Restaurant/Bar', type: 'orderable' },
-};
+import { ArrowLeft, ArrowUpRight, CalendarDays, CheckCircle2, ChevronRight, Clock3, Sparkles } from 'lucide-react';
+import VisualResortMenu from '@/components/VisualResortMenu';
+import { getResortService } from '@/data/resort-services';
 
 export default async function ServicePage({ params }: { params: Promise<{ serviceId: string }> }) {
   const { serviceId } = await params;
-  const service = SERVICES[serviceId];
+  const service = getResortService(serviceId);
 
   if (!service) {
-    notFound();
+    return <div className="min-h-screen bg-[#0C0B09] text-white grid place-items-center"><Link href="/guest" className="rounded-full bg-white px-5 py-3 text-sm font-bold text-stone-950">Back to guest services</Link></div>;
   }
 
-  // Filter items for the specific service
-  // In a real app, you'd filter by category or specific DB link
-  const items = menuItems.filter(item => 
-    service.type === 'orderable' 
-  ).slice(0, 10); // Mocking for now
+  if (service.type === 'orderable' && service.id === 'restaurant') {
+    return <VisualResortMenu serviceName={service.name} />;
+  }
 
   return (
-    <div className="min-h-screen bg-[#fcfaf7] pb-24 font-sans text-stone-900">
-      <header className="sticky top-0 z-50 bg-[#fcfaf7]/90 backdrop-blur-md px-6 py-4 flex items-center gap-4 border-b border-stone-200/50">
-        <Link href="/guest"><ArrowLeft className="w-5 h-5 text-stone-600" /></Link>
-        <h1 className="text-lg font-serif font-bold text-stone-800">{service.name}</h1>
-      </header>
+    <div className="min-h-screen bg-[#0C0B09] text-white pb-16">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0C0B09]/90 backdrop-blur-xl"><div className="mx-auto max-w-6xl px-4 md:px-6 py-4 flex items-center justify-between gap-4"><Link href="/guest" className="inline-flex items-center gap-2 text-sm font-bold text-white/65 hover:text-white"><ArrowLeft className="h-4 w-4" />Guest services</Link><span className="hidden sm:inline text-[10px] font-black uppercase tracking-[.2em] text-white/35">Haile Resort • {service.eyebrow}</span></div></header>
+      <main className="mx-auto max-w-6xl px-4 md:px-6 py-7 md:py-12">
+        <section className="relative min-h-[520px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15130F] shadow-[0_30px_90px_rgba(0,0,0,.35)]">
+          <img src={service.imageUrl} alt={service.name} className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,.08)_0%,rgba(0,0,0,.18)_35%,rgba(0,0,0,.92)_100%)]" />
+          <div className="absolute inset-x-5 bottom-5 md:inset-x-10 md:bottom-10 max-w-3xl"><p className="text-[10px] font-black uppercase tracking-[.25em]" style={{ color: service.accent }}>{service.eyebrow}</p><h1 className="mt-2 text-5xl md:text-7xl font-black tracking-[-.06em] leading-[.88]">{service.name}</h1><p className="mt-5 max-w-2xl text-sm md:text-base leading-relaxed text-white/70">{service.description}</p><div className="mt-5 flex flex-wrap gap-2">{service.features.map((feature) => <span key={feature} className="rounded-full border border-white/10 bg-black/30 px-3 py-2 text-[10px] font-bold text-white/75 backdrop-blur-md">{feature}</span>)}</div></div>
+        </section>
 
-      <main className="p-6">
-        <div className="grid grid-cols-1 gap-6">
-          {items.map((item) => (
-            <div key={item.id} className="bg-white rounded-3xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-stone-100 flex gap-4 transition-transform active:scale-[0.98]">
-              <div className="w-32 h-32 flex-shrink-0">
-                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="flex flex-col justify-center py-2 pr-4 gap-1">
-                <h3 className="font-semibold text-stone-800 text-sm">{item.name}</h3>
-                <p className="text-stone-500 text-[11px] line-clamp-2">{item.description}</p>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="font-bold text-rose-600 text-sm">{item.price} Br</span>
-                  <button className="bg-stone-900 text-white text-[10px] font-bold px-4 py-1.5 rounded-full">
-                    Add
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <section className="mt-6 grid gap-5 lg:grid-cols-[1.4fr_.6fr]">
+          <div className="rounded-[2rem] border border-white/10 bg-white/[.035] p-6 md:p-8"><div className="flex items-center gap-3"><span className="h-11 w-11 rounded-2xl bg-white/10 flex items-center justify-center"><Sparkles className="h-5 w-5" style={{ color: service.accent }} /></span><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/35">Guest experience</p><h2 className="text-xl font-black">Designed around your stay</h2></div></div><p className="mt-5 text-sm leading-relaxed text-white/55">This service page uses the official Haile service category as its content reference while keeping actions inside your guest application. Connect a real booking or request workflow when the corresponding Supabase data is ready.</p><div className="mt-6 grid gap-3 sm:grid-cols-2">{service.features.map((feature) => <div key={feature} className="flex items-center gap-3 rounded-2xl bg-white/5 p-4"><CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: service.accent }} /><span className="text-xs font-bold text-white/70">{feature}</span></div>)}</div></div>
+          <aside className="rounded-[2rem] border border-white/10 bg-white/[.035] p-6 md:p-8"><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/35">Next step</p><h3 className="mt-2 text-2xl font-black">{service.type === 'bookable' ? 'Request a booking' : service.type === 'request' ? 'Send a request' : 'Explore details'}</h3><p className="mt-3 text-xs leading-relaxed text-white/45">Use the guest workflow for this service. Live rates and availability are not invented here.</p><Link href={service.type === 'request' ? `/guest/${service.id}/request` : '/guest/my-activity'} className="mt-6 flex items-center justify-between rounded-full px-5 py-3 text-xs font-black uppercase tracking-[.12em] text-stone-950" style={{ backgroundColor: service.accent }}>{service.type === 'request' ? 'Submit request' : 'Continue'}<ChevronRight className="h-4 w-4" /></Link><div className="mt-4 flex items-center gap-2 text-[10px] text-white/30"><Clock3 className="h-3.5 w-3.5" />Availability requires a connected source</div><a href={service.sourceUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold text-white/45 hover:text-white">Official information<ArrowUpRight className="h-3.5 w-3.5" /></a></aside>
+        </section>
       </main>
-
-      {/* Floating Cart Button */}
-      <div className="fixed bottom-6 right-6">
-        <button className="bg-rose-500 text-white p-4 rounded-full shadow-lg shadow-rose-500/30 flex items-center gap-2">
-          <ShoppingCart className="w-5 h-5" />
-          <span className="text-xs font-bold">Review Order</span>
-        </button>
-      </div>
     </div>
   );
 }
