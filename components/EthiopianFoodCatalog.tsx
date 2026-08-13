@@ -72,7 +72,7 @@ Open app
 <h1 className={`text-4xl font-black tracking-tighter uppercase leading-none ${currentTheme.text} drop-shadow-md`}>
 {activeItem.category.split(' ')[0]}
 </h1>
-<p className="text-xs font-semibold text-white/80 tracking-wide lowercase italic">
+<p className="text-xs font-asemibold text-white/80 tracking-wide lowercase italic">
 {activeItem.name}
 </p>
 </div>
