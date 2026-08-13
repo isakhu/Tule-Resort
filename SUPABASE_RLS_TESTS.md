@@ -32,7 +32,7 @@ RLS testing plan and queries
 4) Example API calls
   Use a valid admin session access token in the `Authorization` header. Example:
   ```
-  curl -X GET http://localhost:3000/api/admin/list-users -H "Authorization: Bearer <ADMIN_SESSION_TOKEN>"
+  curl -X GET http://localhost:3001/api/admin/list-users -H "Authorization: Bearer <ADMIN_SESSION_TOKEN>"
   ```
 
 5) Troubleshooting

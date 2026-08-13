@@ -37,7 +37,7 @@ Testing locally
 Obtain an admin session access token (see instructions below) and include it in `Authorization: Bearer <token>`.
 Example curl (grant access):
 ```
-curl -X POST http://localhost:3000/api/admin/grant-access \
+curl -X POST http://localhost:3001/api/admin/grant-access \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <ADMIN_SESSION_TOKEN>" \
   -d '{"userId":"<UUID>","departmentId":2}'
