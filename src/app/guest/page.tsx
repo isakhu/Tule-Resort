@@ -1,77 +1,29 @@
 import React from 'react';
-import { notFound } from 'next/navigation';
-import { menuItems } from '@/data/menu-items';
-import { ArrowLeft, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
+import { ArrowLeft, Clock3, MapPin, Sparkles } from 'lucide-react';
+import ResortServiceCard from '@/components/ResortServiceCard';
+import { RESORT_SERVICES } from '@/data/resort-services';
 
-const SERVICES: Record<string, { name: string; type: 'orderable' | 'bookable' | 'request' }> = {
-  'cafeteria': { name: 'Cafeteria', type: 'orderable' },
-  'restaurant': { name: 'Restaurant/Bar', type: 'orderable' },
-};
-
-export default async function ServicePage({ params }: { params: Promise<{ serviceId: string }> }) {
-  const { serviceId } = await params;
-  const service = SERVICES[serviceId];
-  if (!service) notFound();
-
-  const items = menuItems.filter(item => service.type === 'orderable').slice(0, 10);
-
+export default function GuestServicesPage() {
   return (
-    <div className="min-h-screen bg-[#F7EFE0] pb-28">
-      {/* Header */}
-      <header className="bg-[#2B1B12] px-6 pt-6 pb-10 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.06] bg-[radial-gradient(circle,white_1px,transparent_1px)] bg-[length:16px_16px]" />
-        <Link href="/guest" className="relative z-10 inline-flex items-center gap-2 text-[#D99A3D] text-sm font-semibold mb-6">
-          <ArrowLeft className="w-4 h-4" /> Back
-        </Link>
-        <h1
-          className="relative z-10 text-[#F7EFE0] leading-[0.85] tracking-tight"
-          style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(3rem, 12vw, 5.5rem)' }}
-        >
-          {service.name}
-        </h1>
-        <p className="relative z-10 text-[#D99A3D] text-sm mt-2 font-medium">Handpicked dishes, made fresh</p>
-      </header>
-
-      {/* Items */}
-      <main className="px-4 -mt-6 relative z-10 space-y-5">
-        {items.map((item, i) => (
-          <div
-            key={item.id}
-            className="bg-[#FFFCF6] rounded-2xl overflow-hidden shadow-[0_10px_30px_rgba(43,27,18,0.12)] border border-[#EAD9BC]"
-          >
-            <div className="relative h-44 w-full">
-              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-              {/* Angled ticket-stub price tag */}
-              <div className="absolute top-3 right-3 bg-[#B03A2E] text-[#F7EFE0] px-3 py-1.5 rounded-md shadow-lg -rotate-3">
-                <span className="font-bold text-sm" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.5px' }}>
-                  {item.price} Br
-                </span>
-              </div>
-            </div>
-            <div className="p-5">
-              <h3
-                className="text-[#2B1B12] leading-none mb-1"
-                style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '1.6rem', letterSpacing: '0.3px' }}
-              >
-                {item.name}
-              </h3>
-              <p className="text-[#6B5B4D] text-sm mb-4 leading-snug">{item.description}</p>
-              <button className="bg-[#2B1B12] text-[#F7EFE0] text-xs font-bold px-5 py-2.5 rounded-full">
-                Add to order
-              </button>
-            </div>
+    <div className="min-h-screen overflow-x-hidden bg-[#0C0B09] text-white pb-16">
+      <header className="relative overflow-hidden border-b border-white/10 bg-[#17120D]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(242,184,75,.18),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(229,107,77,.12),transparent_35%)]" />
+        <div className="relative mx-auto max-w-7xl px-4 md:px-6 py-5">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white transition"><ArrowLeft className="h-4 w-4" />Home</Link>
+          <div className="mt-12 max-w-4xl pb-10 md:pb-16">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#F2B84B]/20 bg-[#F2B84B]/10 px-4 py-2 text-[10px] font-black uppercase tracking-[.24em] text-[#F2B84B]"><Sparkles className="h-4 w-4" />Haile Resort Guest Experience</div>
+            <h1 className="mt-5 text-6xl md:text-8xl font-black uppercase tracking-[-.07em] leading-[.82]">Everything<br /><span className="text-[#F2B84B]">you need.</span></h1>
+            <p className="mt-6 max-w-2xl text-sm md:text-base leading-relaxed text-white/60">Explore dining, accommodation, wellness, leisure, fitness and event services through one visual guest experience.</p>
+            <div className="mt-7 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-[.14em] text-white/55"><span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2"><MapPin className="h-3.5 w-3.5" />Haile Hotels & Resorts</span><span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2"><Clock3 className="h-3.5 w-3.5" />Guest services</span></div>
           </div>
-        ))}
+        </div>
+      </header>
+      <main className="mx-auto max-w-7xl px-4 md:px-6 py-8 md:py-12">
+        <div className="mb-8 flex items-end justify-between gap-5"><div><p className="text-[10px] font-black uppercase tracking-[.26em] text-white/35">Explore the resort</p><h2 className="mt-2 text-3xl md:text-4xl font-black tracking-[-.04em]">Services & experiences</h2></div><span className="hidden sm:block text-xs text-white/35">{RESORT_SERVICES.length} experiences</span></div>
+        <section className="grid gap-5 md:grid-cols-2">{RESORT_SERVICES.map((service, index) => <ResortServiceCard key={service.id} service={service} index={index} />)}</section>
+        <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/[.035] p-6 md:p-8"><div className="max-w-3xl"><p className="text-[10px] font-black uppercase tracking-[.24em] text-[#F2B84B]">The Haile way</p><h3 className="mt-2 text-2xl md:text-3xl font-black tracking-[-.03em]">Hospitality, comfort and Ethiopian soul.</h3><p className="mt-3 text-sm leading-relaxed text-white/50">The service catalog follows the official Haile Hotels & Resorts service categories and experience themes, while keeping the guest interface focused and easy to use.</p></div><div className="mt-6"><Link href="/guest/my-activity" className="inline-flex rounded-full border border-white/10 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[.12em] text-white/70">My activity</Link></div></section>
       </main>
-
-      {/* Floating cart */}
-      <div className="fixed bottom-6 right-6 z-20">
-        <button className="bg-[#B03A2E] text-[#F7EFE0] p-4 rounded-full shadow-lg shadow-[#B03A2E]/40 flex items-center gap-2">
-          <ShoppingCart className="w-5 h-5" />
-          <span className="text-xs font-bold">Review Order</span>
-        </button>
-      </div>
     </div>
   );
 }
