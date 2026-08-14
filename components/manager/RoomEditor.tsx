@@ -60,11 +60,12 @@ export default function RoomEditor({ initial, onSaved, onCancel }: { initial?: P
       if (imageFile) imageUrl = await uploadImage(imageFile)
       const slug = form.slug.trim() || makeSlug(form.name)
       const amenities = amenitiesText.split(',').map(x => x.trim()).filter(Boolean)
-      const payload = {
-        slug, name: form.name.trim(), type: form.type.trim() || 'Standard', category: form.category.trim() || 'Accommodation',
-        description: form.description.trim(), short_description: form.description.trim(), price_per_night: Number(form.price_per_night) || 0,
-        capacity: Number(form.capacity) || 2, max_occupancy: Number(form.max_occupancy) || 2,
-        image_url: imageUrl || null, images: imageUrl ? [imageUrl] : [], amenities, is_active: form.is_active, is_available: form.is_available,
+       const payload = {
+        slug, name: form.name.trim(), room_type: form.type.trim() || 'Standard',
+        description: form.description.trim(), short_description: form.description.trim(),
+        price: Number(form.price_per_night) || 0, currency: 'ETB',
+        capacity: Number(form.capacity) || 2,
+        image_url: imageUrl || null, gallery: imageUrl ? [imageUrl] : [], amenities, is_active: form.is_active, is_available: form.is_available,
         display_order: Number(form.display_order) || 0, updated_at: new Date().toISOString(),
       }
       const result = form.id ? await supabase.from('rooms').update(payload).eq('id', form.id) : await supabase.from('rooms').insert(payload)
