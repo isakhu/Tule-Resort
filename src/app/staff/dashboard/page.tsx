@@ -1,47 +1,19 @@
-import React from 'react';
-import { Settings, Eye, Save } from 'lucide-react';
-
-// Mock DB data
-const STAFF_ROLES = [
-  { id: '1', role: 'Manager', password: 'manager-password-123' },
-  { id: '2', role: 'Cafeteria', password: 'cafe-password-123' },
-  { id: '3', role: 'Restaurant', password: 'rest-password-123' },
-  { id: '4', role: 'Pool', password: 'pool-password-123' },
-  
-  { id: '6', role: 'Spa', password: 'spa-password-123' },
-  { id: '7', role: 'Gym', password: 'gym-password-123' },
-];
+import Link from 'next/link';
+import { ArrowRight, ClipboardList, LayoutDashboard, Settings, UtensilsCrossed } from 'lucide-react';
 
 export default function ManagerDashboard() {
   return (
-    <div className="min-h-screen bg-stone-50 p-6">
-      <header className="mb-8">
-        <h1 className="text-2xl font-serif font-bold text-stone-800">Manager Dashboard</h1>
-        <p className="text-stone-500 text-sm">System administration and staff management.</p>
-      </header>
-
-      <section className="bg-white rounded-3xl p-6 shadow-sm border border-stone-100">
-        <div className="flex items-center gap-2 mb-6">
-          <Settings className="w-5 h-5 text-stone-400" />
-          <h2 className="text-lg font-bold text-stone-800">Manage Staff Passwords</h2>
-        </div>
-        
-        <div className="space-y-4">
-          {STAFF_ROLES.map((staff) => (
-            <div key={staff.id} className="grid grid-cols-[1fr,auto,auto] gap-4 items-center bg-stone-50 p-4 rounded-2xl">
-              <span className="font-bold text-stone-700 text-sm">{staff.role}</span>
-              <input 
-                type="text" 
-                defaultValue={staff.password}
-                className="bg-white border border-stone-200 rounded-xl px-4 py-2 text-sm text-stone-600 font-mono w-48"
-              />
-              <button className="bg-stone-900 text-white p-2 rounded-xl hover:bg-stone-800 transition-colors">
-                <Save className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
+    <div className="min-h-screen bg-[#0C0B09] text-white">
+      <header className="border-b border-white/10 bg-[#15130F]"><div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4 md:px-6"><img src="/tule-resort-mark.svg" alt="Tule Resort" className="h-11 w-14 rounded-lg object-cover" /><div><p className="text-sm font-black uppercase tracking-[.16em] text-[#F2C866]">Tule Resort</p><p className="text-[8px] font-bold uppercase tracking-[.25em] text-white/35">Manager Dashboard</p></div></div></header>
+      <main className="mx-auto max-w-7xl px-4 py-7 md:px-6 md:py-10">
+        <section className="mb-8"><p className="text-[9px] font-black uppercase tracking-[.25em] text-[#F2B84B]">Control center</p><h1 className="mt-2 text-4xl md:text-6xl font-black tracking-[-.05em]">MANAGE TULE.</h1><p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/50">One dashboard for your menu, resort services, rooms and guest requests. Content changes are stored in Supabase and appear automatically on the customer website.</p></section>
+        <section className="grid gap-4 md:grid-cols-3">
+          <Link href="/staff/dashboard/menu" className="group rounded-[2rem] border border-[#F2B84B]/20 bg-[#F2B84B]/[.07] p-6 transition hover:-translate-y-1 hover:bg-[#F2B84B]/[.1]"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2B84B] text-stone-950"><UtensilsCrossed className="h-6 w-6" /></div><p className="mt-5 text-[9px] font-black uppercase tracking-[.23em] text-[#F2B84B]">CMS</p><h2 className="mt-1 text-2xl font-black">Food Menu</h2><p className="mt-2 text-sm leading-relaxed text-white/45">Add, edit, delete and publish food items with images, Amharic names, prices and descriptions.</p><div className="mt-5 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-white/70">Manage menu <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></div></Link>
+          <Link href="/admin/orders" className="group rounded-[2rem] border border-white/10 bg-white/[.04] p-6 transition hover:-translate-y-1 hover:bg-white/[.07]"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10"><ClipboardList className="h-6 w-6 text-[#F2B84B]" /></div><p className="mt-5 text-[9px] font-black uppercase tracking-[.23em] text-white/35">Operations</p><h2 className="mt-1 text-2xl font-black">Orders & Requests</h2><p className="mt-2 text-sm leading-relaxed text-white/45">Review guest food orders and service requests from the existing operational system.</p><div className="mt-5 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-white/70">Open operations <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></div></Link>
+          <Link href="/admin/staff" className="group rounded-[2rem] border border-white/10 bg-white/[.04] p-6 transition hover:-translate-y-1 hover:bg-white/[.07]"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10"><Settings className="h-6 w-6 text-[#F2B84B]" /></div><p className="mt-5 text-[9px] font-black uppercase tracking-[.23em] text-white/35">Administration</p><h2 className="mt-1 text-2xl font-black">Staff</h2><p className="mt-2 text-sm leading-relaxed text-white/45">Manage staff access and departments from the existing administration area.</p><div className="mt-5 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-white/70">Manage staff <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></div></Link>
+        </section>
+        <section className="mt-6 rounded-[2rem] border border-white/10 bg-white/[.03] p-5"><div className="flex items-center gap-3"><LayoutDashboard className="h-5 w-5 text-[#F2B84B]" /><div><p className="text-sm font-bold">Next CMS modules</p><p className="text-xs text-white/40">Rooms • Pool • Gym • Spa • Events • Resort experiences • Homepage content</p></div></div></section>
+      </main>
     </div>
   );
 }
