@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -9,4 +9,43 @@
 body {
   color: var(--foreground);
   background: var(--background);
+}
+
+/* Tule Resort manager CMS form primitives */
+.field-label {
+  display: block;
+  font-size: 0.625rem;
+  line-height: 1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgb(255 255 255 / 0.42);
+}
+
+.field-input {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.10);
+  background: rgb(0 0 0 / 0.20);
+  padding: 0.75rem 0.9rem;
+  color: white;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: none;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.field-input::placeholder {
+  color: rgb(255 255 255 / 0.25);
+}
+
+.field-input:focus {
+  border-color: rgb(242 184 75 / 0.55);
+  background: rgb(0 0 0 / 0.30);
+  box-shadow: 0 0 0 3px rgb(242 184 75 / 0.08);
+}
+
+.field-input option {
+  color: #17130d;
+  background: white;
 }
