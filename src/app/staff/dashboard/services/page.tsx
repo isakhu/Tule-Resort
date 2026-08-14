@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Eye, EyeOff, Waves } from 'lucide-react'
-import { createClient } from '@/lib/supabaseClient'
+import supabase from '@/lib/supabaseClient'
 import ServiceEditor, { ResortService } from '@/components/manager/ServiceEditor'
 
 export default function ManagerServicesPage() {
@@ -11,7 +11,6 @@ export default function ManagerServicesPage() {
   const [adding, setAdding] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const supabase = createClient()
 
   async function load() {
     setLoading(true); setError('')
@@ -21,7 +20,7 @@ export default function ManagerServicesPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { void load() }, [])
 
   async function remove(service: ResortService) {
     if (!service.id || !confirm(`Delete “${service.name}”? This cannot be undone.`)) return
