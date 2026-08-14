@@ -63,7 +63,7 @@ export default function RoomEditor({ initial, onSaved, onCancel }: { initial?: P
       const payload = {
         slug, name: form.name.trim(), type: form.type.trim() || 'Standard', category: form.category.trim() || 'Accommodation',
         description: form.description.trim(), short_description: form.description.trim(), price_per_night: Number(form.price_per_night) || 0,
-        base_price: Number(form.price_per_night) || 0, capacity: Number(form.capacity) || 2, max_occupancy: Number(form.max_occupancy) || 2,
+        capacity: Number(form.capacity) || 2, max_occupancy: Number(form.max_occupancy) || 2,
         image_url: imageUrl || null, images: imageUrl ? [imageUrl] : [], amenities, is_active: form.is_active, is_available: form.is_available,
         display_order: Number(form.display_order) || 0, updated_at: new Date().toISOString(),
       }
