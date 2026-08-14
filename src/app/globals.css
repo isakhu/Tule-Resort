@@ -1,17 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #F8F5EE;
+  --foreground: #182326;
+  --lake-deep: #0B3D4A;
+  --lake: #159A9C;
+  --sand: #D8C7A3;
+  --cream: #F8F5EE;
+  --charcoal: #182326;
+  --green: #5D7563;
 }
+
+html { scroll-behavior: smooth; }
 
 body {
   color: var(--foreground);
   background: var(--background);
+  font-family: 'Manrope', sans-serif;
 }
 
-/* Tule Resort manager CMS form primitives */
+h1, h2, h3, h4, h5, h6,
+.font-display {
+  font-family: 'Cormorant Garamond', serif;
+}
+
+/* Tule Resort Lake Luxury design tokens */
 .field-label {
   display: block;
   font-size: 0.625rem;
@@ -19,33 +33,38 @@ body {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: rgb(255 255 255 / 0.42);
+  color: rgb(24 35 38 / 0.55);
 }
 
 .field-input {
   width: 100%;
   border-radius: 1rem;
-  border: 1px solid rgb(255 255 255 / 0.10);
-  background: rgb(0 0 0 / 0.20);
+  border: 1px solid rgb(11 61 74 / 0.14);
+  background: rgb(255 255 255 / 0.72);
   padding: 0.75rem 0.9rem;
-  color: white;
+  color: var(--charcoal);
   font-size: 0.875rem;
   line-height: 1.25rem;
   outline: none;
   transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
 }
 
-.field-input::placeholder {
-  color: rgb(255 255 255 / 0.25);
-}
+.field-input::placeholder { color: rgb(24 35 38 / 0.35); }
 
 .field-input:focus {
-  border-color: rgb(242 184 75 / 0.55);
-  background: rgb(0 0 0 / 0.30);
-  box-shadow: 0 0 0 3px rgb(242 184 75 / 0.08);
+  border-color: rgb(21 154 156 / 0.65);
+  background: white;
+  box-shadow: 0 0 0 3px rgb(21 154 156 / 0.10);
 }
 
-.field-input option {
-  color: #17130d;
-  background: white;
-}
+.field-input option { color: var(--charcoal); background: white; }
+
+/* Useful global brand utilities */
+.tule-lake { color: var(--lake); }
+.tule-lake-deep { color: var(--lake-deep); }
+.tule-sand { color: var(--sand); }
+.tule-green { color: var(--green); }
+.bg-tule-lake { background-color: var(--lake); }
+.bg-tule-lake-deep { background-color: var(--lake-deep); }
+.bg-tule-cream { background-color: var(--cream); }
+.bg-tule-sand { background-color: var(--sand); }
