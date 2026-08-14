@@ -6,13 +6,15 @@ import Link from 'next/link';
 import { menuItems, MenuItem } from '@/data/menu-items';
 
 const MENU_PAGES = [
-  { id: 'main-course', label: 'Main Course', shortLabel: 'Mains', categories: ['Beef & Lamb', 'Poultry & Fish', 'Vegetarian & Vegan', 'Modern & Intercontinental'], eyebrow: 'SIGNATURE KITCHEN', title: 'MAIN COURSE', subtitle: 'Authentic Ethiopian flavors with a Haile Resort finish.', accent: '#F2B84B' },
+  { id: 'main-course', label: 'Main Course', shortLabel: 'Mains', categories: ['Beef & Lamb', 'Poultry & Fish', 'Vegetarian & Vegan', 'Modern & Intercontinental'], eyebrow: 'SIGNATURE KITCHEN', title: 'MAIN COURSE', subtitle: 'Authentic Ethiopian flavors with a Tule Resort finish.', accent: '#F2B84B' },
   { id: 'appetizers', label: 'Appetizers', shortLabel: 'Starters', categories: ['Sides & Appetizers'], eyebrow: 'START HERE', title: 'APPETIZERS', subtitle: 'Fresh, colorful plates made for sharing before the main event.', accent: '#E56B4D' },
   { id: 'breakfast', label: 'Breakfast', shortLabel: 'Morning', categories: ['Breakfast'], eyebrow: 'GOOD MORNING', title: 'BREAKFAST', subtitle: 'Slow mornings, Ethiopian coffee and freshly prepared favorites.', accent: '#7DBA62' },
   { id: 'beverages', label: 'Beverages', shortLabel: 'Drinks', categories: ['Beverages'], eyebrow: 'POUR & REFRESH', title: 'BEVERAGES', subtitle: 'Fresh juices, hot drinks and refreshing favorites all day long.', accent: '#5FA7C9' },
 ] as const;
 
 type CartMap = Record<string, number>;
+const CART_KEY = 'tule-resort-cart';
+const LEGACY_CART_KEY = 'haile-resort-cart';
 
 function getItemsForPage(pageId: string) {
   const page = MENU_PAGES.find((item) => item.id === pageId) ?? MENU_PAGES[0];
@@ -54,13 +56,13 @@ export default function VisualResortMenu({ serviceName }: { serviceName: string 
 
   useEffect(() => {
     try {
-      const savedCart = window.localStorage.getItem('haile-resort-cart');
+      const savedCart = window.localStorage.getItem(CART_KEY) ?? window.localStorage.getItem(LEGACY_CART_KEY);
       if (savedCart) setCart(JSON.parse(savedCart));
     } catch { setCart({}); }
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem('haile-resort-cart', JSON.stringify(cart));
+    window.localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }, [cart]);
 
   const page = MENU_PAGES.find((item) => item.id === pageId) ?? MENU_PAGES[0];
@@ -73,9 +75,9 @@ export default function VisualResortMenu({ serviceName }: { serviceName: string 
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0C0B09] text-white">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0C0B09]/90 backdrop-blur-xl"><div className="mx-auto max-w-7xl px-4 md:px-6 py-4 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0C0B09]/90 backdrop-blur-xl"><div className="mx-auto max-w-7xl px-4 md:px-6 py-3 flex items-center justify-between gap-4">
         <Link href="/guest" className="inline-flex items-center gap-2 text-sm font-bold text-white/75 hover:text-white transition"><ArrowLeft className="h-4 w-4" />Back to Guest Services</Link>
-        <div className="hidden md:flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2"><Sparkles className="h-4 w-4 text-[#F2B84B]" /><span className="text-xs font-black uppercase tracking-[.16em]">Haile Resort • {serviceName}</span></div>
+        <Link href="/guest" className="hidden md:flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><img src="/tule-resort-mark.svg" alt="Tule Resort logo" className="h-9 w-12 rounded-lg object-cover" /><span className="text-xs font-black uppercase tracking-[.16em]">Tule Resort • {serviceName}</span></Link>
         <div className="flex items-center gap-2"><div className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-right"><p className="text-[8px] font-black uppercase tracking-[.18em] text-white/45">Order total</p><p className="text-sm font-black">{totalPrice.toLocaleString()} ETB</p></div><Link href="/guest/order" className="relative h-11 w-11 rounded-full bg-white text-stone-950 flex items-center justify-center shadow-lg" aria-label="Open order"><ShoppingBag className="h-5 w-5" />{totalItems > 0 && <span className="absolute -top-1 -right-1 min-w-5 h-5 rounded-full bg-[#E56B4D] text-[10px] font-black text-white flex items-center justify-center px-1">{totalItems}</span>}</Link></div>
       </div></header>
       <main className="mx-auto max-w-7xl px-4 md:px-6 py-6 md:py-10">
@@ -83,6 +85,7 @@ export default function VisualResortMenu({ serviceName }: { serviceName: string 
         <section className="relative"><div className="pointer-events-none absolute left-0 top-1/2 z-10 -translate-y-1/2 hidden md:block"><button type="button" onClick={() => movePage(-1)} className="pointer-events-auto h-12 w-12 rounded-full border border-white/10 bg-black/45 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60" aria-label="Previous menu page"><ChevronLeft className="h-5 w-5" /></button></div><div className="pointer-events-none absolute right-0 top-1/2 z-10 -translate-y-1/2 hidden md:block"><button type="button" onClick={() => movePage(1)} className="pointer-events-auto h-12 w-12 rounded-full border border-white/10 bg-black/45 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60" aria-label="Next menu page"><ChevronRight className="h-5 w-5" /></button></div><div className="flex gap-5 overflow-x-auto snap-x snap-mandatory pb-5 scrollbar-none px-1 md:px-3">{items.map((item) => <FoodCard key={item.id} item={item} quantity={cart[item.id] ?? 0} liked={Boolean(liked[item.id])} accent={page.accent} onAdd={() => addToCart(item.id)} onRemove={() => removeFromCart(item.id)} onLike={() => setLiked((current) => ({ ...current, [item.id]: !current[item.id] }))} />)}</div></section>
         <section className="mt-8 grid gap-4 md:grid-cols-3"><div className="rounded-[1.7rem] border border-white/10 bg-white/[.04] p-5"><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/40">Swipe to explore</p><p className="mt-2 text-base font-bold">Every dish is a visual menu page.</p><p className="mt-1 text-xs leading-relaxed text-white/50">Swipe left and right on mobile or drag the cards horizontally on desktop.</p></div><div className="rounded-[1.7rem] border border-white/10 bg-white/[.04] p-5"><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/40">What you see</p><p className="mt-2 text-base font-bold">Photo + price + description + Amharic name</p><p className="mt-1 text-xs leading-relaxed text-white/50">The information is layered directly on the food artwork instead of looking like a plain HTML list.</p></div><Link href="/guest/order" className="rounded-[1.7rem] border border-white/10 bg-white/[.04] p-5 hover:bg-white/[.07] transition"><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/40">Current basket</p><div className="mt-2 flex items-end justify-between gap-4"><div><p className="text-2xl font-black">{totalItems}</p><p className="text-xs text-white/45">items selected</p></div><p className="text-lg font-black" style={{ color: page.accent }}>{totalPrice.toLocaleString()} ETB</p></div><p className="mt-3 text-xs font-black uppercase tracking-[.12em] text-white/60">Review order →</p></Link></section>
       </main>
+      <footer className="border-t border-white/10 bg-black/25"><div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-6 md:px-6"><div className="flex items-center gap-3"><img src="/tule-resort-mark.svg" alt="Tule Resort logo" className="h-12 w-16 rounded-lg object-cover" /><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#F2C866]">Tule Resort</p><p className="text-[8px] uppercase tracking-[.24em] text-white/35">Hawassa</p></div></div><p className="text-[10px] uppercase tracking-[.18em] text-white/35">Relax. Enjoy. Remember.</p></div></footer>
     </div>
   );
 }
