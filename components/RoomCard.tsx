@@ -17,7 +17,7 @@ export interface RoomCardData {
 export default function RoomCard({ room }: { room: RoomCardData }) {
   const available = room.isAvailable ?? true;
   const amenities = room.amenities ?? [];
-  const bookingTarget = room.slug ? `/guest/rooms?room=${encodeURIComponent(room.slug)}` : '/guest/rooms';
+  const bookingTarget = room.slug ? `/guest/rooms/${encodeURIComponent(room.slug)}/book` : '/guest/rooms';
 
   return (
     <article className="group overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_20px_55px_rgba(7,59,76,.10)] transition duration-500 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(7,59,76,.18)]">
