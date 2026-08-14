@@ -14,7 +14,7 @@ export default function ResortServiceCard({ service, index = 0 }: { service: Res
   return (
     <article className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#15130F] shadow-[0_24px_60px_rgba(0,0,0,.28)] transition duration-500 hover:-translate-y-1 hover:shadow-[0_30px_80px_rgba(0,0,0,.38)]">
       <div className="relative h-[360px] sm:h-[390px]">
-        <img src={service.imageUrl} alt={`${service.name} at Haile Hotels & Resorts`} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" loading={index < 2 ? 'eager' : 'lazy'} />
+        <img src={service.imageUrl} alt={`${service.name} at Tule Resort`} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" loading={index < 2 ? 'eager' : 'lazy'} />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,.06)_0%,rgba(0,0,0,.15)_38%,rgba(0,0,0,.9)_100%)]" />
         <div className="absolute left-5 right-5 top-5 flex items-center justify-between">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/35 px-3 py-2 text-[9px] font-black uppercase tracking-[.2em] text-white backdrop-blur-md"><Icon className="h-3.5 w-3.5" style={{ color: service.accent }} />{service.eyebrow}</span>
@@ -28,7 +28,7 @@ export default function ResortServiceCard({ service, index = 0 }: { service: Res
       </div>
       <div className="flex items-center gap-3 border-t border-white/10 bg-white/[.035] p-4">
         <Link href={`/guest/${service.id}`} className="flex flex-1 items-center justify-center gap-2 rounded-full px-5 py-3 text-xs font-black uppercase tracking-[.12em] text-stone-950 transition hover:scale-[1.01] active:scale-[.98]" style={{ backgroundColor: service.accent }}>Explore service<ChevronRight className="h-4 w-4" /></Link>
-        <a href={service.sourceUrl} target="_blank" rel="noreferrer" className="h-11 w-11 shrink-0 rounded-full border border-white/10 bg-white/5 text-white/70 flex items-center justify-center hover:bg-white/10 hover:text-white" aria-label={`View official Haile information for ${service.name}`}><ArrowUpRight className="h-4 w-4" /></a>
+        <a href={service.sourceUrl} target="_blank" rel="noreferrer" className="h-11 w-11 shrink-0 rounded-full border border-white/10 bg-white/5 text-white/70 flex items-center justify-center hover:bg-white/10 hover:text-white" aria-label={`View Tule Resort information for ${service.name}`}><ArrowUpRight className="h-4 w-4" /></a>
       </div>
     </article>
   );
