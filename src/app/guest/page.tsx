@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Clock3, MapPin, Sparkles } from 'lucide-react';
+import { ArrowLeft, Clock3, MapPin, Sparkles, Utensils } from 'lucide-react';
 import ResortServiceCard from '@/components/ResortServiceCard';
 import { getResortServices } from '@/lib/resortServices';
 
@@ -26,6 +26,10 @@ export default async function GuestServicesPage() {
               <h1 className="mt-5 text-6xl md:text-8xl font-black uppercase tracking-[-.07em] leading-[.82]">Everything<br /><span className="text-[#F2B84B]">you need.</span></h1>
               <p className="mt-6 max-w-2xl text-sm md:text-base leading-relaxed text-white/60">Explore dining, accommodation, wellness, leisure, fitness and event services through one visual guest experience.</p>
               <div className="mt-7 flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-[.14em] text-white/55"><span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2"><MapPin className="h-3.5 w-3.5" />Tule Resort • Hawassa</span><span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2"><Clock3 className="h-3.5 w-3.5" />Guest services</span></div>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Link href="/guest/resort-menu" className="inline-flex items-center gap-2 rounded-full bg-[#F2B84B] px-5 py-3 text-xs font-black uppercase tracking-[.13em] text-stone-950 shadow-lg shadow-[#F2B84B]/10 transition hover:scale-[1.02]"><Utensils className="h-4 w-4" />Open Resort Menu</Link>
+                <Link href="/guest/rooms" className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[.13em] text-white/70 hover:bg-white/10">Browse rooms</Link>
+              </div>
             </div>
             <div className="hidden lg:block justify-self-end w-full max-w-md overflow-hidden rounded-[2rem] border border-[#F2B84B]/20 bg-black/30 shadow-2xl shadow-black/40">
               <img src="/tule-resort-mark.svg" alt="Tule Resort palm, pavilion and water mark" className="h-[330px] w-full object-cover" />
