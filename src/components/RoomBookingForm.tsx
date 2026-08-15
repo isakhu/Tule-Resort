@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { tuleBrand } from '@/lib/tuleBrand';
 
 function makeBookingNumber() {
   const stamp = Date.now().toString(36).toUpperCase();
@@ -25,6 +26,7 @@ export default function RoomBookingForm({ roomId, roomName, price, currency, max
   const [guestPhone, setGuestPhone] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('pay_at_resort');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [bookingNumber, setBookingNumber] = useState('');
@@ -51,6 +53,8 @@ export default function RoomBookingForm({ roomId, roomName, price, currency, max
       guests,
       total_price: total,
       currency,
+      payment_method: paymentMethod,
+      payment_status: paymentMethod === 'pay_at_resort' ? 'pending' : 'pending',
       status: 'pending',
       special_requests: specialRequests.trim() || null,
     });
@@ -68,10 +72,10 @@ export default function RoomBookingForm({ roomId, roomName, price, currency, max
       <div className="rounded-[2rem] border border-[#0B4F6C]/10 bg-white p-7 shadow-sm md:p-10">
         <div className="mx-auto max-w-xl text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF4F7] text-[#0B4F6C]"><CheckCircle2 className="h-8 w-8" /></div>
-          <p className="mt-6 text-[10px] font-black uppercase tracking-[.25em] text-[#C9A227]">Reservation received</p>
+          <p className="mt-6 text-[10px] font-black uppercase tracking-[.25em] text-[#C8A15A]">Reservation received</p>
           <h2 className="mt-2 text-4xl font-black tracking-[-.04em] text-[#073B4C]">You're booked for review.</h2>
           <p className="mt-4 text-sm leading-7 text-[#073B4C]/60">Your reservation for {roomName} is pending manager confirmation.</p>
-          <div className="mt-7 rounded-2xl bg-[#073B4C] p-5 text-white"><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/50">Booking number</p><p className="mt-2 text-2xl font-black tracking-wider">{bookingNumber}</p></div>
+          <div className="mt-7 rounded-2xl bg-[#073B4C] p-5 text-white"><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/50">Booking number</p><p className="mt-2 text-2xl font-black tracking-wider">{bookingNumber}</p><p className="mt-2 text-xs text-white/55">Payment: {tuleBrand.paymentMethods.find((method) => method.id === paymentMethod)?.label}</p></div>
           <p className="mt-5 text-xs text-[#073B4C]/50">Keep this booking number for your records.</p>
         </div>
       </div>
@@ -87,11 +91,12 @@ export default function RoomBookingForm({ roomId, roomName, price, currency, max
         <label className="text-sm font-bold text-[#073B4C]">Full name<input required value={guestName} onChange={(e) => setGuestName(e.target.value)} className="mt-2 w-full rounded-xl border border-[#0B4F6C]/15 px-4 py-3 outline-none focus:border-[#0B4F6C]" /></label>
         <label className="text-sm font-bold text-[#073B4C]">Phone<input required type="tel" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} className="mt-2 w-full rounded-xl border border-[#0B4F6C]/15 px-4 py-3 outline-none focus:border-[#0B4F6C]" /></label>
         <label className="text-sm font-bold text-[#073B4C]">Email <span className="font-normal text-[#073B4C]/40">(optional)</span><input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} className="mt-2 w-full rounded-xl border border-[#0B4F6C]/15 px-4 py-3 outline-none focus:border-[#0B4F6C]" /></label>
+        <label className="text-sm font-bold text-[#073B4C] md:col-span-2">Payment method<select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-2 w-full rounded-xl border border-[#0B4F6C]/15 bg-white px-4 py-3 outline-none focus:border-[#0B4F6C]">{tuleBrand.paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.label}</option>)}</select></label>
         <label className="text-sm font-bold text-[#073B4C] md:col-span-2">Special requests <span className="font-normal text-[#073B4C]/40">(optional)</span><textarea value={specialRequests} onChange={(e) => setSpecialRequests(e.target.value)} rows={3} className="mt-2 w-full rounded-xl border border-[#0B4F6C]/15 px-4 py-3 outline-none focus:border-[#0B4F6C]" /></label>
       </div>
       <div className="mt-6 flex flex-col gap-4 rounded-2xl bg-[#EAF4F7] p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-black uppercase tracking-wider text-[#0B4F6C]/50">Estimated total</p><p className="mt-1 text-2xl font-black text-[#073B4C]">{total.toLocaleString()} {currency}</p><p className="text-xs text-[#073B4C]/50">{nights || 0} night{nights === 1 ? '' : 's'} · {price.toLocaleString()} {currency}/night</p></div><button disabled={submitting} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0B4F6C] px-7 py-3.5 text-xs font-black uppercase tracking-[.14em] text-white transition hover:bg-[#073B4C] disabled:cursor-wait disabled:opacity-60">{submitting && <Loader2 className="h-4 w-4 animate-spin" />} {submitting ? 'Submitting…' : 'Request reservation'}</button></div>
       {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>}
-      <p className="mt-4 text-xs leading-5 text-[#073B4C]/45">Payment is due at the resort. Your reservation remains pending until Tule Resort confirms it.</p>
+      <p className="mt-4 text-xs leading-5 text-[#073B4C]/45">You can pay at the resort or select an available online method. Online payment confirmation can be completed by staff until a live payment gateway is connected.</p>
     </form>
   );
 }
