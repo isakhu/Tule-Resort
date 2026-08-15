@@ -31,71 +31,65 @@ function normalizeItems(items: OrderItemInput[]) {
     }));
 }
 
+async function getStatusId(status: string) {
+  const { data } = await supabase
+    .from('order_statuses')
+    .select('id, name')
+    .ilike('name', status)
+    .maybeSingle();
+
+  return data?.id ?? null;
+}
+
 export async function createOrder(orderData: CreateOrderInput) {
   const safeItems = normalizeItems(orderData.items ?? []);
-  const totalAmount = Number(orderData.total_amount ?? safeItems.reduce((sum, item) => sum + Number(item.price ?? 0) * Number(item.quantity ?? 1), 0));
-  const guestName = orderData.guest_name?.trim() || 'Guest';
+  if (!safeItems.length) return { success: false, error: 'Please add at least one menu item.' };
+
+  const total = Number(orderData.total_amount ?? safeItems.reduce((sum, item) => sum + item.price * item.quantity, 0));
+  const notes = orderData.special_instructions ?? orderData.notes ?? null;
   const roomNumber = orderData.room_number?.trim() || null;
-  const specialInstructions = orderData.special_instructions ?? orderData.notes ?? null;
-  const serviceType = orderData.service_type ?? 'room_service';
-  const status = orderData.status ?? 'pending';
+  const statusName = orderData.status ?? 'pending';
 
-  const preferredPayload = {
-    guest_name: guestName,
-    room_number: roomNumber,
-    items: safeItems,
-    total_amount: totalAmount,
-    service_type: serviceType,
-    special_instructions: specialInstructions,
-    status,
-    notes: specialInstructions,
-    created_at: new Date().toISOString(),
-  };
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id ?? null;
+    const statusId = await getStatusId(statusName);
 
-  const legacyPayload = {
-    guest_name: guestName,
-    room_number: roomNumber,
-    items: safeItems,
-    total: totalAmount,
-    department_id: null,
-    status_id: null,
-    notes: specialInstructions,
-    status,
-    service_type: serviceType,
-    special_instructions: specialInstructions,
-  };
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        user_id: userId,
+        department_id: null,
+        status_id: statusId,
+        total,
+        notes,
+        room_number: roomNumber,
+      })
+      .select()
+      .single();
 
-  const payloadAttempts: Record<string, unknown>[] = [preferredPayload as Record<string, unknown>, legacyPayload as Record<string, unknown>];
-
-  for (const payload of payloadAttempts) {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .insert(payload as any)
-        .select()
-        .single();
-
-      if (!error) {
-        return { success: true, data };
-      }
-
-      const isMissingColumn = typeof error?.message === 'string' && /column .* does not exist|does not exist/i.test(error.message);
-      if (!isMissingColumn) {
-        return { success: false, error: error.message || 'Unable to submit the order.' };
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to submit the order.';
-      const isMissingColumn = /column .* does not exist|does not exist/i.test(message);
-      if (!isMissingColumn) {
-        return { success: false, error: message };
-      }
+    if (orderError || !order) {
+      return { success: false, error: orderError?.message ?? 'Unable to create the order.' };
     }
-  }
 
-  return {
-    success: false,
-    error: 'Unable to submit the order. The orders table is not available in the current Supabase schema.',
-  };
+    const { error: itemsError } = await supabase.from('order_items').insert(
+      safeItems.map((item) => ({
+        order_id: order.id,
+        menu_item_id: item.menu_item_id,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+    );
+
+    if (itemsError) {
+      await supabase.from('orders').delete().eq('id', order.id);
+      return { success: false, error: itemsError.message };
+    }
+
+    return { success: true, data: order };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unable to submit the order.' };
+  }
 }
 
 export async function updateOrderStatus(
@@ -103,20 +97,17 @@ export async function updateOrderStatus(
   status: 'pending' | 'preparing' | 'completed' | 'cancelled',
 ) {
   try {
+    const statusId = await getStatusId(status);
     const { data, error } = await supabase
       .from('orders')
-      .update({ status })
+      .update({ status_id: statusId })
       .eq('id', orderId)
       .select()
       .single();
 
-    if (error) {
-      return { success: false, error: error.message || 'Unable to update order status.' };
-    }
-
+    if (error) return { success: false, error: error.message || 'Unable to update order status.' };
     return { success: true, data };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to update order status.';
-    return { success: false, error: message };
+    return { success: false, error: error instanceof Error ? error.message : 'Unable to update order status.' };
   }
 }
