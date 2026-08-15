@@ -12,7 +12,8 @@ type MenuItem = {
   category: string | null;
   price: number;
   image_url: string | null;
-  department_id: number | null;
+  department: string | null;
+  is_active: boolean;
   created_at: string;
 };
 
@@ -22,11 +23,20 @@ type FormState = {
   description: string;
   category: string;
   price: string;
-  departmentId: string;
+  department: string;
   imageUrl: string;
 };
 
-const emptyForm: FormState = { name: '', amharicName: '', description: '', category: 'Main Course', price: '', departmentId: '', imageUrl: '' };
+const emptyForm: FormState = {
+  name: '',
+  amharicName: '',
+  description: '',
+  category: 'Main Course',
+  price: '',
+  department: 'Restaurant',
+  imageUrl: '',
+};
+
 const categories = ['Breakfast', 'Starters', 'Main Course', 'Pizza & Pasta', 'Burgers', 'Dessert', 'Beverages', 'Coffee', 'Kids', 'Other'];
 
 function CardPreview({ form }: { form: FormState }) {
@@ -38,7 +48,7 @@ function CardPreview({ form }: { form: FormState }) {
         <div className="absolute bottom-4 left-4 right-4"><p className="text-[9px] font-black uppercase tracking-[.22em] text-[#F2B84B]">{form.amharicName || 'የምግብ ስም'}</p><h3 className="mt-1 text-3xl font-black uppercase tracking-[-.04em] text-white">{form.name || 'FOOD ITEM'}</h3></div>
         <div className="absolute right-4 top-4 rounded-2xl bg-white/95 px-3 py-2"><p className="text-[8px] font-black uppercase tracking-wider text-stone-400">Price</p><p className="text-lg font-black text-stone-950">{form.price ? Number(form.price).toLocaleString() : '0'} <span className="text-[9px]">ETB</span></p></div>
       </div>
-      <div className="p-4"><p className="line-clamp-3 text-sm leading-relaxed text-white/55">{form.description || 'Your food description will appear here.'}</p><div className="mt-4 flex items-center justify-between"><span className="rounded-full bg-white/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-white/40">{form.category}</span><span className="rounded-full bg-[#F2B84B] px-4 py-2 text-[9px] font-black uppercase tracking-wider text-stone-950">Add to order</span></div></div>
+      <div className="p-4"><p className="line-clamp-3 text-sm leading-relaxed text-white/55">{form.description || 'Your food description will appear here.'}</p><div className="mt-4 flex items-center justify-between"><span className="rounded-full bg-white/5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-white/40">{form.category}</span><span className="rounded-full bg-[#F2B84B] px-4 py-2 text-[9px] font-black uppercase tracking-wider text-stone-950">Published</span></div></div>
     </div>
   );
 }
@@ -66,7 +76,7 @@ export default function MenuItemEditor() {
 
   function edit(item: MenuItem) {
     setEditingId(item.id);
-    setForm({ name: item.name, amharicName: item.amharic_name ?? '', description: item.description ?? '', category: item.category ?? 'Other', price: String(item.price ?? ''), departmentId: item.department_id ? String(item.department_id) : '', imageUrl: item.image_url ?? '' });
+    setForm({ name: item.name, amharicName: item.amharic_name ?? '', description: item.description ?? '', category: item.category ?? 'Other', price: String(item.price ?? ''), department: item.department ?? 'Restaurant', imageUrl: item.image_url ?? '' });
     setImageFile(null);
     setMessage(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -90,8 +100,19 @@ export default function MenuItemEditor() {
       if (!form.name.trim() || !form.price) throw new Error('English name and price are required.');
       let imageUrl = form.imageUrl;
       if (imageFile) imageUrl = await uploadImage(imageFile);
-      const payload = { name: form.name.trim(), amharic_name: form.amharicName.trim() || null, description: form.description.trim() || null, category: form.category, price: Number(form.price), image_url: imageUrl || null, department_id: form.departmentId ? Number(form.departmentId) : null };
-      const result = editingId ? await supabase.from('menu_items').update(payload).eq('id', editingId).select().single() : await supabase.from('menu_items').insert(payload).select().single();
+      const payload = {
+        name: form.name.trim(),
+        amharic_name: form.amharicName.trim() || null,
+        description: form.description.trim() || null,
+        category: form.category,
+        price: Number(form.price),
+        image_url: imageUrl || null,
+        department: form.department.trim() || 'Restaurant',
+        is_active: true,
+      };
+      const result = editingId
+        ? await supabase.from('menu_items').update(payload).eq('id', editingId).select().single()
+        : await supabase.from('menu_items').insert(payload).select().single();
       if (result.error) throw result.error;
       setMessage(editingId ? 'Food item updated and published.' : 'Food item added and published.');
       reset();
