@@ -47,7 +47,7 @@ REVOKE ALL ON FUNCTION public.is_staff_or_manager_or_admin() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_staff_or_manager_or_admin() TO authenticated;
 
 -- -----------------------------------------------------------------------------
--- 2) Public content: only active records are public
+-- 2) Public content: only active records are public; managers can see drafts
 -- -----------------------------------------------------------------------------
 
 ALTER TABLE public.menu_items ENABLE ROW LEVEL SECURITY;
@@ -57,12 +57,16 @@ DROP POLICY IF EXISTS menu_items_public_read_active ON public.menu_items;
 DROP POLICY IF EXISTS menu_items_select_active ON public.menu_items;
 DROP POLICY IF EXISTS menu_items_public_active_read ON public.menu_items;
 DROP POLICY IF EXISTS menu_items_admin_manager_all ON public.menu_items;
+DROP POLICY IF EXISTS menu_items_manager_select ON public.menu_items;
 DROP POLICY IF EXISTS menu_items_manager_insert ON public.menu_items;
 DROP POLICY IF EXISTS menu_items_manager_update ON public.menu_items;
 DROP POLICY IF EXISTS menu_items_manager_delete ON public.menu_items;
 CREATE POLICY menu_items_public_active_read ON public.menu_items
   FOR SELECT TO public
   USING (is_active = true);
+CREATE POLICY menu_items_manager_select ON public.menu_items
+  FOR SELECT TO authenticated
+  USING (public.is_manager_or_admin());
 CREATE POLICY menu_items_manager_insert ON public.menu_items
   FOR INSERT TO authenticated
   WITH CHECK (public.is_manager_or_admin());
@@ -78,9 +82,13 @@ ALTER TABLE public.rooms ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public read on rooms" ON public.rooms;
 DROP POLICY IF EXISTS rooms_public_read ON public.rooms;
 DROP POLICY IF EXISTS "Public can view active rooms" ON public.rooms;
+DROP POLICY IF EXISTS rooms_manager_select ON public.rooms;
 CREATE POLICY rooms_public_active_read ON public.rooms
   FOR SELECT TO public
   USING (is_active = true);
+CREATE POLICY rooms_manager_select ON public.rooms
+  FOR SELECT TO authenticated
+  USING (public.is_manager_or_admin());
 DROP POLICY IF EXISTS rooms_manager_insert ON public.rooms;
 DROP POLICY IF EXISTS rooms_manager_update ON public.rooms;
 DROP POLICY IF EXISTS rooms_manager_delete ON public.rooms;
@@ -99,12 +107,16 @@ ALTER TABLE public.resort_services ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public read on resort_services" ON public.resort_services;
 DROP POLICY IF EXISTS resort_services_public_read ON public.resort_services;
 DROP POLICY IF EXISTS "Public can view active resort services" ON public.resort_services;
+DROP POLICY IF EXISTS resort_services_manager_select ON public.resort_services;
 DROP POLICY IF EXISTS resort_services_manager_insert ON public.resort_services;
 DROP POLICY IF EXISTS resort_services_manager_update ON public.resort_services;
 DROP POLICY IF EXISTS resort_services_manager_delete ON public.resort_services;
 CREATE POLICY resort_services_public_active_read ON public.resort_services
   FOR SELECT TO public
   USING (is_active = true);
+CREATE POLICY resort_services_manager_select ON public.resort_services
+  FOR SELECT TO authenticated
+  USING (public.is_manager_or_admin());
 CREATE POLICY resort_services_manager_insert ON public.resort_services
   FOR INSERT TO authenticated
   WITH CHECK (public.is_manager_or_admin());
@@ -254,8 +266,6 @@ CREATE POLICY orders_update_staff ON public.orders
 -- Guest orders are inserted through the server-side API using service_role.
 -- No direct anon/authenticated INSERT policy is intentionally provided.
 
--- Atomic order creation for the server API. Prices are always read from the
--- live menu_items table; invalid/inactive items are rejected.
 CREATE OR REPLACE FUNCTION public.create_guest_order(
   p_user_id UUID,
   p_department_id INTEGER,
@@ -302,8 +312,7 @@ BEGIN
       RAISE EXCEPTION 'Invalid order item or quantity';
     END IF;
 
-    SELECT mi.price
-      INTO v_price
+    SELECT mi.price INTO v_price
     FROM public.menu_items mi
     WHERE mi.id = v_menu_item_id
       AND COALESCE(mi.is_active, true) = true;
@@ -315,14 +324,7 @@ BEGIN
     v_total := v_total + (v_price * v_quantity);
   END LOOP;
 
-  INSERT INTO public.orders (
-    user_id,
-    department_id,
-    status_id,
-    total,
-    notes,
-    room_number
-  )
+  INSERT INTO public.orders (user_id, department_id, status_id, total, notes, room_number)
   VALUES (
     p_user_id,
     p_department_id,
