@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
-import { tuleBrand } from '@/lib/tuleBrand';
+import { tuleBrand } from '../lib/tuleBrand';
 
 function makeBookingNumber() {
   const stamp = Date.now().toString(36).toUpperCase();
@@ -37,7 +37,7 @@ export default function RoomBookingForm({ roomId, roomName, price, currency, max
     event.preventDefault();
     setError('');
     if (nights < 1) return setError('Please choose a valid check-in and check-out date.');
-    if (guests > maxGuests) return setError(`This room allows up to ${maxGuests} guests.`);
+    if (guests < 1 || guests > maxGuests) return setError(`This room allows up to ${maxGuests} guests.`);
 
     setSubmitting(true);
     try {
