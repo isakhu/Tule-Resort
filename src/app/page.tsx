@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { ArrowRight, BedDouble, CalendarDays, MapPin, Phone, Sparkles, Utensils, Waves } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { tuleBrand, tuleCopy, TuleLanguage } from '@/lib/tuleBrand';
+import LanguageSwitcher from '@/src/components/LanguageSwitcher';
+import { tuleBrand, tuleCopy, TuleLanguage } from '@/src/lib/tuleBrand';
 
 export default function Home() {
   const [language, setLanguage] = useState<TuleLanguage>('en');
