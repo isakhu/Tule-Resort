@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, BedDouble, CalendarDays, MapPin, Phone, Sparkles, Utensils, Waves } from 'lucide-react';
+import { ArrowRight, BedDouble, CalendarDays, MapPin, Phone, Sparkles, Utensils, Waves, LockKeyhole } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import LanguageSwitcher from '@/src/components/LanguageSwitcher';
 import { tuleBrand, tuleCopy, TuleLanguage } from '@/src/lib/tuleBrand';
@@ -33,7 +33,14 @@ export default function Home() {
             <Link href="/guest" className="hover:text-white">{copy.experiences}</Link>
             <Link href="#contact" className="hover:text-white">{copy.contact}</Link>
           </nav>
-          <div className="flex items-center gap-2"><LanguageSwitcher /><Link href="/guest/booking" className="hidden rounded-full bg-[#D8C7A3] px-4 py-2.5 text-[10px] font-black uppercase tracking-[.12em] text-[#182326] sm:block">{copy.book}</Link></div>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <Link href="/staff/login" className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-2.5 text-[9px] font-black uppercase tracking-[.1em] text-white hover:bg-white/15" aria-label="Manager Login">
+              <LockKeyhole className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Manager Login</span>
+            </Link>
+            <Link href="/guest/booking" className="hidden rounded-full bg-[#D8C7A3] px-4 py-2.5 text-[10px] font-black uppercase tracking-[.12em] text-[#182326] sm:block">{copy.book}</Link>
+          </div>
         </header>
 
         <div className="relative mx-auto grid max-w-7xl items-end gap-10 px-5 pb-16 pt-14 md:px-8 md:pb-24 lg:grid-cols-[1.15fr_.85fr] lg:pt-20">
