@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ImagePlus, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { ImagePlus, Pencil, Save, Trash2, X } from 'lucide-react';
 import supabase from '@/lib/supabaseClient';
 
 type MenuItem = {
@@ -12,7 +12,6 @@ type MenuItem = {
   category: string | null;
   price: number;
   image_url: string | null;
-  department_id: number | null;
   created_at: string;
 };
 
@@ -22,11 +21,10 @@ type FormState = {
   description: string;
   category: string;
   price: string;
-  departmentId: string;
   imageUrl: string;
 };
 
-const emptyForm: FormState = { name: '', amharicName: '', description: '', category: 'Main Course', price: '', departmentId: '', imageUrl: '' };
+const emptyForm: FormState = { name: '', amharicName: '', description: '', category: 'Main Course', price: '', imageUrl: '' };
 const categories = ['Breakfast', 'Starters', 'Main Course', 'Pizza & Pasta', 'Burgers', 'Dessert', 'Beverages', 'Coffee', 'Kids', 'Other'];
 
 function CardPreview({ form }: { form: FormState }) {
@@ -66,7 +64,7 @@ export default function MenuItemEditor() {
 
   function edit(item: MenuItem) {
     setEditingId(item.id);
-    setForm({ name: item.name, amharicName: item.amharic_name ?? '', description: item.description ?? '', category: item.category ?? 'Other', price: String(item.price ?? ''), departmentId: item.department_id ? String(item.department_id) : '', imageUrl: item.image_url ?? '' });
+    setForm({ name: item.name, amharicName: item.amharic_name ?? '', description: item.description ?? '', category: item.category ?? 'Other', price: String(item.price ?? ''), imageUrl: item.image_url ?? '' });
     setImageFile(null);
     setMessage(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -90,7 +88,7 @@ export default function MenuItemEditor() {
       if (!form.name.trim() || !form.price) throw new Error('English name and price are required.');
       let imageUrl = form.imageUrl;
       if (imageFile) imageUrl = await uploadImage(imageFile);
-      const payload = { name: form.name.trim(), amharic_name: form.amharicName.trim() || null, description: form.description.trim() || null, category: form.category, price: Number(form.price), image_url: imageUrl || null, department_id: form.departmentId ? Number(form.departmentId) : null };
+      const payload = { name: form.name.trim(), amharic_name: form.amharicName.trim() || null, description: form.description.trim() || null, category: form.category, price: Number(form.price), image_url: imageUrl || null };
       const result = editingId ? await supabase.from('menu_items').update(payload).eq('id', editingId).select().single() : await supabase.from('menu_items').insert(payload).select().single();
       if (result.error) throw result.error;
       setMessage(editingId ? 'Food item updated and published.' : 'Food item added and published.');
@@ -124,7 +122,7 @@ export default function MenuItemEditor() {
         <div className="xl:sticky xl:top-6 xl:self-start"><p className="mb-3 text-[9px] font-black uppercase tracking-[.25em] text-white/35">Live customer preview</p><CardPreview form={form} /></div>
       </div>
 
-      <section className="rounded-[2rem] border border-white/10 bg-white/[.045] p-5 md:p-7"><div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.25em] text-white/35">Published menu</p><h2 className="mt-1 text-2xl font-black text-white">Food items</h2></div><input value={query} onChange={(e) => setQuery(e.target.value)} className="field-input max-w-sm" placeholder="Search food…" /></div>{loading ? <p className="mt-6 text-sm text-white/40">Loading menu…</p> : filtered.length === 0 ? <div className="mt-6 rounded-2xl bg-white/5 p-6 text-sm text-white/40">No menu items found. Add your first item above.</div> : <div className="mt-6 grid gap-3">{filtered.map((item) => <div key={item.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-3"><div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image_url && <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />}</div><div className="min-w-0 flex-1"><p className="truncate font-bold text-white">{item.name}</p><p className="text-xs text-[#F2B84B]">{item.amharic_name || '—'} • {item.category || 'Other'}</p></div><p className="font-black text-white">{Number(item.price).toLocaleString()} ETB</p><button type="button" onClick={() => edit(item)} className="rounded-xl bg-white/5 p-2 text-white/50 hover:text-white" aria-label={`Edit ${item.name}`}><Pencil className="h-4 w-4" /></button><button type="button" onClick={() => remove(item.id)} className="rounded-xl bg-rose-500/10 p-2 text-rose-300 hover:bg-rose-500/20" aria-label={`Delete ${item.name}`}><Trash2 className="h-4 w-4" /></button></div>)}</div>}</section>
+      <section className="rounded-[2rem] border border-white/10 bg-white/[.045] p-5 md:p-7"><div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.25em] text-white/35">Published menu</p><h2 className="mt-1 text-2xl font-black text-white">Food items</h2></div><input value={query} onChange={(e) => setQuery(e.target.value)} className="field-input max-w-sm" placeholder="Search food…" /></div>{loading ? <p className="mt-6 text-sm text-white/40">Loading menu…</p> : filtered.length === 0 ? <div className="mt-6 rounded-2xl bg-white/5 p-6 text-sm text-white/40">No menu items found. Add your first item above.</div> : <div className="mt-6 grid gap-3">{filtered.map((item) => <div key={item.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-3"><div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image_url && <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />}</div><div className="min-w-0 flex-1"><p className="truncate font-bold text-white">{item.name}</p><p className="text-xs text-[#F2C866]">{item.amharic_name || '—'} • {item.category || 'Other'}</p></div><p className="font-black text-white">{Number(item.price).toLocaleString()} ETB</p><button type="button" onClick={() => edit(item)} className="rounded-xl bg-white/5 p-2 text-white/50 hover:text-white" aria-label={`Edit ${item.name}`}><Pencil className="h-4 w-4" /></button><button type="button" onClick={() => remove(item.id)} className="rounded-xl bg-rose-500/10 p-2 text-rose-300 hover:bg-rose-500/20" aria-label={`Delete ${item.name}`}><Trash2 className="h-4 w-4" /></button></div>)}</div>}</section>
     </div>
   );
 }
