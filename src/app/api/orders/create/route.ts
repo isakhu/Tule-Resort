@@ -4,45 +4,50 @@ import supabaseServer from '../../../../../lib/supabaseServer';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { items, departmentId, roomNumber, guestName, notes } = body;
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'items required' }, { status: 400 });
-    }
-    if (!departmentId) return NextResponse.json({ error: 'departmentId required' }, { status: 400 });
+    const { items, departmentId, roomNumber, guestName, notes } = body ?? {};
 
-    // Get Pending status id
-    const { data: statusData } = await supabaseServer.from('order_statuses').select('id').eq('name', 'Pending').limit(1).single();
-    const statusId = statusData?.id ?? null;
-
-    // Compute total and prepare order items
-    let total = 0;
-    const preparedItems = [] as any[];
-    for (const it of items) {
-      const { menuItemId, quantity } = it;
-      // fetch price
-      const { data: mi } = await supabaseServer.from('menu_items').select('price').eq('id', menuItemId).limit(1).single();
-      const price = mi?.price ?? 0;
-      const qty = quantity || 1;
-      total += Number(price) * qty;
-      preparedItems.push({ menu_item_id: menuItemId, quantity: qty, price });
+    if (!Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: 'At least one item is required.' }, { status: 400 });
     }
 
-    // Insert order
-    const { data: orderData, error: orderErr } = await supabaseServer
-      .from('orders')
-      .insert({ user_id: null, department_id: departmentId, status_id: statusId, total, notes: notes ?? null, room_number: roomNumber })
-      .select()
-      .single();
-    if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 500 });
+    const department = Number(departmentId);
+    if (!Number.isInteger(department) || department <= 0) {
+      return NextResponse.json({ error: 'A valid department is required.' }, { status: 400 });
+    }
 
-    const orderId = orderData.id;
-    // Insert order items
-    for (const pi of preparedItems) {
-      await supabaseServer.from('order_items').insert({ order_id: orderId, menu_item_id: pi.menu_item_id, quantity: pi.quantity, price: pi.price });
+    const normalizedItems = items.map((item: any) => ({
+      menu_item_id: typeof item?.menuItemId === 'string' ? item.menuItemId : String(item?.menu_item_id ?? ''),
+      quantity: Number(item?.quantity),
+    }));
+
+    if (normalizedItems.some((item) => !item.menu_item_id || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 50)) {
+      return NextResponse.json({ error: 'One or more order items are invalid.' }, { status: 400 });
+    }
+
+    const authHeader = req.headers.get('authorization') || '';
+    let userId: string | null = null;
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (match) {
+      const { data: authData } = await supabaseServer.auth.getUser(match[1]);
+      userId = authData?.user?.id ?? null;
+    }
+
+    const { data: orderId, error } = await supabaseServer.rpc('create_guest_order', {
+      p_user_id: userId,
+      p_department_id: department,
+      p_room_number: typeof roomNumber === 'string' ? roomNumber : null,
+      p_guest_name: typeof guestName === 'string' ? guestName : null,
+      p_notes: typeof notes === 'string' ? notes : null,
+      p_items: normalizedItems,
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message || 'Unable to submit the order.' }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, orderId });
-  } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to submit the order.';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
