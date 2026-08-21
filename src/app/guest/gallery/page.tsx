@@ -1,10 +1,21 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Camera, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
-const photos = [
+type GalleryItem = {
+  id: string;
+  title: string;
+  caption: string | null;
+  category: string;
+  image_url: string;
+  is_featured: boolean;
+  display_order: number;
+};
+
+const fallbackPhotos: GalleryItem[] = [
   ['Resort Overview', 'Resort exterior', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=85'],
   ['Rooms', 'Lake Luxury rooms', 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1200&q=85'],
   ['Tule Aqua', 'Pool experience', 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1200&q=85'],
@@ -13,22 +24,35 @@ const photos = [
   ['Spa & Wellness', 'Relaxation', 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=85'],
   ['Nature / Lake / Hawassa', 'Lakeside atmosphere', 'https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1200&q=85'],
   ['Family', 'Family moments', 'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=1200&q=85'],
-];
+].map((p, index) => ({ id: `fallback-${index}`, title: p[1], caption: null, category: p[0], image_url: p[2], is_featured: false, display_order: index }));
 
 export default function GalleryPage() {
+  const [photos, setPhotos] = useState<GalleryItem[]>(fallbackPhotos);
   const [filter, setFilter] = useState('All');
   const [selected, setSelected] = useState<number | null>(null);
-  const categories = ['All', ...Array.from(new Set(photos.map((p) => p[0])))];
-  const filtered = filter === 'All' ? photos : photos.filter((p) => p[0] === filter);
+
+  useEffect(() => {
+    async function load() {
+      const { data, error } = await supabase
+        .from('gallery')
+        .select('id,title,caption,category,image_url,is_featured,display_order')
+        .eq('is_active', true)
+        .order('is_featured', { ascending: false })
+        .order('display_order', { ascending: true });
+      if (!error && data && data.length > 0) setPhotos(data as GalleryItem[]);
+    }
+    void load();
+  }, []);
+
+  const categories = ['All', ...Array.from(new Set(photos.map((p) => p.category)))];
+  const filtered = filter === 'All' ? photos : photos.filter((p) => p.category === filter);
 
   const move = (delta: number) => {
-    if (selected === null) return;
-    const next = (selected + delta + filtered.length) % filtered.length;
-    const photo = filtered[next];
-    setSelected(photos.indexOf(photo));
+    if (selected === null || filtered.length === 0) return;
+    setSelected((selected + delta + filtered.length) % filtered.length);
   };
 
-  const current = selected === null ? null : photos[selected];
+  const current = selected === null ? null : filtered[selected] ?? null;
 
   return <div className="min-h-screen bg-[#F8FBFC] text-[#073B4C]">
     <header className="relative overflow-hidden bg-[#073B4C] text-white">
@@ -39,10 +63,10 @@ export default function GalleryPage() {
       </div>
     </header>
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-6 md:py-14">
-      <div className="mb-8 flex flex-wrap gap-2">{categories.map((category) => <button key={category} onClick={() => setFilter(category)} className={`rounded-full px-4 py-2 text-xs font-black transition ${filter === category ? 'bg-[#0B4F6C] text-white' : 'bg-white border border-[#0B4F6C]/10 text-[#073B4C]/60 hover:bg-[#EAF4F7]'}`}>{category}</button>)}</div>
-      <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">{filtered.map((photo, index) => <button key={photo[0]} onClick={() => setSelected(photos.indexOf(photo))} className="group mb-5 block w-full overflow-hidden rounded-[1.5rem] bg-white text-left shadow-[0_15px_45px_rgba(7,59,76,.08)]"><img src={photo[2]} alt={photo[1]} className="w-full object-cover transition duration-500 group-hover:scale-[1.03]" /><div className="p-4"><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#C9A227]">{photo[0]}</p><p className="mt-1 font-black">{photo[1]}</p></div></button>)}</div>
-      <section className="mt-12 grid gap-4 md:grid-cols-4">{['Explore Rooms', 'Explore Tule Aqua', 'Explore Restaurant', 'Book Your Stay'].map((label, i) => <Link key={label} href={i === 0 ? '/guest/rooms' : i === 1 ? '/guest/tule-aqua' : i === 2 ? '/guest/restaurant' : '/guest/my-activity'} className="rounded-2xl border border-[#0B4F6C]/10 bg-white px-5 py-4 text-center text-xs font-black uppercase tracking-[.12em] hover:bg-[#EAF4F7]">{label}</Link>)}</section>
+      <div className="mb-8 flex flex-wrap gap-2">{categories.map((category) => <button key={category} onClick={() => { setFilter(category); setSelected(null); }} className={`rounded-full px-4 py-2 text-xs font-black transition ${filter === category ? 'bg-[#0B4F6C] text-white' : 'bg-white border border-[#0B4F6C]/10 text-[#073B4C]/60 hover:bg-[#EAF4F7]'}`}>{category}</button>)}</div>
+      <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">{filtered.map((photo) => <button key={photo.id} onClick={() => setSelected(filtered.indexOf(photo))} className="group mb-5 block w-full overflow-hidden rounded-[1.5rem] bg-white text-left shadow-[0_15px_45px_rgba(7,59,76,.08)]"><img src={photo.image_url} alt={photo.title} className="w-full object-cover transition duration-500 group-hover:scale-[1.03]" /><div className="p-4"><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#C9A227]">{photo.category}</p><p className="mt-1 font-black">{photo.title}</p>{photo.caption && <p className="mt-1 text-sm text-[#073B4C]/50">{photo.caption}</p>}</div></button>)}</div>
+      <section className="mt-12 grid gap-4 md:grid-cols-4">{['Explore Rooms', 'Explore Tule Aqua', 'Explore Restaurant', 'Book Your Stay'].map((label, i) => <Link key={label} href={i === 0 ? '/guest/rooms' : i === 1 ? '/guest/tule-aqua' : i === 2 ? '/guest/restaurant' : '/guest/booking'} className="rounded-2xl border border-[#0B4F6C]/10 bg-white px-5 py-4 text-center text-xs font-black uppercase tracking-[.12em] hover:bg-[#EAF4F7]">{label}</Link>)}</section>
     </main>
-    {current && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#031C24]/95 p-4" role="dialog" aria-modal="true"><button onClick={() => setSelected(null)} className="absolute right-5 top-5 rounded-full bg-white/10 p-3 text-white"><X /></button><button onClick={() => move(-1)} className="absolute left-4 rounded-full bg-white/10 p-3 text-white"><ChevronLeft /></button><div className="max-h-[90vh] max-w-5xl"><img src={current[2]} alt={current[1]} className="max-h-[78vh] w-auto max-w-full rounded-2xl object-contain" /><div className="mt-3 flex justify-between gap-4 text-white"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#E2C35A]">{current[0]}</p><p className="font-black">{current[1]}</p><p className="text-xs text-white/45">Tule Resort · Hawassa</p></div><button onClick={() => move(1)} className="rounded-full bg-white/10 p-3"><ChevronRight /></button></div></div></div>}
+    {current && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#031C24]/95 p-4" role="dialog" aria-modal="true"><button onClick={() => setSelected(null)} className="absolute right-5 top-5 rounded-full bg-white/10 p-3 text-white"><X /></button><button onClick={() => move(-1)} className="absolute left-4 rounded-full bg-white/10 p-3 text-white"><ChevronLeft /></button><div className="max-h-[90vh] max-w-5xl"><img src={current.image_url} alt={current.title} className="max-h-[78vh] w-auto max-w-full rounded-2xl object-contain" /><div className="mt-3 flex justify-between gap-4 text-white"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#E2C35A]">{current.category}</p><p className="font-black">{current.title}</p><p className="text-xs text-white/45">Tule Resort · Hawassa</p></div><button onClick={() => move(1)} className="rounded-full bg-white/10 p-3"><ChevronRight /></button></div></div></div>}
   </div>;
 }
