@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, BedDouble, CalendarDays, ClipboardList, DollarSign, Images, LayoutDashboard, Settings, Sparkles, UtensilsCrossed, Waves, Wrench } from 'lucide-react';
+import { ArrowRight, BedDouble, CalendarDays, ClipboardList, DollarSign, Images, LayoutDashboard, Settings, Sparkles, UtensilsCrossed, Wrench } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -9,7 +9,6 @@ const modules = [
   ['Rooms','Manage rooms, prices, amenities and availability.',BedDouble,'/staff/dashboard/rooms'],
   ['Reservations','Confirm, reject, check in and check out guests.',CalendarDays,'/staff/dashboard/reservations'],
   ['Restaurant','Manage food, categories, prices and orders.',UtensilsCrossed,'/staff/dashboard/menu'],
-  ['Tule Aqua','Manage pool information, hours and pricing.',Waves,'/staff/dashboard/tule-aqua'],
   ['Services','Manage wellness, transport, concierge and room service.',Sparkles,'/staff/dashboard/services'],
   ['Gallery','Organize and feature resort photos.',Images,'/staff/dashboard/gallery'],
   ['Orders & Requests','Review guest food and service requests.',ClipboardList,'/admin/orders'],
