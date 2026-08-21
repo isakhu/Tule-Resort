@@ -2,7 +2,6 @@
 
 import { FormEvent, useMemo, useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
 import { tuleBrand } from '@/lib/tuleBrand';
 
 function makeBookingNumber() {
@@ -41,30 +40,36 @@ export default function RoomBookingForm({ roomId, roomName, price, currency, max
     if (guests > maxGuests) return setError(`This room allows up to ${maxGuests} guests.`);
 
     setSubmitting(true);
-    const booking = makeBookingNumber();
-    const { error: insertError } = await supabase.from('room_reservations').insert({
-      booking_number: booking,
-      room_id: roomId,
-      guest_name: guestName.trim(),
-      guest_phone: guestPhone.trim(),
-      guest_email: guestEmail.trim() || null,
-      check_in: checkIn,
-      check_out: checkOut,
-      guests,
-      total_price: total,
-      currency,
-      payment_method: paymentMethod,
-      payment_status: paymentMethod === 'pay_at_resort' ? 'pending' : 'pending',
-      status: 'pending',
-      special_requests: specialRequests.trim() || null,
-    });
-
-    setSubmitting(false);
-    if (insertError) {
-      setError(insertError.message.includes('already booked') ? 'This room is already booked for those dates. Please choose different dates.' : insertError.message);
-      return;
+    try {
+      const response = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          booking_number: makeBookingNumber(),
+          room_id: roomId,
+          guest_name: guestName,
+          guest_phone: guestPhone,
+          guest_email: guestEmail || null,
+          check_in: checkIn,
+          check_out: checkOut,
+          guests,
+          total_price: total,
+          currency,
+          payment_method: paymentMethod,
+          special_requests: specialRequests || null,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        setError(result.error || 'Reservation submission failed. Please try again.');
+        return;
+      }
+      setBookingNumber(result.data?.booking_number || '');
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Reservation submission failed. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
-    setBookingNumber(booking);
   }
 
   if (bookingNumber) {
