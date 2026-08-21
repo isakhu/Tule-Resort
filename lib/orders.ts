@@ -37,82 +37,64 @@ export async function createOrder(orderData: CreateOrderInput) {
   const guestName = orderData.guest_name?.trim() || 'Guest';
   const roomNumber = orderData.room_number?.trim() || null;
   const specialInstructions = orderData.special_instructions ?? orderData.notes ?? null;
-  const serviceType = orderData.service_type ?? 'room_service';
-  const status = orderData.status ?? 'pending';
 
-  const preferredPayload = {
-    guest_name: guestName,
-    room_number: roomNumber,
-    items: safeItems,
-    total_amount: totalAmount,
-    service_type: serviceType,
-    special_instructions: specialInstructions,
-    status,
-    notes: specialInstructions,
-    created_at: new Date().toISOString(),
-  };
+  // Guest creation is handled by the server-side order API. Keep this helper
+  // limited to the legacy client callers that still use it.
+  const { data: pendingStatus } = await supabase
+    .from('order_statuses')
+    .select('id')
+    .eq('name', 'Pending')
+    .maybeSingle();
 
-  const legacyPayload = {
-    guest_name: guestName,
-    room_number: roomNumber,
-    items: safeItems,
-    total: totalAmount,
+  const payload = {
+    user_id: null,
     department_id: null,
-    status_id: null,
+    status_id: pendingStatus?.id ?? null,
+    total: totalAmount,
     notes: specialInstructions,
-    status,
-    service_type: serviceType,
-    special_instructions: specialInstructions,
+    room_number: roomNumber,
   };
 
-  const payloadAttempts: Record<string, unknown>[] = [preferredPayload as Record<string, unknown>, legacyPayload as Record<string, unknown>];
+  const { data, error } = await supabase.from('orders').insert(payload).select().single();
+  if (error) return { success: false, error: error.message || 'Unable to submit the order.' };
 
-  for (const payload of payloadAttempts) {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .insert(payload as any)
-        .select()
-        .single();
-
-      if (!error) {
-        return { success: true, data };
-      }
-
-      const isMissingColumn = typeof error?.message === 'string' && /column .* does not exist|does not exist/i.test(error.message);
-      if (!isMissingColumn) {
-        return { success: false, error: error.message || 'Unable to submit the order.' };
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to submit the order.';
-      const isMissingColumn = /column .* does not exist|does not exist/i.test(message);
-      if (!isMissingColumn) {
-        return { success: false, error: message };
-      }
-    }
+  for (const item of safeItems) {
+    const { error: itemError } = await supabase.from('order_items').insert({
+      order_id: data.id,
+      menu_item_id: item.menu_item_id,
+      quantity: item.quantity,
+      price: Number(item.price ?? 0),
+    });
+    if (itemError) return { success: false, error: itemError.message || 'Unable to save an order item.' };
   }
 
-  return {
-    success: false,
-    error: 'Unable to submit the order. The orders table is not available in the current Supabase schema.',
-  };
+  return { success: true, data };
 }
 
 export async function updateOrderStatus(
   orderId: string,
   status: 'pending' | 'preparing' | 'completed' | 'cancelled',
 ) {
+  const statusName = status.charAt(0).toUpperCase() + status.slice(1);
+
   try {
+    const { data: statusRow, error: statusError } = await supabase
+      .from('order_statuses')
+      .select('id,name')
+      .eq('name', statusName === 'Pending' ? 'Pending' : statusName)
+      .maybeSingle();
+
+    if (statusError) return { success: false, error: statusError.message || 'Unable to resolve order status.' };
+    if (!statusRow) return { success: false, error: `Order status "${statusName}" is not configured.` };
+
     const { data, error } = await supabase
       .from('orders')
-      .update({ status })
+      .update({ status_id: statusRow.id })
       .eq('id', orderId)
-      .select()
+      .select('*, status:order_statuses(id,name)')
       .single();
 
-    if (error) {
-      return { success: false, error: error.message || 'Unable to update order status.' };
-    }
+    if (error) return { success: false, error: error.message || 'Unable to update order status.' };
 
     return { success: true, data };
   } catch (error) {
