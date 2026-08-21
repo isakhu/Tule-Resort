@@ -21,54 +21,44 @@ export interface CreateOrderInput {
 
 function normalizeItems(items: OrderItemInput[]) {
   return items
-    .filter((item) => item && typeof item.quantity === 'number' && item.quantity > 0)
+    .filter((item) => item && Number.isInteger(item.quantity) && item.quantity > 0)
     .map((item) => ({
-      id: item.id ?? item.menu_item_id ?? `item-${Math.random().toString(36).slice(2, 9)}`,
-      menu_item_id: item.menu_item_id ?? item.id ?? null,
-      name: item.name ?? 'Menu item',
-      quantity: Number(item.quantity) || 1,
-      price: Number(item.price ?? 0),
+      menu_item_id: item.menu_item_id ?? item.id ?? '',
+      quantity: Number(item.quantity),
     }));
 }
 
 export async function createOrder(orderData: CreateOrderInput) {
-  const safeItems = normalizeItems(orderData.items ?? []);
-  const totalAmount = Number(orderData.total_amount ?? safeItems.reduce((sum, item) => sum + Number(item.price ?? 0) * Number(item.quantity ?? 1), 0));
-  const guestName = orderData.guest_name?.trim() || 'Guest';
-  const roomNumber = orderData.room_number?.trim() || null;
-  const specialInstructions = orderData.special_instructions ?? orderData.notes ?? null;
+  const items = normalizeItems(orderData.items ?? []);
+  if (!items.length) return { success: false, error: 'At least one order item is required.' };
 
-  // Guest creation is handled by the server-side order API. Keep this helper
-  // limited to the legacy client callers that still use it.
-  const { data: pendingStatus } = await supabase
-    .from('order_statuses')
-    .select('id')
-    .eq('name', 'Pending')
-    .maybeSingle();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user.id ?? null;
 
-  const payload = {
-    user_id: null,
-    department_id: null,
-    status_id: pendingStatus?.id ?? null,
-    total: totalAmount,
-    notes: specialInstructions,
-    room_number: roomNumber,
-  };
+  const response = await fetch('/api/orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      guest_name: orderData.guest_name,
+      room_number: orderData.room_number,
+      notes: orderData.special_instructions ?? orderData.notes ?? null,
+      user_id: userId,
+      items,
+    }),
+  });
 
-  const { data, error } = await supabase.from('orders').insert(payload).select().single();
-  if (error) return { success: false, error: error.message || 'Unable to submit the order.' };
-
-  for (const item of safeItems) {
-    const { error: itemError } = await supabase.from('order_items').insert({
-      order_id: data.id,
-      menu_item_id: item.menu_item_id,
-      quantity: item.quantity,
-      price: Number(item.price ?? 0),
-    });
-    if (itemError) return { success: false, error: itemError.message || 'Unable to save an order item.' };
+  let payload: { success?: boolean; data?: unknown; error?: string } = {};
+  try {
+    payload = await response.json();
+  } catch {
+    payload = { success: false, error: 'The order server returned an invalid response.' };
   }
 
-  return { success: true, data };
+  if (!response.ok || !payload.success) {
+    return { success: false, error: payload.error ?? 'Unable to submit the order.' };
+  }
+
+  return { success: true, data: payload.data };
 }
 
 export async function updateOrderStatus(
@@ -81,7 +71,7 @@ export async function updateOrderStatus(
     const { data: statusRow, error: statusError } = await supabase
       .from('order_statuses')
       .select('id,name')
-      .eq('name', statusName === 'Pending' ? 'Pending' : statusName)
+      .eq('name', statusName)
       .maybeSingle();
 
     if (statusError) return { success: false, error: statusError.message || 'Unable to resolve order status.' };
