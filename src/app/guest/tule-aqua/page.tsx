@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, Clock3, Droplets, LifeBuoy, LockKeyhole, ShieldCheck, ShowerHead, Sun, Table2, Ticket, Towel, Users } from 'lucide-react';
+import { ArrowLeft, Clock3, Droplets, LifeBuoy, LockKeyhole, ShieldCheck, ShowerHead, Sun, Table2, Ticket, TowelRack, Users } from 'lucide-react';
 
 const facilities = [
   ['Outdoor pool', 'Open-air swimming with a relaxed lakeside atmosphere.', Droplets],
@@ -7,10 +7,10 @@ const facilities = [
   ['Poolside sun loungers', 'Relax comfortably between swims.', Sun],
   ['Umbrellas & shade', 'Enjoy the water while staying cool and comfortable.', Sun],
   ['Changing rooms', 'Convenient spaces to change before or after swimming.', ShowerHead],
-  ['Showers', 'Freshen up before entering or after leaving the pool.', ShowerHead],
+  ['Showers', 'Freshen up before entering or after leaving the swimming area.', ShowerHead],
   ['Lockers', 'Secure storage for your personal belongings.', LockKeyhole],
   ['Poolside seating & tables', 'Comfortable spaces for relaxing with family and friends.', Table2],
-  ['Pool towels', 'Towels are available for a comfortable pool visit.', Towel],
+  ['Pool towels', 'Towels are available for a comfortable pool visit.', TowelRack],
   ['Lifeguards', 'Lifeguard service is available to support a safer swimming experience.', LifeBuoy],
 ];
 
