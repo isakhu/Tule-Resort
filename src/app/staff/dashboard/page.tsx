@@ -18,6 +18,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Users,
   UtensilsCrossed,
   Wrench,
   X,
@@ -25,22 +26,44 @@ import {
 import { useEffect, useState, FormEvent } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-const modules = [
-  ['Rooms', 'Manage rooms, prices, amenities and availability.', BedDouble, '/staff/dashboard/rooms'],
-  ['Reservations', 'Confirm, reject, check in and check out guests.', CalendarDays, '/staff/dashboard/reservations'],
-  ['Restaurant', 'Manage food, categories, prices and orders.', UtensilsCrossed, '/staff/dashboard/menu'],
-  ['Services', 'Manage wellness, transport, concierge and room service.', Sparkles, '/staff/dashboard/services'],
-  ['Gallery', 'Organize and feature resort photos.', Images, '/staff/dashboard/gallery'],
-  ['Orders & Requests', 'Review guest food and service requests.', ClipboardList, '/admin/orders'],
-  ['Housekeeping', 'Assign and complete room cleaning tasks.', Sparkles, '/staff/dashboard/housekeeping'],
-  ['Maintenance', 'Report and track resort maintenance issues.', Wrench, '/staff/dashboard/maintenance'],
-  ['Settings', 'Tax, service charge, cancellation and no-show policies.', Settings, '/staff/dashboard/settings'],
-];
+type UserProfile = {
+  id: string;
+  email: string | null;
+  fullName: string | null;
+  role: string;
+  departmentId: number | null;
+  departmentName: string | null;
+};
 
-export default function ManagerDashboard() {
+type ModuleItem = [string, string, any, string];
+
+const ALL_MODULES: Record<string, ModuleItem> = {
+  rooms: ['Rooms', 'Manage room inventory, pricing, amenities and availability.', BedDouble, '/staff/dashboard/rooms'],
+  reservations: ['Reservations', 'Confirm, reject, check in and check out guests.', CalendarDays, '/staff/dashboard/reservations'],
+  menu: ['Restaurant Menu', 'Manage dishes, categories, prices and daily specials.', UtensilsCrossed, '/staff/dashboard/menu'],
+  orders: ['Orders & Requests', 'Review live guest dining and service requests.', ClipboardList, '/admin/orders'],
+  receipts: ['Receipts & Billing', 'Generate, review and print guest folios and receipts.', DollarSign, '/staff/dashboard/receipts'],
+  services: ['Wellness & Services', 'Manage spa treatments, concierge and guest activities.', Sparkles, '/staff/dashboard/services'],
+  gallery: ['Resort Gallery', 'Organize and feature high-resolution resort photos.', Images, '/staff/dashboard/gallery'],
+  housekeeping: ['Housekeeping', 'Assign, inspect and complete room cleaning tasks.', Sparkles, '/staff/dashboard/housekeeping'],
+  maintenance: ['Maintenance', 'Report and track resort equipment and facility repairs.', Wrench, '/staff/dashboard/maintenance'],
+  staff: ['Staff Management', 'Create staff accounts, assign departments and reset passwords.', Users, '/admin/staff'],
+  settings: ['Resort Settings', 'Configure tax, service charges, cancellation and policies.', Settings, '/staff/dashboard/settings'],
+};
+
+export default function StaffDashboardPage() {
   const router = useRouter();
-  const [stats, setStats] = useState({ reservations: 0, rooms: 0, revenue: 0, gallery: 0 });
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [stats, setStats] = useState({
+    reservations: 0,
+    rooms: 0,
+    revenue: 0,
+    gallery: 0,
+    menuItems: 0,
+  });
+
+  // Filter tab for Admins / Managers (All vs Department view)
+  const [activeTab, setActiveTab] = useState<'all' | 'restaurant' | 'frontdesk' | 'housekeeping' | 'spa'>('all');
 
   // Change Password Modal State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -51,23 +74,41 @@ export default function ManagerDashboard() {
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user?.email) {
-        setUserEmail(data.user.email);
+    // 1) Fetch user profile & role & department from /api/staff/me
+    supabase.auth.getSession().then(async ({ data: sessionData }) => {
+      const token = sessionData.session?.access_token;
+      if (!token) return;
+
+      try {
+        const res = await fetch('/api/staff/me', {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.profile) {
+            setProfile(json.profile);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load profile:', err);
       }
     });
 
+    // 2) Fetch live metrics
     Promise.all([
       supabase.from('room_reservations').select('id,total_price,status,payment_status'),
       supabase.from('rooms').select('id', { count: 'exact', head: true }),
       supabase.from('gallery').select('id', { count: 'exact', head: true }),
-    ]).then(([reservations, rooms, gallery]) => {
+      supabase.from('menu_items').select('id', { count: 'exact', head: true }),
+    ]).then(([reservations, rooms, gallery, menu]) => {
       const rows = reservations.data ?? [];
       setStats({
         reservations: rows.length,
         rooms: rooms.count ?? 0,
         revenue: rows.filter((r) => r.payment_status === 'paid').reduce((sum, r) => sum + Number(r.total_price || 0), 0),
         gallery: gallery.count ?? 0,
+        menuItems: menu.count ?? 0,
       });
     });
   }, []);
@@ -115,25 +156,113 @@ export default function ManagerDashboard() {
     }
   }
 
+  // Determine user category
+  const role = profile?.role ?? 'manager';
+  const dept = (profile?.departmentName ?? '').toLowerCase();
+  const email = (profile?.email ?? '').toLowerCase();
+  const isAdmin = role === 'admin' || email.includes('admin') || email.includes('yishakhak');
+  const isRestaurant = dept.includes('restaurant') || email.includes('restaurant');
+  const isFrontDesk = dept.includes('front desk') || email.includes('frontdesk');
+  const isHousekeeping = dept.includes('housekeeping') || email.includes('housekeeping');
+  const isSpa = dept.includes('spa') || email.includes('spa');
+  const isGeneralManager = !isRestaurant && !isFrontDesk && !isHousekeeping && !isSpa;
+
+  // Compute curated modules
+  let activeModules: ModuleItem[] = [];
+
+  if (isRestaurant) {
+    activeModules = [ALL_MODULES.menu, ALL_MODULES.orders, ALL_MODULES.receipts];
+  } else if (isFrontDesk) {
+    activeModules = [ALL_MODULES.reservations, ALL_MODULES.rooms, ALL_MODULES.orders, ALL_MODULES.receipts];
+  } else if (isHousekeeping) {
+    activeModules = [ALL_MODULES.housekeeping, ALL_MODULES.maintenance, ALL_MODULES.rooms];
+  } else if (isSpa) {
+    activeModules = [ALL_MODULES.services, ALL_MODULES.orders, ALL_MODULES.gallery];
+  } else {
+    // Admin or General Manager - full modules
+    if (isAdmin) {
+      activeModules = [
+        ALL_MODULES.staff,
+        ALL_MODULES.rooms,
+        ALL_MODULES.reservations,
+        ALL_MODULES.menu,
+        ALL_MODULES.orders,
+        ALL_MODULES.receipts,
+        ALL_MODULES.services,
+        ALL_MODULES.housekeeping,
+        ALL_MODULES.maintenance,
+        ALL_MODULES.gallery,
+        ALL_MODULES.settings,
+      ];
+    } else {
+      activeModules = [
+        ALL_MODULES.rooms,
+        ALL_MODULES.reservations,
+        ALL_MODULES.menu,
+        ALL_MODULES.orders,
+        ALL_MODULES.receipts,
+        ALL_MODULES.services,
+        ALL_MODULES.housekeeping,
+        ALL_MODULES.maintenance,
+        ALL_MODULES.gallery,
+        ALL_MODULES.settings,
+      ];
+    }
+  }
+
+  // Header Title & Badge
+  let badgeLabel = 'Staff Portal';
+  let portalTitle = 'Tule Resort Staff Control';
+  let portalDescription = 'Manage your department operations and guest services.';
+
+  if (isAdmin) {
+    badgeLabel = 'Executive Super Admin';
+    portalTitle = 'Tule Resort Executive Control';
+    portalDescription = 'Full administrative control including staff management, financial rates, dining, rooms and all resort operations.';
+  } else if (isRestaurant) {
+    badgeLabel = 'Dining & Culinary Department';
+    portalTitle = 'Restaurant & Dining Portal';
+    portalDescription = 'Manage the 100+ menu items, categories, daily prices, and review incoming guest dining orders in real-time.';
+  } else if (isFrontDesk) {
+    badgeLabel = 'Front Desk & Guest Reception';
+    portalTitle = 'Front Desk & Reservations Portal';
+    portalDescription = 'Check-in guests, confirm room reservations, monitor room availability, and handle guest service requests.';
+  } else if (isHousekeeping) {
+    badgeLabel = 'Housekeeping & Facilities';
+    portalTitle = 'Housekeeping & Maintenance Operations';
+    portalDescription = 'Assign and complete room cleaning schedules, verify room readiness, and track facility repairs.';
+  } else if (isSpa) {
+    badgeLabel = 'Spa & Wellness Sanctuary';
+    portalTitle = 'Spa & Wellness Management';
+    portalDescription = 'Manage therapeutic treatments, massage appointments, sauna/steam packages, and guest wellness bookings.';
+  } else if (isGeneralManager) {
+    badgeLabel = 'General Management';
+    portalTitle = 'Resort Operations Center';
+    portalDescription = 'Centralized operations oversight across rooms, dining, housekeeping, wellness, and resort settings.';
+  }
+
   return (
     <div className="min-h-screen bg-[#F8F5EE] text-[#182326]">
-      {/* Header */}
+      {/* Top Navigation Bar */}
       <header className="border-b border-white/10 bg-[#0B3D4A] text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
           <div className="flex items-center gap-3">
             <img src="/tule-resort-mark.svg" alt="Tule Resort" className="h-10 w-12 rounded-lg object-cover" />
             <div>
-              <p className="font-display text-2xl">Tule Resort</p>
-              <p className="text-[9px] font-bold uppercase tracking-[.25em] text-white/50">Staff & Management</p>
+              <p className="font-display text-2xl leading-none">Tule Resort</p>
+              <p className="mt-1 text-[9px] font-bold uppercase tracking-[.25em] text-[#C8A15A]">{badgeLabel}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {userEmail && (
-              <span className="hidden rounded-full bg-white/10 px-3.5 py-1.5 text-xs text-white/80 sm:inline-block">
-                {userEmail}
+            {profile?.fullName && (
+              <span className="hidden text-xs font-semibold text-white/90 md:inline-block">
+                {profile.fullName}
               </span>
             )}
+            <span className="hidden rounded-full bg-white/10 px-3 py-1 text-xs text-white/70 sm:inline-block">
+              {profile?.email || 'Staff'}
+            </span>
 
             <button
               onClick={() => {
@@ -159,9 +288,9 @@ export default function ManagerDashboard() {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Dashboard */}
       <main className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12">
-        {/* Onboarding Notice for First-time Default Password Users */}
+        {/* Onboarding Notice for Default Password */}
         <section className="mb-6 flex flex-col items-start justify-between gap-4 rounded-2xl border border-[#C8A15A]/30 bg-[#FFFDF8] p-5 shadow-sm sm:flex-row sm:items-center">
           <div className="flex items-center gap-3.5">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0B3D4A] text-[#C8A15A]">
@@ -170,7 +299,7 @@ export default function ManagerDashboard() {
             <div>
               <h3 className="text-sm font-bold text-[#182326]">First Time Logging In?</h3>
               <p className="text-xs text-[#182326]/65">
-                If you logged in using the default onboarding password, please update it now to your own private password.
+                If you are using the default onboarding password, click below to set your own private password.
               </p>
             </div>
           </div>
@@ -186,52 +315,132 @@ export default function ManagerDashboard() {
           </button>
         </section>
 
-        {/* Hero */}
+        {/* Hero Section Tailored to Role */}
         <section className="rounded-[2rem] bg-[#0B3D4A] p-7 text-white md:p-9">
-          <p className="text-[10px] font-black uppercase tracking-[.24em] text-[#D8C7A3]">Control center</p>
-          <h1 className="mt-2 font-display text-5xl leading-none md:text-7xl">Manage Tule Resort.</h1>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-white/60">
-            Rooms, reservations, payments, dining, housekeeping, maintenance and resort settings in one place.
-          </p>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-[#C8A15A]/20 px-3 py-1 text-[10px] font-black uppercase tracking-[.2em] text-[#D8C7A3]">
+              {badgeLabel}
+            </span>
+          </div>
+          <h1 className="mt-3 font-display text-4xl leading-tight md:text-6xl">{portalTitle}</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">{portalDescription}</p>
         </section>
 
-        {/* Stats */}
+        {/* Role-Specific Metric Cards */}
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat icon={CalendarDays} label="Reservations" value={stats.reservations.toLocaleString()} />
-          <Stat icon={BedDouble} label="Rooms" value={stats.rooms.toLocaleString()} />
-          <Stat icon={DollarSign} label="Paid revenue" value={`${stats.revenue.toLocaleString()} ብር`} />
-          <Stat icon={Images} label="Gallery items" value={stats.gallery.toLocaleString()} />
+          {isRestaurant && (
+            <>
+              <Stat icon={UtensilsCrossed} label="Menu items" value={stats.menuItems.toLocaleString()} />
+              <Stat icon={ClipboardList} label="Dining orders stream" value="Active" />
+              <Stat icon={DollarSign} label="Currency" value="ETB (ብር)" />
+              <Stat icon={Images} label="Live catalog" value="Ready" />
+            </>
+          )}
+
+          {isFrontDesk && (
+            <>
+              <Stat icon={CalendarDays} label="Total reservations" value={stats.reservations.toLocaleString()} />
+              <Stat icon={BedDouble} label="Room inventory" value={stats.rooms.toLocaleString()} />
+              <Stat icon={DollarSign} label="Paid revenue" value={`${stats.revenue.toLocaleString()} ብር`} />
+              <Stat icon={ClipboardList} label="Guest folios" value="Active" />
+            </>
+          )}
+
+          {isHousekeeping && (
+            <>
+              <Stat icon={BedDouble} label="Resort rooms" value={stats.rooms.toLocaleString()} />
+              <Stat icon={Sparkles} label="Cleaning queue" value="Ready" />
+              <Stat icon={Wrench} label="Maintenance dispatch" value="Active" />
+              <Stat icon={CalendarDays} label="Room inspections" value="Daily" />
+            </>
+          )}
+
+          {isSpa && (
+            <>
+              <Stat icon={Sparkles} label="Active wellness services" value="Ready" />
+              <Stat icon={ClipboardList} label="Spa requests" value="Live" />
+              <Stat icon={Images} label="Sanctuary gallery" value={stats.gallery.toLocaleString()} />
+              <Stat icon={DollarSign} label="Pricing standard" value="ETB (ብር)" />
+            </>
+          )}
+
+          {(isAdmin || isGeneralManager) && (
+            <>
+              <Stat icon={CalendarDays} label="Reservations" value={stats.reservations.toLocaleString()} />
+              <Stat icon={BedDouble} label="Rooms" value={stats.rooms.toLocaleString()} />
+              <Stat icon={DollarSign} label="Paid revenue" value={`${stats.revenue.toLocaleString()} ብር`} />
+              <Stat icon={UtensilsCrossed} label="Menu items" value={stats.menuItems.toLocaleString()} />
+            </>
+          )}
         </section>
 
-        {/* Modules */}
-        <section className="mt-7 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {modules.map(([name, description, Icon, href]) => {
-            const I = Icon as typeof BedDouble;
-            return (
-              <Link
-                key={name as string}
-                href={href as string}
-                className="group rounded-3xl border border-[#0B3D4A]/10 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-[#C8A15A]/60"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAF4F7]">
-                  <I className="h-6 w-6 text-[#0B3D4A]" />
-                </div>
-                <h2 className="mt-5 text-xl font-black">{name as string}</h2>
-                <p className="mt-2 text-sm leading-6 text-[#182326]/55">{description as string}</p>
-                <div className="mt-5 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.14em] text-[#C8A15A]">
-                  Manage <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                </div>
-              </Link>
-            );
-          })}
-        </section>
+        {/* Action Modules for this Role */}
+        <div className="mt-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-display text-2xl font-bold text-[#182326]">
+              {isRestaurant
+                ? 'Restaurant Management Modules'
+                : isFrontDesk
+                ? 'Front Desk Workstations'
+                : isHousekeeping
+                ? 'Housekeeping & Facilities Modules'
+                : isSpa
+                ? 'Spa & Wellness Workstations'
+                : 'Management Control Modules'}
+            </h2>
+            <span className="text-xs font-semibold text-[#182326]/50">
+              {activeModules.length} active {activeModules.length === 1 ? 'module' : 'modules'}
+            </span>
+          </div>
 
-        {/* Operations */}
+          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {activeModules.map(([name, description, Icon, href]) => {
+              const I = Icon as typeof BedDouble;
+              return (
+                <Link
+                  key={name as string}
+                  href={href as string}
+                  className="group rounded-3xl border border-[#0B3D4A]/10 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-[#C8A15A]/60 hover:shadow-md"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAF4F7] group-hover:bg-[#0B3D4A] group-hover:text-white transition">
+                    <I className="h-6 w-6 text-[#0B3D4A] group-hover:text-[#C8A15A]" />
+                  </div>
+                  <h3 className="mt-5 text-xl font-black text-[#182326]">{name as string}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#182326]/60">{description as string}</p>
+                  <div className="mt-5 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.14em] text-[#C8A15A]">
+                    Open workstation <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </div>
+                </Link>
+              );
+            })}
+          </section>
+        </div>
+
+        {/* Helpful Department Guidelines Card */}
         <section className="mt-8 rounded-[2rem] border border-[#C8A15A]/25 bg-[#D8C7A3]/25 p-7">
           <LayoutDashboard className="h-6 w-6 text-[#0B3D4A]" />
-          <h2 className="mt-4 font-display text-3xl">Tule Resort operations</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-7 text-[#182326]/60">
-            Use Settings to configure tax and service charges without changing code. Payment methods remain ETB-first and can be expanded later.
+          <h2 className="mt-4 font-display text-3xl text-[#182326]">
+            {isRestaurant
+              ? 'Dining Operations Notice'
+              : isFrontDesk
+              ? 'Front Desk Daily Operations'
+              : isHousekeeping
+              ? 'Housekeeping Quality Standards'
+              : isSpa
+              ? 'Wellness Experience Standards'
+              : 'Tule Resort Executive Operations'}
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-7 text-[#182326]/70">
+            {isRestaurant &&
+              'Manage dishes and prices directly through the Menu workstation. All kitchen orders placed by guests or tables show in Orders & Requests.'}
+            {isFrontDesk &&
+              'Use Reservations to register walk-ins and confirm online bookings. Room statuses update automatically across the entire system.'}
+            {isHousekeeping &&
+              'Check off room cleanings to update room availability. Report any maintenance issues immediately to notify the facility technician.'}
+            {isSpa &&
+              'Keep wellness service descriptions and timing up to date so guests can easily reserve spa sessions.'}
+            {(isAdmin || isGeneralManager) &&
+              'Use Settings to adjust tax and service charge percentages. Admins can manage staff credentials and access in Staff Management.'}
           </p>
         </section>
       </main>
@@ -333,7 +542,7 @@ export default function ManagerDashboard() {
   );
 }
 
-function Stat({ icon: Icon, label, value }: { icon: typeof CalendarDays; label: string; value: string }) {
+function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
     <div className="rounded-3xl border border-[#0B3D4A]/10 bg-white p-5">
       <Icon className="h-5 w-5 text-[#0B3D4A]" />
