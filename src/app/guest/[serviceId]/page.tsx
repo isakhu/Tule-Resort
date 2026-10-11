@@ -7,6 +7,8 @@ import { notFound, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import type { MenuItem } from '@/lib/menu';
 
+import { menuItems as fallbackMenuItems } from '@/data/menu-items';
+
 const SERVICES: Record<string, { name: string; type: 'orderable' | 'bookable' | 'request' }> = {
   cafeteria: { name: 'Cafeteria', type: 'orderable' },
   restaurant: { name: 'Restaurant & Bar', type: 'orderable' },
@@ -39,10 +41,41 @@ export default function ServicePage() {
         setLoading(true); setError('');
         const { data, error: fetchError } = await supabase.from('menu_items').select('*').eq('is_active', true).eq('department', serviceId).order('category', { ascending: true }).order('name', { ascending: true });
         if (!mounted) return;
-        if (fetchError) throw fetchError;
+        if (fetchError || !data || data.length === 0) {
+          // Graceful fallback to static menu items
+          const mapped: MenuItem[] = fallbackMenuItems.map((item) => ({
+            id: String(item.id),
+            name: item.name,
+            amharicName: item.amharicName,
+            category: item.category,
+            price: Number(item.price ?? 0),
+            imageUrl: item.imageUrl || FALLBACK_IMAGE,
+            description: item.description,
+            isAvailable: true,
+            dietaryTags: [],
+          }));
+          setItems(mapped);
+          setActiveCategory('All');
+          return;
+        }
         const mapped: MenuItem[] = (data ?? []).map((row: SupabaseMenuRow) => ({ id: String(row.id ?? ''), name: row.name ?? 'Untitled item', amharicName: row.amharic_name ?? '', category: row.category ?? 'General', price: Number(row.price ?? 0), imageUrl: row.image_url ?? FALLBACK_IMAGE, description: row.description ?? '', isAvailable: row.is_available ?? row.is_active ?? true, dietaryTags: Array.isArray(row.dietary_tags) ? row.dietary_tags.filter((tag): tag is string => typeof tag === 'string') : [] }));
         setItems(mapped); setActiveCategory('All');
-      } catch { if (!mounted) return; setError('Unable to load the menu. Please try again.'); }
+      } catch {
+        if (!mounted) return;
+        const mapped: MenuItem[] = fallbackMenuItems.map((item) => ({
+          id: String(item.id),
+          name: item.name,
+          amharicName: item.amharicName,
+          category: item.category,
+          price: Number(item.price ?? 0),
+          imageUrl: item.imageUrl || FALLBACK_IMAGE,
+          description: item.description,
+          isAvailable: true,
+          dietaryTags: [],
+        }));
+        setItems(mapped);
+        setActiveCategory('All');
+      }
       finally { if (mounted) setLoading(false); }
     }
     if (!serviceId) return;
@@ -53,7 +86,20 @@ export default function ServicePage() {
   const categories = useMemo(() => ['All', ...Array.from(new Set(items.map((item) => item.category).filter(Boolean)))], [items]);
   const filteredItems = useMemo(() => activeCategory === 'All' ? items : items.filter((item) => item.category === activeCategory), [activeCategory, items]);
 
-  if (!service) return notFound();
+  if (!service) {
+    if (typeof window !== 'undefined') {
+      if (serviceId === 'rooms') window.location.replace('/guest/rooms');
+      else window.location.replace(`/guest/${serviceId}/request`);
+    }
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#0C0B09] text-white p-6">
+        <div className="text-center">
+          <p className="text-white/70">Connecting to {serviceId}...</p>
+          <Link href={serviceId === 'rooms' ? '/guest/rooms' : `/guest/${serviceId}/request`} className="mt-4 inline-block rounded-full bg-[#F2B84B] px-5 py-3 text-xs font-black uppercase text-stone-950">Continue</Link>
+        </div>
+      </div>
+    );
+  }
 
   const updateQuantity = (itemId: string, direction: 'inc' | 'dec') => setQuantities((prev) => { const current = prev[itemId] ?? 1; const next = direction === 'inc' ? current + 1 : Math.max(1, current - 1); return { ...prev, [itemId]: next }; });
   const addToOrder = (item: MenuItem) => {

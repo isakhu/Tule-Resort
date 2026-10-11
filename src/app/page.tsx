@@ -19,9 +19,9 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#F8F5EE] text-[#182326]">
       <section className="relative min-h-[88vh] overflow-hidden bg-[#0B3D4A] text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_18%,rgba(21,154,156,.55),transparent_30%),radial-gradient(circle_at_15%_80%,rgba(200,161,90,.24),transparent_32%),linear-gradient(145deg,#082F3A_0%,#0B3D4A_45%,#126A72_100%)]" />
-        <div className="absolute -right-20 top-20 h-72 w-72 rounded-full border border-white/10 bg-white/[.03] blur-sm" />
-        <div className="absolute -bottom-40 left-10 h-96 w-96 rounded-full border border-[#D8C7A3]/10 bg-[#D8C7A3]/5" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_18%,rgba(21,154,156,.55),transparent_30%),radial-gradient(circle_at_15%_80%,rgba(200,161,90,.24),transparent_32%),linear-gradient(145deg,#082F3A_0%,#0B3D4A_45%,#126A72_100%)]" />
+        <div className="pointer-events-none absolute -right-20 top-20 h-72 w-72 rounded-full border border-white/10 bg-white/[.03] blur-sm" />
+        <div className="pointer-events-none absolute -bottom-40 left-10 h-96 w-96 rounded-full border border-[#D8C7A3]/10 bg-[#D8C7A3]/5" />
         <header className="relative mx-auto flex max-w-7xl items-center justify-between px-5 py-5 md:px-8">
           <Link href="/" className="flex items-center gap-3">
             <img src="/tule-resort-mark.svg" alt="Tule Resort" className="h-12 w-14 rounded-xl object-cover ring-1 ring-white/15" />

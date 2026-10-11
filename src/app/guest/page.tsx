@@ -10,7 +10,7 @@ export default async function GuestServicesPage() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0C0B09] text-white">
       <header className="relative overflow-hidden border-b border-white/10 bg-[#17120D]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(242,184,75,.18),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(20,118,132,.18),transparent_38%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(242,184,75,.18),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(20,118,132,.18),transparent_38%)]" />
         <div className="relative mx-auto max-w-7xl px-4 md:px-6 py-4">
           <nav className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
             <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white transition"><ArrowLeft className="h-4 w-4" />Home</Link>

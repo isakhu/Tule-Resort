@@ -5,12 +5,16 @@ type SupabaseRoomRow = {
   id?: string | number | null;
   slug?: string | null;
   name?: string | null;
+  name_am?: string | null;
   type?: string | null;
+  view?: string | null;
   description?: string | null;
   short_description?: string | null;
   price_per_night?: number | string | null;
   capacity?: number | string | null;
   max_occupancy?: number | string | null;
+  bed_type?: string | null;
+  size_sqm?: number | string | null;
   image_url?: string | null;
   images?: string[] | null;
   amenities?: string[] | null;
@@ -41,7 +45,6 @@ export async function getRooms(): Promise<Room[]> {
       .order('display_order', { ascending: true });
 
     if (error || !data || data.length === 0) {
-      console.warn('Falling back to offline room data because the Supabase rooms query failed or returned no rows.', error?.message ?? 'No room rows found.');
       return FALLBACK_ROOMS;
     }
 
@@ -49,11 +52,15 @@ export async function getRooms(): Promise<Room[]> {
       id: String(row.id ?? row.slug ?? ''),
       slug: row.slug ?? String(row.id ?? ''),
       name: row.name ?? 'Tule Room',
+      nameAm: row.name_am ?? undefined,
       type: row.type ?? 'Accommodation',
+      view: row.view ?? undefined,
       description: row.short_description ?? row.description ?? 'Comfortable rooms designed for restful stays at Tule Resort.',
       price: normalizeNumber(row.price_per_night),
       capacity: normalizeNumber(row.capacity ?? row.max_occupancy ?? 0),
       maxOccupancy: normalizeNumber(row.max_occupancy ?? row.capacity ?? 0),
+      bedType: row.bed_type ?? undefined,
+      sizeSqm: row.size_sqm ? normalizeNumber(row.size_sqm) : undefined,
       imageUrl: normalizeImage(row.image_url ?? null, row.images ?? null),
       images: Array.isArray(row.images) && row.images.length > 0
         ? row.images.filter((image): image is string => typeof image === 'string')
@@ -73,5 +80,7 @@ export async function getRooms(): Promise<Room[]> {
 
 export async function getRoomBySlug(slug: string): Promise<Room | undefined> {
   const rooms = await getRooms();
-  return rooms.find((room) => room.slug === slug || room.id === slug);
+  const found = rooms.find((room) => room.slug === slug || room.id === slug);
+  if (found) return found;
+  return FALLBACK_ROOMS.find((room) => room.slug === slug || room.id === slug);
 }
