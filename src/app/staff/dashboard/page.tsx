@@ -282,7 +282,7 @@ export default function StaffDashboardPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-base font-bold text-gray-900">Today&apos;s Order Activity</h3>
-                <p className="text-xs text-gray-400">Hourly order value based on today's submitted orders</p>
+                <p className="text-xs text-gray-400">Hourly order value based on today&apos;s submitted orders</p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-[#F8F9FA] px-3 py-1.5 text-xs font-bold text-gray-700">
                 Today
