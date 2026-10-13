@@ -101,9 +101,9 @@ export async function POST(request: Request) {
       const result = await supabase.rpc('create_guest_order', {
         p_user_id: verifiedUserId,
         p_department_id: department.id,
-        p_room_number: body.room_number?.trim() || null,
-        p_guest_name: body.guest_name?.trim() || 'Guest',
-        p_notes: body.notes?.trim() || null,
+        p_room_number: roomNumber,
+        p_guest_name: guestName,
+        p_notes: notes,
         p_items: normalizedItems,
         p_table_token: null,
       });
