@@ -20,7 +20,7 @@ export default function ManagerServicesPage() {
     setLoading(false)
   }
 
-  useEffect(() => { void load() }, [])
+  useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [])
 
   async function remove(service: ResortService) {
     if (!service.id || !confirm(`Delete “${service.name}”? This cannot be undone.`)) return
