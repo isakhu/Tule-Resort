@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const { data, error } = await supabaseServer
     .from('menu_items')
-    .select('*')
+    .select('id,name,amharic_name,category,price,image_url,description,is_active,is_available')
     .eq('is_active', true)
     .order('category', { ascending: true })
     .order('name', { ascending: true });
