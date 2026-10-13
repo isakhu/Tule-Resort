@@ -69,7 +69,11 @@ export async function POST(request: Request) {
     }
     if (!department) return NextResponse.json({ success: false, error: 'The restaurant ordering department is not configured.' }, { status: 503 });
 
-    const tableToken = (body.table_token || body.tableToken || '').trim();
+    const rawTableToken = body.table_token ?? body.tableToken;
+    if (rawTableToken !== undefined && rawTableToken !== null && typeof rawTableToken !== 'string') {
+      return NextResponse.json({ success: false, error: 'Invalid dining table code.' }, { status: 400 });
+    }
+    const tableToken = typeof rawTableToken === 'string' ? rawTableToken.trim() : '';
     let data: unknown;
     let rpcError: { message?: string } | null;
 
