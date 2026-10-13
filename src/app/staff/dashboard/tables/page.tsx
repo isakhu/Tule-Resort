@@ -50,6 +50,9 @@ export default function StaffTablesPage() {
   const availableCount = tables.filter((t) => t.status === 'available').length;
   const cleaningCount = tables.filter((t) => t.status === 'cleaning').length;
   const outOfServiceCount = tables.filter((t) => t.status === 'out_of_service').length;
+  const occupiedPercent = totalCount ? Math.round((occupiedCount / totalCount) * 100) : 0;
+  const availablePercent = totalCount ? Math.round((availableCount / totalCount) * 100) : 0;
+  const cleaningPercent = totalCount ? Math.round((cleaningCount / totalCount) * 100) : 0;
 
   const handleStatusChange = async (newStatus: DiningTable['status']) => {
     if (!selectedTable) return;
@@ -131,7 +134,7 @@ export default function StaffTablesPage() {
               <Layers className="h-4 w-4" />
             </div>
             <span className="text-[10px] font-bold text-gray-400">
-              {Math.round((occupiedCount / totalCount) * 100)}%
+              {occupiedPercent}%
             </span>
           </div>
           <div className="mt-2">
@@ -144,7 +147,7 @@ export default function StaffTablesPage() {
           <div className="mt-2 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-[#FF6B00] rounded-full"
-              style={{ width: `${(occupiedCount / totalCount) * 100}%` }}
+              style={{ width: `${occupiedPercent}%` }}
             />
           </div>
         </div>
@@ -156,7 +159,7 @@ export default function StaffTablesPage() {
               <CheckCircle2 className="h-4 w-4" />
             </div>
             <span className="text-[10px] font-bold text-gray-400">
-              {Math.round((availableCount / totalCount) * 100)}%
+              {availablePercent}%
             </span>
           </div>
           <div className="mt-2">
@@ -166,7 +169,7 @@ export default function StaffTablesPage() {
           <div className="mt-2 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-emerald-500 rounded-full"
-              style={{ width: `${(availableCount / totalCount) * 100}%` }}
+              style={{ width: `${availablePercent}%` }}
             />
           </div>
         </div>
@@ -178,7 +181,7 @@ export default function StaffTablesPage() {
               <Sparkles className="h-4 w-4" />
             </div>
             <span className="text-[10px] font-bold text-gray-400">
-              {Math.round((cleaningCount / totalCount) * 100)}%
+              {cleaningPercent}%
             </span>
           </div>
           <div className="mt-2">
@@ -188,7 +191,7 @@ export default function StaffTablesPage() {
           <div className="mt-2 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-purple-600 rounded-full"
-              style={{ width: `${(cleaningCount / totalCount) * 100}%` }}
+              style={{ width: `${cleaningPercent}%` }}
             />
           </div>
         </div>
