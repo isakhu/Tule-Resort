@@ -89,10 +89,15 @@ export default function VisualResortMenu({ serviceName }: { serviceName: string 
   }, []);
 
   useEffect(() => {
-    try {
-      const savedCart = window.localStorage.getItem(CART_KEY) ?? window.localStorage.getItem(LEGACY_CART_KEY);
-      if (savedCart) setCart(JSON.parse(savedCart));
-    } catch { setCart({}); }
+    const timer = window.setTimeout(() => {
+      try {
+        const savedCart = window.localStorage.getItem(CART_KEY) ?? window.localStorage.getItem(LEGACY_CART_KEY);
+        if (savedCart) setCart(JSON.parse(savedCart));
+      } catch {
+        setCart({});
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
