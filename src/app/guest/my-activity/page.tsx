@@ -21,7 +21,7 @@ export default function MyActivityPage() {
           </div>
           <h2 className="mt-5 font-display text-3xl font-bold text-[#0B3D4A]">Your activity will appear here</h2>
           <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-[#182326]/60">
-            Live order and reservation history is not connected to this page yet. We won't show sample activity as if it were your real bookings.
+            Live order and reservation history is not connected to this page yet. We will not show sample activity as if it were your real bookings.
           </p>
           <div className="mt-7 grid gap-3 text-left sm:grid-cols-3">
             <Link href="/guest/restaurant" className="rounded-2xl border border-[#0B3D4A]/10 bg-[#F8F5EE] p-4 transition hover:border-[#159A9C]">
