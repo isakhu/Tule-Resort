@@ -69,7 +69,7 @@ export default function RoomBookingForm({ roomId, roomName, price, currency, max
         <div className="mx-auto max-w-xl text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF4F7] text-[#0B4F6C]"><CheckCircle2 className="h-8 w-8" /></div>
           <p className="mt-6 text-[10px] font-black uppercase tracking-[.25em] text-[#C8A15A]">Reservation received</p>
-          <h2 className="mt-2 text-4xl font-black tracking-[-.04em] text-[#073B4C]">You're booked for review.</h2>
+          <h2 className="mt-2 text-4xl font-black tracking-[-.04em] text-[#073B4C]">Your booking is awaiting review.</h2>
           <p className="mt-4 text-sm leading-7 text-[#073B4C]/60">Your reservation for {roomName} is pending manager confirmation.</p>
           <div className="mt-7 rounded-2xl bg-[#073B4C] p-5 text-white"><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/50">Booking number</p><p className="mt-2 text-2xl font-black tracking-wider">{bookingNumber}</p><p className="mt-2 text-xs text-white/55">Payment: {tuleBrand.paymentMethods.find((method) => method.id === paymentMethod)?.label}</p></div>
           <p className="mt-5 text-xs text-[#073B4C]/50">Keep this booking number for your records.</p>
