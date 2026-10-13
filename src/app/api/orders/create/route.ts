@@ -54,6 +54,9 @@ export async function POST(req: Request) {
     if (!department) return NextResponse.json({ success: false, error: 'Restaurant ordering is not configured.' }, { status: 503 });
 
     const cleanTableToken = typeof tableToken === 'string' ? tableToken.trim() : '';
+    if (tableToken !== undefined && tableToken !== null && !cleanTableToken) {
+      return NextResponse.json({ success: false, error: 'Invalid dining table code.' }, { status: 400 });
+    }
     const { data: orderId, error: rpcError } = await supabaseServer.rpc('create_guest_order', {
       p_user_id: userId,
       p_department_id: department.id,
