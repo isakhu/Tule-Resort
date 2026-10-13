@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Layers,
@@ -8,15 +8,12 @@ import {
   Clock,
   DollarSign,
   AlertTriangle,
-  PlusCircle,
   BarChart3,
   Users,
   Settings,
   ArrowRight,
-  UtensilsCrossed,
   ChefHat,
   Sparkles,
-  CheckCircle2,
   Package
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
