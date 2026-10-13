@@ -22,7 +22,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { getDiningTables, DiningTable, updateTableStatus } from '@/lib/diningTables';
-import { generateQrSvgUri, renderQrSvgString } from '@/lib/qrCode';
+import { generateQrCodeImageUrl } from '@/lib/qrCode';
 
 export default function StaffTablesPage() {
   const [tables, setTables] = useState<DiningTable[]>([]);
@@ -44,7 +44,7 @@ export default function StaffTablesPage() {
   const floorTables = tables.filter((t) => t.section === selectedFloor);
 
   // Status counts
-  const totalCount = tables.length || 24;
+  const totalCount = tables.length;
   const occupiedCount = tables.filter((t) => t.status === 'occupied').length;
   const availableCount = tables.filter((t) => t.status === 'available').length;
   const cleaningCount = tables.filter((t) => t.status === 'cleaning').length;
@@ -53,7 +53,11 @@ export default function StaffTablesPage() {
   const handleStatusChange = async (newStatus: DiningTable['status']) => {
     if (!selectedTable) return;
     setIsUpdating(true);
-    await updateTableStatus(selectedTable.id, newStatus);
+    const saved = await updateTableStatus(selectedTable.id, newStatus);
+    if (!saved) {
+      setIsUpdating(false);
+      return;
+    }
     setTables((prev) =>
       prev.map((t) => (t.id === selectedTable.id ? { ...t, status: newStatus } : t))
     );
@@ -77,7 +81,7 @@ export default function StaffTablesPage() {
   // Printable table card QR link
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://tuleresort.com';
   const qrUrl = qrModalTable ? `${currentOrigin}/guest/table/${qrModalTable.qr_token}` : '';
-  const qrSvgDataUri = qrModalTable ? generateQrSvgUri(qrUrl, 260) : '';
+  const qrImageUrl = qrModalTable ? generateQrCodeImageUrl(qrUrl, 260) : '';
 
   const handlePrint = () => {
     window.print();
@@ -515,7 +519,7 @@ export default function StaffTablesPage() {
               <div className="mx-auto w-52 h-52 bg-white rounded-2xl p-3 shadow-inner flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={qrSvgDataUri}
+                  src={qrImageUrl}
                   alt={`QR code for ${qrModalTable.table_number}`}
                   className="w-full h-full object-contain"
                 />
