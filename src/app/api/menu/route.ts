@@ -30,7 +30,7 @@ export async function GET() {
       imageUrl: item.image_url ?? '',
       description: item.description ?? '',
       isAvailable: item.is_available ?? item.is_active ?? true,
-      dietaryTags: Array.isArray(item.dietary_tags) ? item.dietary_tags : [],
+      dietaryTags: [],
     }));
 
   return NextResponse.json({ success: true, items }, {
