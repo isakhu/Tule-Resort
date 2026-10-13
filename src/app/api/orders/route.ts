@@ -25,12 +25,13 @@ function getAdminClient() {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as OrderRequest;
-    const items = Array.isArray(body.items) ? body.items : [];
+    const safeBody = body && typeof body === 'object' ? body as OrderRequest : {};
+    const items = Array.isArray(safeBody.items) ? safeBody.items : [];
     if (!items.length) return NextResponse.json({ success: false, error: 'At least one order item is required.' }, { status: 400 });
 
     const normalizedItems = items.map((item) => ({
-      menu_item_id: String(item.menu_item_id ?? '').trim(),
-      quantity: Number(item.quantity),
+      menu_item_id: String(item?.menu_item_id ?? '').trim(),
+      quantity: Number(item?.quantity),
     }));
 
     if (normalizedItems.some((item) => !item.menu_item_id || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 50)) {
@@ -69,11 +70,17 @@ export async function POST(request: Request) {
     }
     if (!department) return NextResponse.json({ success: false, error: 'The restaurant ordering department is not configured.' }, { status: 503 });
 
-    const rawTableToken = body.table_token ?? body.tableToken;
+    const rawTableToken = safeBody.table_token ?? safeBody.tableToken;
     if (rawTableToken !== undefined && rawTableToken !== null && typeof rawTableToken !== 'string') {
       return NextResponse.json({ success: false, error: 'Invalid dining table code.' }, { status: 400 });
     }
     const tableToken = typeof rawTableToken === 'string' ? rawTableToken.trim() : '';
+    if (rawTableToken !== undefined && rawTableToken !== null && !tableToken) {
+      return NextResponse.json({ success: false, error: 'Invalid dining table code.' }, { status: 400 });
+    }
+    const roomNumber = typeof safeBody.room_number === 'string' ? safeBody.room_number.trim().slice(0, 60) || null : null;
+    const guestName = typeof safeBody.guest_name === 'string' ? safeBody.guest_name.trim().slice(0, 150) || 'Guest' : 'Guest';
+    const notes = typeof safeBody.notes === 'string' ? safeBody.notes.trim().slice(0, 2000) || null : null;
     let data: unknown;
     let rpcError: { message?: string } | null;
 
@@ -82,9 +89,9 @@ export async function POST(request: Request) {
       const result = await supabase.rpc('create_guest_order', {
         p_user_id: verifiedUserId,
         p_department_id: department.id,
-        p_room_number: body.room_number?.trim() || null,
-        p_guest_name: body.guest_name?.trim() || 'Guest',
-        p_notes: body.notes?.trim() || null,
+        p_room_number: roomNumber,
+        p_guest_name: guestName,
+        p_notes: notes,
         p_items: normalizedItems,
         p_table_token: tableToken,
       });
