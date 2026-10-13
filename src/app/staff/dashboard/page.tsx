@@ -327,10 +327,10 @@ export default function StaffDashboardPage() {
             </div>
             <div className="mt-4">
               <Link
-                href="/staff/dashboard/kitchen"
+                href="/staff/dashboard/orders"
                 className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B00] px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:bg-[#E85D04] transition-all"
               >
-                Open Kitchen Station 2 <ArrowRight className="h-3.5 w-3.5" />
+                Open Order Queue <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
@@ -381,7 +381,7 @@ export default function StaffDashboardPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-gray-900">Kitchen</p>
-                    <p className="text-[10px] text-gray-400">Monitor kitchen</p>
+                    <p className="text-[10px] text-gray-400">View live orders</p>
                   </div>
                 </div>
                 <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-amber-600 transition-colors" />
