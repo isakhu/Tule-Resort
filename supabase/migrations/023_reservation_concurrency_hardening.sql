@@ -31,6 +31,7 @@ DECLARE
   v_room RECORD;
   v_nights INTEGER;
   v_total NUMERIC(12,2);
+  v_nightly_rate NUMERIC(12,2);
   v_conflict BOOLEAN;
 BEGIN
   IF p_room_id IS NULL THEN
@@ -94,7 +95,11 @@ BEGIN
   END IF;
 
   v_nights := p_check_out - p_check_in;
-  v_total := COALESCE(v_room.price_per_night, v_room.base_price, 0) * v_nights;
+  v_nightly_rate := COALESCE(NULLIF(v_room.price_per_night, 0), v_room.base_price, 0);
+  IF v_nightly_rate < 0 THEN
+    RAISE EXCEPTION 'This room has an invalid nightly rate.';
+  END IF;
+  v_total := v_nightly_rate * v_nights;
 
   INSERT INTO public.room_reservations (
     room_id, user_id, guest_name, guest_phone, guest_email,
