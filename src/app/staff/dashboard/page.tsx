@@ -216,7 +216,7 @@ export default function StaffDashboardPage() {
             <p className="text-xs font-semibold text-gray-500">Active Orders</p>
             <p className="text-2xl font-black text-gray-900 mt-0.5">{activeOrdersCount}</p>
           </div>
-          <p className="mt-3 text-[10px] font-bold text-gray-400">In progress & preparing</p>
+          <p className="mt-3 text-[10px] font-bold text-gray-400">Pending through ready</p>
         </div>
 
         {/* Avg Prep Time */}
@@ -278,7 +278,7 @@ export default function StaffDashboardPage() {
           <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-base font-bold text-gray-900">Today&apos;s Sales Overview</h3>
+                <h3 className="text-base font-bold text-gray-900">Today&apos;s Order Activity</h3>
                 <p className="text-xs text-gray-400">Hourly order value based on today's submitted orders</p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-[#F8F9FA] px-3 py-1.5 text-xs font-bold text-gray-700">
