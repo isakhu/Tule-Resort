@@ -32,14 +32,14 @@ export async function POST(req: Request) {
       // Cleanup: delete created auth user to avoid orphan
       try {
         await supabaseServer.auth.admin.deleteUser(userId);
-      } catch (e) {
+      } catch {
         // ignore cleanup failure, but surface original error
       }
       return NextResponse.json({ error: String(userErr.message ?? userErr) }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, user: userRow });
-  } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Unable to create staff account.' }, { status: 500 });
   }
 }
