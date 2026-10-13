@@ -73,7 +73,9 @@ BEGIN
   IF p_table_token IS NOT NULL AND trim(p_table_token) <> '' THEN
     SELECT dt.id INTO v_table_id
     FROM public.dining_tables dt
-    WHERE dt.qr_token = trim(p_table_token) AND dt.is_active = true
+    WHERE dt.qr_token = trim(p_table_token)
+      AND dt.is_active = true
+      AND dt.status IN ('available', 'occupied')
     LIMIT 1;
     IF v_table_id IS NULL THEN RAISE EXCEPTION 'Invalid or deactivated dining table QR code'; END IF;
   END IF;
