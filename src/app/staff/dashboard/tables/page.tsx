@@ -31,6 +31,7 @@ export default function StaffTablesPage() {
   const [qrModalTable, setQrModalTable] = useState<DiningTable | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [tableActionError, setTableActionError] = useState('');
 
   useEffect(() => {
     getDiningTables().then((loaded) => {
@@ -53,8 +54,10 @@ export default function StaffTablesPage() {
   const handleStatusChange = async (newStatus: DiningTable['status']) => {
     if (!selectedTable) return;
     setIsUpdating(true);
+    setTableActionError('');
     const saved = await updateTableStatus(selectedTable.id, newStatus);
     if (!saved) {
+      setTableActionError('The table status could not be saved. Check your connection and staff permissions.');
       setIsUpdating(false);
       return;
     }
@@ -90,6 +93,9 @@ export default function StaffTablesPage() {
   return (
     <div className="space-y-6">
       {/* ─── PAGE HEADER & NEW ACTION ─── */}
+      {tableActionError ? (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">{tableActionError}</div>
+      ) : null}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">Tables</h1>
