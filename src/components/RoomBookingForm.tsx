@@ -4,12 +4,6 @@ import { FormEvent, useMemo, useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { tuleBrand } from '../lib/tuleBrand';
 
-function makeBookingNumber() {
-  const stamp = Date.now().toString(36).toUpperCase();
-  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `TULE-${stamp}-${random}`;
-}
-
 function nightsBetween(checkIn: string, checkOut: string) {
   if (!checkIn || !checkOut) return 0;
   const start = new Date(`${checkIn}T00:00:00`);
@@ -45,7 +39,6 @@ export default function RoomBookingForm({ roomId, roomName, price, currency, max
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          booking_number: makeBookingNumber(),
           room_id: roomId,
           guest_name: guestName,
           guest_phone: guestPhone,
@@ -53,8 +46,6 @@ export default function RoomBookingForm({ roomId, roomName, price, currency, max
           check_in: checkIn,
           check_out: checkOut,
           guests,
-          total_price: total,
-          currency,
           payment_method: paymentMethod,
           special_requests: specialRequests || null,
         }),
