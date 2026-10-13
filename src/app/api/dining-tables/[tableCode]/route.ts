@@ -17,7 +17,7 @@ export async function GET(
 
   const { data, error } = await supabaseServer
     .from('dining_tables')
-    .select('id,table_number,qr_token,section,capacity,status,is_active,pos_x,pos_y')
+    .select('id,table_number,section,capacity,status,is_active,pos_x,pos_y')
     .eq('qr_token', token)
     .eq('is_active', true)
     .in('status', ['available', 'occupied'])
