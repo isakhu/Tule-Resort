@@ -95,7 +95,7 @@ export default function AdminStaffManagement() {
 
       <div style={{ marginBottom: 16 }}>
         <label>Selected Department ID for grant/revoke actions: </label>
-        <input value={deptId as any} onChange={e => setDeptId(e.target.value ? Number(e.target.value) : '')} />
+        <input value={deptId === '' ? '' : String(deptId)} onChange={e => setDeptId(e.target.value ? Number(e.target.value) : '')} />
       </div>
 
       <div>
