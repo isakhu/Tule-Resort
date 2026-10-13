@@ -21,7 +21,6 @@ export async function POST(req: Request) {
 
     const authHeader = req.headers.get('authorization') || '';
     let userId: string | null = null;
-    let userId: string | null = null;
     if (authHeader) {
       const match = authHeader.match(/^Bearer\s+(.+)$/i);
       if (!match) return NextResponse.json({ success: false, error: 'Invalid authorization header.' }, { status: 401 });
