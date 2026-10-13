@@ -58,7 +58,7 @@ export default function MenuItemEditor() {
     setLoading(false);
   }
 
-  useEffect(() => { void loadItems(); }, []);
+  useEffect(() => { const timer = window.setTimeout(() => { void loadItems(); }, 0); return () => window.clearTimeout(timer); }, []);
 
   const filtered = useMemo(() => items.filter((item) => `${item.name} ${item.amharic_name ?? ''} ${item.category ?? ''}`.toLowerCase().includes(query.toLowerCase())), [items, query]);
 
@@ -94,7 +94,7 @@ export default function MenuItemEditor() {
       setMessage(editingId ? 'Food item updated and published.' : 'Food item added and published.');
       reset();
       await loadItems();
-    } catch (error: any) { setMessage(error?.message ?? 'Could not save item.'); } finally { setSaving(false); }
+    } catch (error: unknown) { setMessage(error instanceof Error ? error.message : 'Could not save item.'); } finally { setSaving(false); }
   }
 
   async function remove(id: string) {
