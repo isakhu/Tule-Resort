@@ -4,6 +4,11 @@
 
 BEGIN;
 
+-- Keep menu availability explicit while preserving existing menu data.
+-- Existing items remain available unless a manager marks them unavailable.
+ALTER TABLE public.menu_items
+  ADD COLUMN IF NOT EXISTS is_available BOOLEAN NOT NULL DEFAULT true;
+
 -- Do not let anonymous clients enumerate every active QR token. Guests resolve
 -- only the token they already scanned through the server-side lookup endpoint.
 DROP POLICY IF EXISTS dining_tables_public_read ON public.dining_tables;
