@@ -215,20 +215,11 @@ export default function GuestTableOrderingPage({
             </p>
           </div>
 
-          {/* Progress Tracker */}
-          <div className="rounded-2xl bg-[#F8F9FA] p-4 text-left border border-gray-100 space-y-3">
-            <div className="flex items-center justify-between text-xs font-extrabold text-gray-800">
-              <span className="flex items-center gap-1.5 text-[#FF6B00]">
-                <Clock className="h-4 w-4" />
-                Order submitted
-              </span>
-              <span>Reference</span>
-            </div>
-            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#FF6B00] to-[#FA812F] rounded-full w-2/5 animate-pulse" />
-            </div>
-            <p className="text-[10px] text-gray-500">
-              Please keep this order reference if you need help from the service team.
+          <div className="rounded-2xl bg-[#F8F9FA] p-4 text-left border border-gray-100 space-y-2">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500">Order reference</p>
+            <p className="font-mono text-sm font-black text-gray-900 break-all">{submittedOrderId}</p>
+            <p className="text-[10px] leading-5 text-gray-500">
+              Your order has been recorded with a pending status. Please keep this reference if you need help from the service team.
             </p>
           </div>
 
