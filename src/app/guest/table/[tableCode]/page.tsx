@@ -123,7 +123,6 @@ export default function GuestTableOrderingPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: orderItems,
-          departmentId: 1, // Restaurant
           tableToken: tableCode,
           guestName: guestName.trim() || `Guest at ${table?.table_number || 'Table'}`,
           notes: specialNotes.trim() || undefined,
