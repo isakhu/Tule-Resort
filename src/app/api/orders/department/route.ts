@@ -21,14 +21,14 @@ export async function GET(req: Request) {
     const { data: extras } = await supabaseServer.from('staff_department_access').select('department_id').eq('user_id', uid);
     const deptIds = [] as number[];
     if (primaryDept) deptIds.push(primaryDept);
-    if (extras && extras.length) deptIds.push(...extras.map((e: any) => e.department_id));
+    if (extras && extras.length) deptIds.push(...(extras as { department_id: number }[]).map((extra) => extra.department_id));
 
     if (deptIds.length === 0) return NextResponse.json({ orders: [] });
 
     const { data, error } = await supabaseServer.from('orders').select('*').in('department_id', deptIds).order('created_at', { ascending: false }).limit(200);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ orders: data });
-  } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Unable to load orders.' }, { status: 500 });
   }
 }

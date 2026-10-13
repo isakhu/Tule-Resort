@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Layers,
@@ -8,17 +8,12 @@ import {
   Clock,
   DollarSign,
   AlertTriangle,
-  PlusCircle,
   BarChart3,
   Users,
   Settings,
   ArrowRight,
-  TrendingDown,
-  TrendingUp,
-  UtensilsCrossed,
   ChefHat,
   Sparkles,
-  CheckCircle2,
   Package
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
@@ -31,31 +26,49 @@ interface UserProfile {
   departmentName: string | null;
 }
 
+interface DashboardOrder {
+  id: string;
+  total: number | string | null;
+  created_at: string;
+  room_number?: string | null;
+  dining_table?: { table_number?: string } | null;
+  status?: { name?: string } | null;
+}
+
 export default function StaffDashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [tables, setTables] = useState<DiningTable[]>([]);
-  const [activeOrdersCount, setActiveOrdersCount] = useState(17);
-  const [revenueToday, setRevenueToday] = useState(4850);
-  const [delayedOrdersCount, setDelayedOrdersCount] = useState(3);
+  const [activeOrdersCount, setActiveOrdersCount] = useState(0);
+  const [orderValueToday, setOrderValueToday] = useState(0);
+  const [delayedOrdersCount, setDelayedOrdersCount] = useState(0);
+  const [recentOrders, setRecentOrders] = useState<DashboardOrder[]>([]);
+  const [dashboardLoadError, setDashboardLoadError] = useState('');
+  const [hourlySales, setHourlySales] = useState(
+    Array.from({ length: 12 }, (_, index) => {
+      const hour = index + 10;
+      return { hour: `${hour > 12 ? hour - 12 : hour} ${hour < 12 ? 'AM' : 'PM'}`, value: 0 };
+    }),
+  );
   const [greeting, setGreeting] = useState('Good Morning');
   const [currentDateFormatted, setCurrentDateFormatted] = useState('');
 
   useEffect(() => {
-    // Determine greeting
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting('Good Morning');
-    else if (hour < 18) setGreeting('Good Afternoon');
-    else setGreeting('Good Evening');
+    // Defer browser-local display hydration until after the initial render.
+    const displayTimer = window.setTimeout(() => {
+      const hour = new Date().getHours();
+      if (hour < 12) setGreeting('Good Morning');
+      else if (hour < 18) setGreeting('Good Afternoon');
+      else setGreeting('Good Evening');
 
-    // Date
-    setCurrentDateFormatted(
-      new Date().toLocaleDateString('en-US', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
-    );
+      setCurrentDateFormatted(
+        new Date().toLocaleDateString('en-US', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })
+      );
+    }, 0);
 
     // Profile
     supabase.auth.getSession().then(async ({ data }) => {
@@ -77,44 +90,63 @@ export default function StaffDashboardPage() {
     // Tables
     getDiningTables().then(setTables);
 
-    // Live counts from DB if available
+    // Pull today's orders only. No hard-coded sample revenue or order counts.
     async function fetchOrdersSummary() {
       try {
-        const { data } = await supabase
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const { data, error } = await supabase
           .from('orders')
-          .select('id, total, created_at, status_id');
+          .select('id,total,created_at,room_number,dining_table:dining_tables(table_number),status:order_statuses(name)')
+          .order('created_at', { ascending: false })
+          .limit(500);
 
-        if (data && data.length > 0) {
-          const totalRev = data.reduce((sum, o) => sum + Number(o.total || 0), 0);
-          if (totalRev > 0) setRevenueToday(Math.round(totalRev));
-          setActiveOrdersCount(data.length);
-        }
-      } catch (e) {
-        console.error('Failed to load orders summary:', e);
+        if (error) throw error;
+        const rows = (data ?? []) as DashboardOrder[];
+        const todayRows = rows.filter((order) => new Date(order.created_at) >= startOfDay);
+        const activeStatuses = new Set(['pending', 'confirmed', 'accepted', 'preparing', 'in progress', 'ready']);
+        const statusName = (order: DashboardOrder) => (order.status?.name ?? 'pending').toLowerCase();
+        const activeRows = rows.filter((order) => activeStatuses.has(statusName(order)));
+        const now = Date.now();
+        const delayedRows = activeRows.filter((order) => {
+          const createdAt = Date.parse(order.created_at);
+          return Number.isFinite(createdAt) && now - createdAt >= 20 * 60 * 1000;
+        });
+
+        setRecentOrders(rows.slice(0, 5));
+        setActiveOrdersCount(activeRows.length);
+        // This is order value, not collected revenue: payment integration is not enabled yet.
+        setOrderValueToday(Math.round(todayRows.reduce((sum, order) => sum + Number(order.total ?? 0), 0)));
+        setDelayedOrdersCount(delayedRows.length);
+
+        const labels = Array.from({ length: 12 }, (_, index) => {
+          const hour = index + 10;
+          return {
+            hour: `${hour > 12 ? hour - 12 : hour} ${hour < 12 ? 'AM' : 'PM'}`,
+            hour24: hour % 24,
+          };
+        });
+        setHourlySales(labels.map(({ hour, hour24 }) => ({
+          hour,
+          value: Math.round(todayRows
+            .filter((order) => new Date(order.created_at).getHours() === hour24)
+            .reduce((sum, order) => sum + Number(order.total ?? 0), 0)),
+        })));
+        setDashboardLoadError('');
+      } catch (error) {
+        console.error("Failed to load today's order summary:", error);
+        setDashboardLoadError('Live order metrics could not be loaded. Check the connection and staff permissions.');
       }
     }
-    fetchOrdersSummary();
+    void fetchOrdersSummary();
+    return () => window.clearTimeout(displayTimer);
   }, []);
 
   const occupiedTables = tables.filter((t) => t.status === 'occupied').length;
-  const totalTables = tables.length || 24;
-  const occupancyPercent = Math.round((occupiedTables / totalTables) * 100);
+  const totalTables = tables.length;
+  const occupancyPercent = totalTables ? Math.round((occupiedTables / totalTables) * 100) : 0;
 
-  const hourlySales = [
-    { hour: '10 AM', value: 450 },
-    { hour: '11 AM', value: 720 },
-    { hour: '12 PM', value: 1650 },
-    { hour: '1 PM', value: 1420 },
-    { hour: '2 PM', value: 980 },
-    { hour: '3 PM', value: 850 },
-    { hour: '4 PM', value: 1100 },
-    { hour: '5 PM', value: 1350 },
-    { hour: '6 PM', value: 1950 },
-    { hour: '7 PM', value: 1550 },
-    { hour: '8 PM', value: 1200 },
-    { hour: '9 PM', value: 680 },
-  ];
-  const maxSale = Math.max(...hourlySales.map((h) => h.value));
+  const maxSale = Math.max(1, ...hourlySales.map((h) => h.value));
 
   return (
     <div className="space-y-6">
@@ -136,7 +168,7 @@ export default function StaffDashboardPage() {
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
             {greeting},{' '}
             <span className="text-[#FF6B00]">
-              {profile?.fullName?.split(' ')[0] || 'Ahmed'}
+              {profile?.fullName?.split(' ')[0] || 'Team'}
             </span>
           </h1>
           <p className="text-xs sm:text-sm text-gray-300">
@@ -187,7 +219,7 @@ export default function StaffDashboardPage() {
             <p className="text-xs font-semibold text-gray-500">Active Orders</p>
             <p className="text-2xl font-black text-gray-900 mt-0.5">{activeOrdersCount}</p>
           </div>
-          <p className="mt-3 text-[10px] font-bold text-gray-400">In progress & preparing</p>
+          <p className="mt-3 text-[10px] font-bold text-gray-400">Pending through ready</p>
         </div>
 
         {/* Avg Prep Time */}
@@ -196,15 +228,13 @@ export default function StaffDashboardPage() {
             <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Clock className="h-5 w-5" />
             </div>
-            <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
-              <TrendingDown className="h-3 w-3" /> 6 min
-            </span>
+            <span className="text-[10px] font-bold text-gray-400">Not measured</span>
           </div>
           <div className="mt-3">
             <p className="text-xs font-semibold text-gray-500">Avg. Prep Time</p>
-            <p className="text-2xl font-black text-gray-900 mt-0.5">18 min</p>
+            <p className="text-2xl font-black text-gray-900 mt-0.5">—</p>
           </div>
-          <p className="mt-3 text-[10px] font-bold text-gray-400">vs last hour speed</p>
+          <p className="mt-3 text-[10px] font-bold text-gray-400">Preparation-time tracking not configured</p>
         </div>
 
         {/* Today's Revenue */}
@@ -213,18 +243,16 @@ export default function StaffDashboardPage() {
             <div className="h-9 w-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
               <DollarSign className="h-5 w-5" />
             </div>
-            <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
-              <TrendingUp className="h-3 w-3" /> 12%
-            </span>
+            <span className="text-[10px] font-bold text-gray-400">Live</span>
           </div>
           <div className="mt-3">
-            <p className="text-xs font-semibold text-gray-500">Today&apos;s Revenue</p>
+            <p className="text-xs font-semibold text-gray-500">Today&apos;s Order Value</p>
             <p className="text-2xl font-black text-gray-900 mt-0.5">
-              {revenueToday.toLocaleString()}{' '}
+              {orderValueToday.toLocaleString()}{' '}
               <span className="text-xs font-bold text-gray-500">ETB</span>
             </p>
           </div>
-          <p className="mt-3 text-[10px] font-bold text-gray-400">vs yesterday dining</p>
+          <p className="mt-3 text-[10px] font-bold text-gray-400">Order value; payment status is not tracked yet</p>
         </div>
 
         {/* Delayed Orders */}
@@ -253,8 +281,8 @@ export default function StaffDashboardPage() {
           <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-base font-bold text-gray-900">Today&apos;s Sales Overview</h3>
-                <p className="text-xs text-gray-400">Hourly guest dining volume & kitchen dispatch</p>
+                <h3 className="text-base font-bold text-gray-900">Today&apos;s Order Activity</h3>
+                <p className="text-xs text-gray-400">Hourly order value based on today&apos;s submitted orders</p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-[#F8F9FA] px-3 py-1.5 text-xs font-bold text-gray-700">
                 Today
@@ -292,18 +320,20 @@ export default function StaffDashboardPage() {
             </div>
             <div className="mt-2">
               <h4 className="text-sm font-extrabold text-gray-900">
-                Kitchen congestion detected
+                {delayedOrdersCount > 0 ? 'Kitchen attention needed' : 'No overdue orders detected'}
               </h4>
               <p className="text-xs text-gray-600 mt-1">
-                7 orders are waiting for preparation for more than 20 minutes on the grill and hot wot stations.
+                {delayedOrdersCount > 0
+                  ? `${delayedOrdersCount} active order${delayedOrdersCount === 1 ? '' : 's'} have been waiting for at least 20 minutes based on recorded timestamps.`
+                  : 'No active orders currently exceed the 20-minute alert threshold.'}
               </p>
             </div>
             <div className="mt-4">
               <Link
-                href="/staff/dashboard/kitchen"
+                href="/staff/dashboard/orders"
                 className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B00] px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:bg-[#E85D04] transition-all"
               >
-                Open Kitchen Station 2 <ArrowRight className="h-3.5 w-3.5" />
+                Open Order Queue <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>
@@ -345,7 +375,7 @@ export default function StaffDashboardPage() {
               </Link>
 
               <Link
-                href="/staff/dashboard/kitchen"
+                href="/staff/dashboard/orders"
                 className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-[#FF6B00] transition-all group flex items-center justify-between"
               >
                 <div className="flex items-center gap-2.5">
@@ -354,7 +384,7 @@ export default function StaffDashboardPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-gray-900">Kitchen</p>
-                    <p className="text-[10px] text-gray-400">Monitor kitchen</p>
+                    <p className="text-[10px] text-gray-400">View live orders</p>
                   </div>
                 </div>
                 <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-amber-600 transition-colors" />
@@ -457,49 +487,29 @@ export default function StaffDashboardPage() {
             </div>
 
             <div className="space-y-3.5">
-              <div className="flex items-start gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="h-4 w-4" />
+              {dashboardLoadError ? (
+                <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">{dashboardLoadError}</p>
+              ) : recentOrders.length ? recentOrders.map((order) => (
+                <div key={order.id} className="flex items-start gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
+                  <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <ClipboardList className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-gray-900">Order #{order.id.slice(0, 8).toUpperCase()}</p>
+                    <p className="text-[11px] text-gray-500">
+                      {order.dining_table?.table_number ? order.dining_table.table_number : order.room_number ? `Room ${order.room_number}` : 'Restaurant order'} • {(order.status?.name ?? 'Pending').toLowerCase()}
+                    </p>
+                    <p className="text-[10px] text-gray-400">{Number(order.total ?? 0).toLocaleString()} ETB order value</p>
+                  </div>
+                  <span className="text-[10px] font-semibold text-gray-400 shrink-0">
+                    {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-gray-900">New order #4587</p>
-                  <p className="text-[11px] text-gray-500">Table 12 • 2 items (Grilled Salmon)</p>
-                </div>
-                <span className="text-[10px] font-semibold text-gray-400 shrink-0">5 min ago</span>
-              </div>
-
-              <div className="flex items-start gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                <div className="h-8 w-8 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center shrink-0">
-                  <ChefHat className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-gray-900">Order #4579 ready</p>
-                  <p className="text-[11px] text-gray-500">Kitchen • Grill Station</p>
-                </div>
-                <span className="text-[10px] font-semibold text-gray-400 shrink-0">8 min ago</span>
-              </div>
-
-              <div className="flex items-start gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                  <Layers className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-gray-900">Table 8 seated</p>
-                  <p className="text-[11px] text-gray-500">Walk-in guest party (3)</p>
-                </div>
-                <span className="text-[10px] font-semibold text-gray-400 shrink-0">12 min ago</span>
-              </div>
-
-              <div className="flex items-start gap-3 p-2 rounded-xl hover:bg-red-50/50 transition-colors">
-                <div className="h-8 w-8 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-red-700">Delayed order #4562</p>
-                  <p className="text-[11px] text-red-500">More than 25 min wait</p>
-                </div>
-                <span className="text-[10px] font-semibold text-red-400 shrink-0">18 min ago</span>
-              </div>
+              )) : (
+                <p className="rounded-xl border border-dashed border-gray-200 p-4 text-xs text-gray-500">
+                  No orders have been recorded today.
+                </p>
+              )}
             </div>
           </div>
         </div>

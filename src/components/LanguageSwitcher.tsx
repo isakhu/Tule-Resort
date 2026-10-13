@@ -6,8 +6,11 @@ export default function LanguageSwitcher() {
   const [language, setLanguage] = useState<'en' | 'am'>('en');
 
   useEffect(() => {
-    const saved = window.localStorage.getItem('tule-language');
-    if (saved === 'am' || saved === 'en') setLanguage(saved);
+    const timer = window.setTimeout(() => {
+      const saved = window.localStorage.getItem('tule-language');
+      if (saved === 'am' || saved === 'en') setLanguage(saved);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   function changeLanguage(value: 'en' | 'am') {

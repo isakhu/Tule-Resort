@@ -4,21 +4,17 @@ import React, { useState, useEffect, useMemo, use } from 'react';
 import Link from 'next/link';
 import {
   UtensilsCrossed,
-  Layers,
   ShoppingBag,
   Search,
   Plus,
   Minus,
   CheckCircle2,
-  Clock,
   ArrowRight,
-  Sparkles,
   AlertCircle,
   ChefHat
 } from 'lucide-react';
-import { getMenuItems, MenuItem } from '@/lib/menu';
+import type { MenuItem } from '@/lib/menu';
 import { getDiningTableByToken, DiningTable } from '@/lib/diningTables';
-import { createOrder } from '@/lib/orders';
 
 export default function GuestTableOrderingPage({
   params,
@@ -31,6 +27,8 @@ export default function GuestTableOrderingPage({
   const [table, setTable] = useState<DiningTable | null>(null);
   const [loadingTable, setLoadingTable] = useState(true);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuError, setMenuError] = useState<string | null>(null);
+  const [loadingMenu, setLoadingMenu] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -47,8 +45,25 @@ export default function GuestTableOrderingPage({
       setLoadingTable(false);
     });
 
-    // 2. Fetch active restaurant menu items
-    getMenuItems().then(setMenuItems);
+    // Load only database-backed current menu records. Never show static demo
+    // items as if they could be ordered from a live table.
+    let cancelled = false;
+    fetch('/api/menu', { cache: 'no-store' })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok || payload.success !== true || !Array.isArray(payload.items)) {
+          throw new Error(payload.error || 'The menu is temporarily unavailable.');
+        }
+        if (!cancelled) setMenuItems(payload.items as MenuItem[]);
+      })
+      .catch(() => {
+        if (!cancelled) setMenuError('The current menu is temporarily unavailable. Please ask a member of staff for help.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMenu(false);
+      });
+
+    return () => { cancelled = true; };
   }, [tableCode]);
 
   const updateCart = (itemId: string, delta: number) => {
@@ -108,7 +123,6 @@ export default function GuestTableOrderingPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: orderItems,
-          departmentId: 1, // Restaurant
           tableToken: tableCode,
           guestName: guestName.trim() || `Guest at ${table?.table_number || 'Table'}`,
           notes: specialNotes.trim() || undefined,
@@ -116,8 +130,8 @@ export default function GuestTableOrderingPage({
       });
 
       const json = await res.json();
-      if (res.ok && json.success) {
-        setSubmittedOrderId(json.orderId || 'CONFIRMED');
+      if (res.ok && json.success && typeof json.orderId === 'string' && json.orderId) {
+        setSubmittedOrderId(json.orderId);
         setCart({});
       } else {
         setOrderError(json.error || 'Failed to place order. Please call your server.');
@@ -164,6 +178,19 @@ export default function GuestTableOrderingPage({
     );
   }
 
+  if (menuError) {
+    return (
+      <div className="min-h-screen bg-[#FFF9F2] flex items-center justify-center p-6">
+        <div className="max-w-md w-full rounded-3xl bg-white p-8 shadow-xl text-center space-y-4">
+          <AlertCircle className="mx-auto h-10 w-10 text-[#FF6B00]" />
+          <h1 className="text-xl font-black text-gray-900">Menu temporarily unavailable</h1>
+          <p className="text-sm text-gray-500">{menuError}</p>
+          <button onClick={() => window.location.reload()} className="rounded-xl bg-[#073B4C] px-5 py-3 text-sm font-bold text-white">Try again</button>
+        </div>
+      </div>
+    );
+  }
+
   // ─── ORDER CONFIRMATION VIEW ───
   if (submittedOrderId) {
     return (
@@ -177,26 +204,17 @@ export default function GuestTableOrderingPage({
             <span className="rounded-full bg-orange-50 px-3 py-1 text-[11px] font-black text-[#FF6B00]">
               {table.table_number} • {table.section}
             </span>
-            <h2 className="text-2xl font-black text-gray-900 pt-2">Order Confirmed!</h2>
+            <h2 className="text-2xl font-black text-gray-900 pt-2">Order Received</h2>
             <p className="text-xs text-gray-500">
-              Your order has been sent directly to the resort kitchen.
+              Your order has been received by the resort system. The service team will process it shortly.
             </p>
           </div>
 
-          {/* Progress Tracker */}
-          <div className="rounded-2xl bg-[#F8F9FA] p-4 text-left border border-gray-100 space-y-3">
-            <div className="flex items-center justify-between text-xs font-extrabold text-gray-800">
-              <span className="flex items-center gap-1.5 text-[#FF6B00]">
-                <Clock className="h-4 w-4" />
-                Preparing in Kitchen
-              </span>
-              <span>Est: 15–20 min</span>
-            </div>
-            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#FF6B00] to-[#FA812F] rounded-full w-2/5 animate-pulse" />
-            </div>
-            <p className="text-[10px] text-gray-500">
-              Our service team will bring your food and beverages directly to {table.table_number}.
+          <div className="rounded-2xl bg-[#F8F9FA] p-4 text-left border border-gray-100 space-y-2">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500">Order reference</p>
+            <p className="font-mono text-sm font-black text-gray-900 break-all">{submittedOrderId}</p>
+            <p className="text-[10px] leading-5 text-gray-500">
+              Your order has been recorded with a pending status. Please keep this reference if you need help from the service team.
             </p>
           </div>
 
@@ -261,6 +279,10 @@ export default function GuestTableOrderingPage({
           </div>
         </div>
       </section>
+
+      {loadingMenu ? (
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 text-sm text-gray-500">Loading the current menu…</div>
+      ) : null}
 
       {/* ─── SEARCH & CATEGORY FILTER ─── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-4">

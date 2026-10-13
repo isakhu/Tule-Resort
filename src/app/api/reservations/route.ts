@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import supabaseServer from '../../../../lib/supabaseServer';
 
 type ReservationRequest = {
-  booking_number?: string;
   room_id?: string;
   guest_name?: string;
   guest_phone?: string;
@@ -10,84 +9,137 @@ type ReservationRequest = {
   check_in?: string;
   check_out?: string;
   guests?: number;
-  total_price?: number;
-  currency?: string;
   payment_method?: string;
-  payment_status?: string;
-  status?: string;
   special_requests?: string | null;
-  user_id?: string | null;
 };
 
-function adminClient() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Server Supabase configuration is missing.');
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+function parseDate(value: unknown): string | null {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) return null;
+  return value;
 }
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PAYMENT_METHODS = new Set(['pay_at_resort', 'telebirr', 'cbe_birr', 'bank_transfer']);
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ReservationRequest;
-    const roomId = String(body.room_id ?? '').trim();
-    const guestName = String(body.guest_name ?? '').trim();
-    const guestPhone = String(body.guest_phone ?? '').trim();
-    const checkIn = String(body.check_in ?? '').trim();
-    const checkOut = String(body.check_out ?? '').trim();
+    const roomId = typeof body.room_id === 'string' ? body.room_id.trim() : '';
+    const guestName = typeof body.guest_name === 'string' ? body.guest_name.trim() : '';
+    const guestPhone = typeof body.guest_phone === 'string' ? body.guest_phone.trim() : '';
+    const guestEmail = typeof body.guest_email === 'string' ? body.guest_email.trim() || null : null;
+    const specialRequests = typeof body.special_requests === 'string' ? body.special_requests.trim() || null : null;
+    const checkIn = parseDate(body.check_in);
+    const checkOut = parseDate(body.check_out);
     const guests = Number(body.guests ?? 0);
-    const totalPrice = Number(body.total_price ?? 0);
+    const paymentMethod = typeof body.payment_method === 'string' ? body.payment_method : 'pay_at_resort';
 
-    if (!roomId || !guestName || !guestPhone || !checkIn || !checkOut || guests < 1 || totalPrice < 0) {
-      return NextResponse.json({ success: false, error: 'Missing or invalid reservation details.' }, { status: 400 });
+    if (!UUID_PATTERN.test(roomId)) {
+      return NextResponse.json({ success: false, error: 'Please select a valid room.' }, { status: 400 });
     }
-    if (new Date(`${checkOut}T00:00:00`).getTime() <= new Date(`${checkIn}T00:00:00`).getTime()) {
-      return NextResponse.json({ success: false, error: 'Check-out must be after check-in.' }, { status: 400 });
+    if (guestName.length < 2 || guestName.length > 150 || guestPhone.length < 5 || guestPhone.length > 40) {
+      return NextResponse.json({ success: false, error: 'Please provide a valid guest name and phone number.' }, { status: 400 });
+    }
+    if (guestEmail && (guestEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail))) {
+      return NextResponse.json({ success: false, error: 'Please provide a valid email address.' }, { status: 400 });
+    }
+    if (!checkIn || !checkOut || checkOut <= checkIn) {
+      return NextResponse.json({ success: false, error: 'Please choose valid check-in and check-out dates.' }, { status: 400 });
+    }
+    if (!Number.isInteger(guests) || guests < 1 || guests > 30) {
+      return NextResponse.json({ success: false, error: 'Guest count must be a whole number between 1 and 30.' }, { status: 400 });
+    }
+    if (!PAYMENT_METHODS.has(paymentMethod)) {
+      return NextResponse.json({ success: false, error: 'Please select a supported payment method.' }, { status: 400 });
+    }
+    if (specialRequests && specialRequests.length > 2000) {
+      return NextResponse.json({ success: false, error: 'Special requests must be 2,000 characters or fewer.' }, { status: 400 });
     }
 
-    const supabase = adminClient();
-    const bookingNumber = String(body.booking_number ?? '').trim() || `TULE-${Date.now().toString(36).toUpperCase()}`;
-    const payload = {
-      booking_number: bookingNumber,
-      room_id: roomId,
-      guest_name: guestName,
-      guest_phone: guestPhone,
-      guest_email: body.guest_email?.trim() || null,
-      check_in: checkIn,
-      check_out: checkOut,
-      guests,
-      total_price: totalPrice,
-      currency: body.currency || 'ETB',
-      payment_method: body.payment_method || 'pay_at_resort',
-      payment_status: body.payment_status || 'pending',
-      status: 'pending',
-      special_requests: body.special_requests?.trim() || null,
-      user_id: body.user_id ?? null,
-    };
+    let userId: string | null = null;
+    const authorization = request.headers.get('authorization');
+    if (authorization) {
+      const match = authorization.match(/^Bearer\s+(.+)$/i);
+      if (!match) {
+        return NextResponse.json({ success: false, error: 'Invalid authorization header.' }, { status: 401 });
+      }
+      const { data: authData, error: authError } = await supabaseServer.auth.getUser(match[1]);
+      if (authError || !authData.user) {
+        return NextResponse.json({ success: false, error: 'Your session has expired. Please sign in again.' }, { status: 401 });
+      }
+      userId = authData.user.id;
+    }
 
-    const { data: room, error: roomError } = await supabase.from('rooms').select('id,capacity,is_available').eq('id', roomId).maybeSingle();
-    if (roomError) return NextResponse.json({ success: false, error: roomError.message }, { status: 500 });
-    if (!room) return NextResponse.json({ success: false, error: 'Room not found.' }, { status: 404 });
-    if (room.is_available === false) return NextResponse.json({ success: false, error: 'This room is currently unavailable.' }, { status: 400 });
-    if (room.capacity != null && guests > room.capacity) return NextResponse.json({ success: false, error: `This room allows up to ${room.capacity} guests.` }, { status: 400 });
+    // The database locks the selected room, checks date overlaps, computes the
+    // price from trusted room data, and inserts the booking atomically.
+    // Client-supplied booking numbers, prices, currency, and user IDs are ignored.
+    const { data, error } = await supabaseServer.rpc('create_room_reservation_with_payment', {
+      p_room_id: roomId,
+      p_check_in: checkIn,
+      p_check_out: checkOut,
+      p_guests: guests,
+      p_guest_name: guestName,
+      p_guest_phone: guestPhone,
+      p_guest_email: guestEmail,
+      p_special_requests: specialRequests,
+      p_payment_method: paymentMethod,
+      p_user_id: userId,
+    });
 
-    const { data: conflicts, error: conflictError } = await supabase
-      .from('room_reservations')
-      .select('id')
-      .eq('room_id', roomId)
-      .in('status', ['pending', 'confirmed', 'checked_in'])
-      .lt('check_in', checkOut)
-      .gt('check_out', checkIn)
-      .limit(1);
+    if (error) {
+      const message = error.message || '';
+      if (/already booked|overlap|room is not available/i.test(message)) {
+        return NextResponse.json(
+          { success: false, error: 'This room is already booked for those dates. Please choose different dates.' },
+          { status: 409 },
+        );
+      }
+      if (/room not found/i.test(message)) {
+        return NextResponse.json({ success: false, error: 'Room not found.' }, { status: 404 });
+      }
+      if (/currently unavailable/i.test(message)) {
+        return NextResponse.json({ success: false, error: 'This room is currently unavailable.' }, { status: 409 });
+      }
+      if (/guest|check-out|check-in|unsupported payment method|payment method/i.test(message)) {
+        return NextResponse.json({ success: false, error: message }, { status: 400 });
+      }
 
-    if (conflictError) return NextResponse.json({ success: false, error: conflictError.message }, { status: 500 });
-    if ((conflicts ?? []).length > 0) return NextResponse.json({ success: false, error: 'This room is already booked for those dates. Please choose different dates.' }, { status: 409 });
+      console.error('Atomic reservation creation failed:', message);
+      return NextResponse.json(
+        { success: false, error: 'We could not save your reservation. Please try again shortly.' },
+        { status: 503 },
+      );
+    }
 
-    const { data, error } = await supabase.from('room_reservations').insert(payload).select('id,booking_number').single();
-    if (error) return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    const reservation = Array.isArray(data) ? data[0] : data;
+    if (!reservation?.id || !reservation?.booking_number) {
+      console.error('Reservation RPC returned no booking record.');
+      return NextResponse.json(
+        { success: false, error: 'No booking confirmation was returned. Please contact the resort before retrying.' },
+        { status: 502 },
+      );
+    }
 
-    return NextResponse.json({ success: true, data }, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: reservation.id,
+        booking_number: reservation.booking_number,
+        total_price: Number(reservation.total_price ?? 0),
+        currency: reservation.currency || 'ETB',
+        status: reservation.status || 'pending',
+      },
+    }, {
+      status: 201,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to create reservation.';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    console.error('Unexpected reservation API failure:', error);
+    return NextResponse.json(
+      { success: false, error: 'Reservation submission failed. Please try again.' },
+      { status: 500 },
+    );
   }
 }

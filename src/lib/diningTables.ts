@@ -48,44 +48,44 @@ export const DEFAULT_DINING_TABLES: DiningTable[] = [
   { id: 'dt-p03', table_number: 'Pool 03', qr_token: 'tule-tbl-p03-breeze', section: 'Poolside', capacity: 4, status: 'available', is_active: true, pos_x: 75, pos_y: 40 },
 ];
 
+async function getStaffAccessToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
 export async function getDiningTables(): Promise<DiningTable[]> {
   try {
-    const { data, error } = await supabase
-      .from('dining_tables')
-      .select('*')
-      .eq('is_active', true)
-      .order('table_number', { ascending: true });
+    const token = await getStaffAccessToken();
+    if (!token) return [];
 
-    if (error || !data || data.length === 0) {
-      return DEFAULT_DINING_TABLES;
-    }
+    const response = await fetch('/api/dining-tables', {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (!response.ok) return [];
 
-    return data as DiningTable[];
+    const payload = await response.json();
+    return Array.isArray(payload.tables) ? payload.tables as DiningTable[] : [];
   } catch {
-    return DEFAULT_DINING_TABLES;
+    // Never display demo tables as if they were the resort's live data.
+    return [];
   }
 }
 
 export async function getDiningTableByToken(token: string): Promise<DiningTable | null> {
   const clean = token.trim();
+  if (clean.length < 32 || clean.length > 128) return null;
+
   try {
-    const { data, error } = await supabase
-      .from('dining_tables')
-      .select('*')
-      .eq('qr_token', clean)
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle();
-
-    if (!error && data) {
-      return data as DiningTable;
-    }
+    const response = await fetch(`/api/dining-tables/${encodeURIComponent(clean)}`, {
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    return payload.table ? payload.table as DiningTable : null;
   } catch {
-    // fallback
+    return null;
   }
-
-  const match = DEFAULT_DINING_TABLES.find((t) => t.qr_token === clean);
-  return match ?? null;
 }
 
 export async function updateTableStatus(
@@ -93,12 +93,19 @@ export async function updateTableStatus(
   status: DiningTable['status']
 ): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('dining_tables')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', tableId);
+    const token = await getStaffAccessToken();
+    if (!token) return false;
 
-    return !error;
+    const response = await fetch('/api/dining-tables', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id: tableId, status }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    return response.ok && payload.success === true;
   } catch {
     return false;
   }

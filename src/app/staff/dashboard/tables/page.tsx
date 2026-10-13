@@ -22,7 +22,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { getDiningTables, DiningTable, updateTableStatus } from '@/lib/diningTables';
-import { generateQrSvgUri, renderQrSvgString } from '@/lib/qrCode';
+import { generateQrCodeImageUrl } from '@/lib/qrCode';
 
 export default function StaffTablesPage() {
   const [tables, setTables] = useState<DiningTable[]>([]);
@@ -31,6 +31,7 @@ export default function StaffTablesPage() {
   const [qrModalTable, setQrModalTable] = useState<DiningTable | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [tableActionError, setTableActionError] = useState('');
 
   useEffect(() => {
     getDiningTables().then((loaded) => {
@@ -44,16 +45,25 @@ export default function StaffTablesPage() {
   const floorTables = tables.filter((t) => t.section === selectedFloor);
 
   // Status counts
-  const totalCount = tables.length || 24;
+  const totalCount = tables.length;
   const occupiedCount = tables.filter((t) => t.status === 'occupied').length;
   const availableCount = tables.filter((t) => t.status === 'available').length;
   const cleaningCount = tables.filter((t) => t.status === 'cleaning').length;
   const outOfServiceCount = tables.filter((t) => t.status === 'out_of_service').length;
+  const occupiedPercent = totalCount ? Math.round((occupiedCount / totalCount) * 100) : 0;
+  const availablePercent = totalCount ? Math.round((availableCount / totalCount) * 100) : 0;
+  const cleaningPercent = totalCount ? Math.round((cleaningCount / totalCount) * 100) : 0;
 
   const handleStatusChange = async (newStatus: DiningTable['status']) => {
     if (!selectedTable) return;
     setIsUpdating(true);
-    await updateTableStatus(selectedTable.id, newStatus);
+    setTableActionError('');
+    const saved = await updateTableStatus(selectedTable.id, newStatus);
+    if (!saved) {
+      setTableActionError('The table status could not be saved. Check your connection and staff permissions.');
+      setIsUpdating(false);
+      return;
+    }
     setTables((prev) =>
       prev.map((t) => (t.id === selectedTable.id ? { ...t, status: newStatus } : t))
     );
@@ -77,7 +87,7 @@ export default function StaffTablesPage() {
   // Printable table card QR link
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://tuleresort.com';
   const qrUrl = qrModalTable ? `${currentOrigin}/guest/table/${qrModalTable.qr_token}` : '';
-  const qrSvgDataUri = qrModalTable ? generateQrSvgUri(qrUrl, 260) : '';
+  const qrImageUrl = qrModalTable ? generateQrCodeImageUrl(qrUrl, 260) : '';
 
   const handlePrint = () => {
     window.print();
@@ -86,6 +96,9 @@ export default function StaffTablesPage() {
   return (
     <div className="space-y-6">
       {/* ─── PAGE HEADER & NEW ACTION ─── */}
+      {tableActionError ? (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">{tableActionError}</div>
+      ) : null}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">Tables</h1>
@@ -121,7 +134,7 @@ export default function StaffTablesPage() {
               <Layers className="h-4 w-4" />
             </div>
             <span className="text-[10px] font-bold text-gray-400">
-              {Math.round((occupiedCount / totalCount) * 100)}%
+              {occupiedPercent}%
             </span>
           </div>
           <div className="mt-2">
@@ -134,7 +147,7 @@ export default function StaffTablesPage() {
           <div className="mt-2 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-[#FF6B00] rounded-full"
-              style={{ width: `${(occupiedCount / totalCount) * 100}%` }}
+              style={{ width: `${occupiedPercent}%` }}
             />
           </div>
         </div>
@@ -146,7 +159,7 @@ export default function StaffTablesPage() {
               <CheckCircle2 className="h-4 w-4" />
             </div>
             <span className="text-[10px] font-bold text-gray-400">
-              {Math.round((availableCount / totalCount) * 100)}%
+              {availablePercent}%
             </span>
           </div>
           <div className="mt-2">
@@ -156,7 +169,7 @@ export default function StaffTablesPage() {
           <div className="mt-2 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-emerald-500 rounded-full"
-              style={{ width: `${(availableCount / totalCount) * 100}%` }}
+              style={{ width: `${availablePercent}%` }}
             />
           </div>
         </div>
@@ -168,7 +181,7 @@ export default function StaffTablesPage() {
               <Sparkles className="h-4 w-4" />
             </div>
             <span className="text-[10px] font-bold text-gray-400">
-              {Math.round((cleaningCount / totalCount) * 100)}%
+              {cleaningPercent}%
             </span>
           </div>
           <div className="mt-2">
@@ -178,7 +191,7 @@ export default function StaffTablesPage() {
           <div className="mt-2 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-purple-600 rounded-full"
-              style={{ width: `${(cleaningCount / totalCount) * 100}%` }}
+              style={{ width: `${cleaningPercent}%` }}
             />
           </div>
         </div>
@@ -515,7 +528,7 @@ export default function StaffTablesPage() {
               <div className="mx-auto w-52 h-52 bg-white rounded-2xl p-3 shadow-inner flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={qrSvgDataUri}
+                  src={qrImageUrl}
                   alt={`QR code for ${qrModalTable.table_number}`}
                   className="w-full h-full object-contain"
                 />

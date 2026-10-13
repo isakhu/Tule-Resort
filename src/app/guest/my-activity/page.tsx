@@ -1,45 +1,47 @@
-import React, { useMemo } from 'react';
-import { notFound } from 'next/navigation';
-import { ArrowLeft, Clock, Info, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-
-// Mock data for status: In a real app, this would be fetched from the DB
-const MY_ITEMS = [
-  { id: '1', name: 'Special Shekla Tibs', type: 'order', status: 'pending', time: '10 mins ago' },
-  { id: '2', name: 'Deep Tissue Massage', type: 'booking', status: 'confirmed', time: 'For 02:00 PM' },
-  { id: '3', name: 'Daily Gym Pass', type: 'request', status: 'pending', time: 'Submitted 1hr ago' },
-];
+import { ArrowLeft, CalendarDays, Clock3, UtensilsCrossed, Waves } from 'lucide-react';
 
 export default function MyActivityPage() {
   return (
-    <div className="min-h-screen bg-[#fcfaf7] pb-24 font-sans text-stone-900">
-      <header className="sticky top-0 z-50 bg-[#fcfaf7]/90 backdrop-blur-md px-6 py-4 flex items-center gap-4 border-b border-stone-200/50">
-        <Link href="/guest"><ArrowLeft className="w-5 h-5 text-stone-600" /></Link>
-        <h1 className="text-lg font-serif font-bold text-stone-800">My Activity</h1>
+    <main className="min-h-screen bg-[#F8F5EE] px-4 pb-20 text-[#182326]">
+      <header className="mx-auto flex max-w-3xl items-center gap-4 border-b border-[#0B3D4A]/10 py-5">
+        <Link href="/guest" aria-label="Back to guest services" className="rounded-full p-2 text-[#0B3D4A]/70 transition hover:bg-white hover:text-[#0B3D4A]">
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#C8A15A]">Tule Resort</p>
+          <h1 className="font-display text-2xl font-bold text-[#0B3D4A]">My Activity</h1>
+        </div>
       </header>
 
-      <main className="p-6 space-y-6">
-        {MY_ITEMS.map((item) => (
-          <div key={item.id} className="bg-white rounded-3xl p-5 shadow-sm border border-stone-100 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${item.status === 'confirmed' ? 'bg-emerald-50' : 'bg-amber-50'}`}>
-                {item.status === 'confirmed' ? <CheckCircle className="w-6 h-6 text-emerald-600" /> : <Clock className="w-6 h-6 text-amber-600" />}
-              </div>
-              <div>
-                <h4 className="font-bold text-sm text-stone-800">{item.name}</h4>
-                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">{item.type} • {item.status}</p>
-                <p className="text-[10px] text-stone-500">{item.time}</p>
-              </div>
-            </div>
-            
-            {item.status === 'pending' && (
-              <button className="text-[10px] font-bold text-rose-500 bg-rose-50 px-3 py-1.5 rounded-full">
-                Cancel
-              </button>
-            )}
+      <section className="mx-auto mt-12 max-w-3xl">
+        <div className="rounded-[2rem] border border-[#0B3D4A]/10 bg-white p-7 text-center shadow-sm sm:p-10">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#EAF4F7] text-[#0B4F6C]">
+            <Clock3 className="h-8 w-8" />
           </div>
-        ))}
-      </main>
-    </div>
+          <h2 className="mt-5 font-display text-3xl font-bold text-[#0B3D4A]">Your activity will appear here</h2>
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-7 text-[#182326]/60">
+            Live order and reservation history is not connected to this page yet. We will not show sample activity as if it were your real bookings.
+          </p>
+          <div className="mt-7 grid gap-3 text-left sm:grid-cols-3">
+            <Link href="/guest/restaurant" className="rounded-2xl border border-[#0B3D4A]/10 bg-[#F8F5EE] p-4 transition hover:border-[#159A9C]">
+              <UtensilsCrossed className="h-5 w-5 text-[#159A9C]" />
+              <p className="mt-3 text-sm font-bold">Restaurant menu</p>
+              <p className="mt-1 text-xs leading-5 text-[#182326]/55">Browse food and drinks.</p>
+            </Link>
+            <Link href="/guest/rooms" className="rounded-2xl border border-[#0B3D4A]/10 bg-[#F8F5EE] p-4 transition hover:border-[#159A9C]">
+              <CalendarDays className="h-5 w-5 text-[#159A9C]" />
+              <p className="mt-3 text-sm font-bold">Rooms & stays</p>
+              <p className="mt-1 text-xs leading-5 text-[#182326]/55">Explore room options.</p>
+            </Link>
+            <Link href="/guest/services" className="rounded-2xl border border-[#0B3D4A]/10 bg-[#F8F5EE] p-4 transition hover:border-[#159A9C]">
+              <Waves className="h-5 w-5 text-[#159A9C]" />
+              <p className="mt-3 text-sm font-bold">Resort services</p>
+              <p className="mt-1 text-xs leading-5 text-[#182326]/55">Explore guest experiences.</p>
+            </Link>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }

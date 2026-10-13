@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabaseClient';
-import { menuItems as fallbackMenuItems } from '@/data/menu-items';
 
 export interface MenuItem {
   id: string;
@@ -43,19 +42,6 @@ function normalizeDietaryTags(value: unknown): string[] {
   return [];
 }
 
-function mapFallbackMenuItems(): MenuItem[] {
-  return fallbackMenuItems.map((item) => ({
-    id: String(item.id),
-    name: item.name,
-    amharicName: item.amharicName,
-    category: item.category,
-    price: Number(item.price ?? 0),
-    imageUrl: item.imageUrl,
-    description: item.description,
-    isAvailable: true,
-    dietaryTags: [],
-  }));
-}
 
 export async function getMenuItems(): Promise<MenuItem[]> {
   try {
@@ -76,8 +62,9 @@ export async function getMenuItems(): Promise<MenuItem[]> {
         .order('name', { ascending: true });
     }
 
-    if (result.error || !result.data || result.data.length === 0) {
-      return mapFallbackMenuItems();
+    if (result.error || !result.data) {
+      console.error('Unable to load the active restaurant menu from Supabase:', result.error?.message);
+      return [];
     }
 
     const mapped = (result.data as SupabaseMenuRow[]).map((row) => ({
@@ -92,9 +79,10 @@ export async function getMenuItems(): Promise<MenuItem[]> {
       dietaryTags: normalizeDietaryTags(row.dietary_tags ?? row.dietary ?? []),
     }));
 
-    return mapped.length > 0 ? mapped : mapFallbackMenuItems();
+    // Do not substitute demo food or prices when the live menu is empty.
+    return mapped.filter((item) => item.isAvailable);
   } catch (error) {
-    console.warn('Falling back to offline menu data because the Supabase menu lookup failed.', error);
-    return mapFallbackMenuItems();
+    console.error('Restaurant menu lookup failed:', error);
+    return [];
   }
 }

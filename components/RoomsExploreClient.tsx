@@ -326,7 +326,7 @@ export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientP
               <div className="relative">
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
+                  onChange={(e) => { const value = e.target.value; if (value === 'featured' || value === 'price-asc' || value === 'price-desc' || value === 'size') setSortBy(value); }}
                   className="rounded-full border border-[#C5A059]/25 bg-[#121924] px-4 py-2 text-xs font-bold text-slate-200 outline-none focus:border-[#D4AF37] cursor-pointer"
                 >
                   <option value="featured">Featured</option>

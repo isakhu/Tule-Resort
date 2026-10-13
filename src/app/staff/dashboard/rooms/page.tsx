@@ -18,7 +18,7 @@ export default function ManagerRoomsPage() {
     if (error) setError(error.message); else setRooms((data ?? []) as ManagerRoom[])
     setLoading(false)
   }
-  useEffect(() => { void load() }, [])
+  useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [])
 
   async function toggle(room: ManagerRoom) {
     if (!room.id) return

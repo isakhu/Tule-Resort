@@ -205,8 +205,8 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
         {displayItems.length === 0 ? (
           <div className="rounded-[2.5rem] border-2 border-dashed border-[#FF6B00]/20 bg-white p-12 text-center">
             <UtensilsCrossed className="mx-auto h-12 w-12 text-[#FF6B00]/40" />
-            <h4 className="mt-4 text-xl font-black text-[#182326]">No items match "{searchQuery}"</h4>
-            <p className="mt-2 text-sm text-stone-500">Try searching for keywords like "rice", "tibs", "burger", "coffee", or "pasta".</p>
+            <h4 className="mt-4 text-xl font-black text-[#182326]">No items match: {searchQuery}</h4>
+            <p className="mt-2 text-sm text-stone-500">Try searching for keywords like rice, tibs, burger, coffee, or pasta.</p>
             <button
               onClick={() => {
                 setSearchQuery('');

@@ -1,7 +1,10 @@
 import React from 'react';
 
+type OrderCardData = { items: string[]; guestName: string; room: string | number; status: string };
+type BookingCardData = { activity: string; date: string; time: string; status: string };
+
 // Simplified Order item component for Staff Dashboards
-export const OrderCard = ({ order }: { order: any }) => (
+export const OrderCard = ({ order }: { order: OrderCardData }) => (
   <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex items-center justify-between">
     <div>
       <h4 className="font-bold text-sm text-stone-800">{order.items.join(', ')}</h4>
@@ -16,7 +19,7 @@ export const OrderCard = ({ order }: { order: any }) => (
 );
 
 // Simplified Booking card for Staff Dashboards
-export const BookingCard = ({ booking }: { booking: any }) => (
+export const BookingCard = ({ booking }: { booking: BookingCardData }) => (
   <div className="bg-white p-4 rounded-2xl shadow-sm border border-stone-100 flex items-center justify-between">
     <div>
       <h4 className="font-bold text-sm text-stone-800">{booking.activity}</h4>

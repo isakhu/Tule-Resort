@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import PWARegister from "@/src/components/PWARegister";
 
 export const metadata: Metadata = {
   title: "Tule Resort | Hawassa Lakeside Luxury",
@@ -12,8 +13,8 @@ export const metadata: Metadata = {
     title: "Tule Resort",
   },
   icons: {
-    icon: "/tule-resort-mark.svg",
-    apple: "/tule-resort-mark.svg",
+    icon: "/tule-app-icon.svg",
+    apple: "/tule-app-icon.svg",
   },
   openGraph: {
     title: "Tule Resort | Hawassa Lakeside Luxury",
@@ -29,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>{children}<PWARegister /></body>
     </html>
   );
 }

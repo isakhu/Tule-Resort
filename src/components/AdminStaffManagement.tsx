@@ -27,7 +27,7 @@ export default function AdminStaffManagement() {
     setLoading(false);
   }
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { const timer = window.setTimeout(() => { void fetchUsers(); }, 0); return () => window.clearTimeout(timer); }, []);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -88,14 +88,14 @@ export default function AdminStaffManagement() {
         <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
         <input placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
         <input placeholder="Full name" value={fullName} onChange={e => setFullName(e.target.value)} />
-        <input placeholder="Role ID" value={roleId as any} onChange={e => setRoleId(e.target.value ? Number(e.target.value) : '')} />
-        <input placeholder="Department ID" value={deptId as any} onChange={e => setDeptId(e.target.value ? Number(e.target.value) : '')} />
+        <input placeholder="Role ID" value={roleId === '' ? '' : String(roleId)} onChange={e => setRoleId(e.target.value ? Number(e.target.value) : '')} />
+        <input placeholder="Department ID" value={deptId === '' ? '' : String(deptId)} onChange={e => setDeptId(e.target.value ? Number(e.target.value) : '')} />
         <button type="submit">Create Staff</button>
       </form>
 
       <div style={{ marginBottom: 16 }}>
         <label>Selected Department ID for grant/revoke actions: </label>
-        <input value={deptId as any} onChange={e => setDeptId(e.target.value ? Number(e.target.value) : '')} />
+        <input value={deptId === '' ? '' : String(deptId)} onChange={e => setDeptId(e.target.value ? Number(e.target.value) : '')} />
       </div>
 
       <div>
