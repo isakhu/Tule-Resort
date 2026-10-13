@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Minus, Plus, ShoppingBag, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { menuItems } from '@/data/menu-items';
+import type { MenuItem } from '@/lib/menu';
 import { createOrder } from '@/lib/orders';
 
 type Cart = Record<string, number>;
@@ -12,6 +12,10 @@ const LEGACY_CART_KEY = 'haile-resort-cart';
 
 export default function GuestOrderPage() {
   const [cart, setCart] = useState<Cart>({});
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuLoading, setMenuLoading] = useState(true);
+  const [menuError, setMenuError] = useState('');
+  const [tableToken, setTableToken] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [roomNumber, setRoomNumber] = useState('');
@@ -23,6 +27,7 @@ export default function GuestOrderPage() {
     try {
       const saved = window.localStorage.getItem(CART_KEY) ?? window.localStorage.getItem(LEGACY_CART_KEY);
       if (saved) setCart(JSON.parse(saved));
+      setTableToken(new URLSearchParams(window.location.search).get('table')?.trim() ?? '');
     } catch {
       setCart({});
     }
@@ -31,6 +36,43 @@ export default function GuestOrderPage() {
   useEffect(() => {
     window.localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCurrentMenu() {
+      setMenuLoading(true);
+      setMenuError('');
+      try {
+        const response = await fetch('/api/menu', { cache: 'no-store' });
+        const payload = await response.json();
+        if (!response.ok || payload.success !== true || !Array.isArray(payload.items)) {
+          throw new Error(payload.error || 'The current menu is unavailable.');
+        }
+        if (cancelled) return;
+
+        const currentItems = payload.items as MenuItem[];
+        setMenuItems(currentItems);
+        const validIds = new Set(currentItems.map((item) => item.id));
+        // Remove stale cart IDs from the old static menu rather than sending
+        // invented IDs to the database.
+        setCart((current) => Object.fromEntries(
+          Object.entries(current).filter(([id, quantity]) => validIds.has(id) && quantity > 0),
+        ));
+      } catch {
+        if (!cancelled) setMenuError('We could not load the current menu. Please try again before submitting an order.');
+      } finally {
+        if (!cancelled) setMenuLoading(false);
+      }
+    }
+
+    void loadCurrentMenu();
+    return () => { cancelled = true; };
+  }, []);
+
+  const menuHref = tableToken
+    ? `/guest/table/${encodeURIComponent(tableToken)}`
+    : '/guest/restaurant';
 
   const selected = useMemo(
     () => menuItems.filter((item) => (cart[item.id] ?? 0) > 0),
@@ -54,14 +96,15 @@ export default function GuestOrderPage() {
 
   const submitOrder = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!selected.length || !guestName.trim() || !roomNumber.trim() || !phone.trim()) return;
+    if (!selected.length || menuLoading || menuError || !guestName.trim() || (!tableToken && !roomNumber.trim()) || !phone.trim()) return;
 
     setSubmitError('');
     setIsSubmitting(true);
 
     const result = await createOrder({
       guest_name: guestName,
-      room_number: roomNumber,
+      room_number: tableToken ? undefined : roomNumber,
+      table_token: tableToken || undefined,
       items: selected.map((item) => ({
         id: item.id,
         menu_item_id: item.id,
@@ -98,7 +141,7 @@ export default function GuestOrderPage() {
           <p className="text-xs font-black uppercase tracking-[.25em] text-[#F2B84B]">Tule Resort</p>
           <h1 className="mt-2 text-4xl font-black tracking-tight">ORDER RECEIVED</h1>
           <p className="mt-4 text-sm leading-relaxed text-white/65">Thank you, {guestName}. Your request for {totalItems} item{totalItems === 1 ? '' : 's'} worth {totalPrice.toLocaleString()} ETB is ready for the next staff workflow.</p>
-          <div className="mt-7 flex gap-3"><Link href="/guest/restaurant" className="flex-1 rounded-full bg-white text-stone-950 px-5 py-3 text-xs font-black uppercase tracking-[.14em]">Back to menu</Link><button type="button" onClick={() => { setSubmitted(false); setCart({}); setGuestName(''); setRoomNumber(''); setPhone(''); }} className="flex-1 rounded-full border border-white/10 bg-white/10 px-5 py-3 text-xs font-black uppercase tracking-[.14em]">New order</button></div>
+          <div className="mt-7 flex gap-3"><Link href={menuHref} className="flex-1 rounded-full bg-white text-stone-950 px-5 py-3 text-xs font-black uppercase tracking-[.14em]">Back to menu</Link><button type="button" onClick={() => { setSubmitted(false); setCart({}); setGuestName(''); setRoomNumber(''); setPhone(''); }} className="flex-1 rounded-full border border-white/10 bg-white/10 px-5 py-3 text-xs font-black uppercase tracking-[.14em]">New order</button></div>
         </div>
       </main>
     );
@@ -118,20 +161,29 @@ export default function GuestOrderPage() {
         <section className="rounded-[2rem] border border-white/10 bg-white/[.04] p-4 md:p-6">
           <div className="flex items-center justify-between gap-4 mb-5"><div><p className="text-[9px] font-black uppercase tracking-[.24em] text-[#F2B84B]">Your selections</p><h1 className="mt-1 text-3xl font-black tracking-tight">ORDER BAG</h1></div>{selected.length > 0 && <button type="button" onClick={clearCart} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-black uppercase tracking-[.12em] text-white/60 hover:text-white"><Trash2 className="h-3.5 w-3.5" /> Clear</button>}</div>
           {selected.length === 0 ? (
-            <div className="rounded-[1.5rem] border border-dashed border-white/10 bg-black/20 p-10 text-center"><ShoppingBag className="mx-auto h-10 w-10 text-white/25" /><h2 className="mt-4 text-xl font-black">Your bag is empty</h2><p className="mt-2 text-sm text-white/45">Choose dishes from the visual menu and they will appear here.</p><Link href="/guest/restaurant" className="mt-6 inline-flex rounded-full bg-[#F2B84B] px-5 py-3 text-xs font-black uppercase tracking-[.14em] text-stone-950">Explore menu</Link></div>
+            <div className="rounded-[1.5rem] border border-dashed border-white/10 bg-black/20 p-10 text-center"><ShoppingBag className="mx-auto h-10 w-10 text-white/25" /><h2 className="mt-4 text-xl font-black">Your bag is empty</h2><p className="mt-2 text-sm text-white/45">Choose dishes from the visual menu and they will appear here.</p><Link href={menuHref} className="mt-6 inline-flex rounded-full bg-[#F2B84B] px-5 py-3 text-xs font-black uppercase tracking-[.14em] text-stone-950">Explore menu</Link></div>
           ) : (
             <div className="space-y-3">{selected.map((item) => { const quantity = cart[item.id] ?? 0; return <div key={item.id} className="rounded-[1.4rem] border border-white/10 bg-black/20 p-3 flex gap-3 items-center"><img src={item.imageUrl} alt={item.name} className="h-20 w-20 rounded-2xl object-cover" /><div className="min-w-0 flex-1"><p className="text-[9px] font-bold uppercase tracking-[.18em] text-[#F2B84B]">{item.amharicName}</p><h3 className="truncate text-base font-black">{item.name}</h3><p className="mt-1 text-xs text-white/45">{item.price.toLocaleString()} ETB each</p></div><div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1"><button type="button" onClick={() => changeQuantity(item.id, -1)} className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center"><Minus className="h-3.5 w-3.5" /></button><span className="min-w-5 text-center text-xs font-black">{quantity}</span><button type="button" onClick={() => changeQuantity(item.id, 1)} className="h-8 w-8 rounded-full bg-white text-stone-950 flex items-center justify-center"><Plus className="h-3.5 w-3.5" /></button></div><p className="hidden sm:block w-24 text-right text-sm font-black">{(item.price * quantity).toLocaleString()} ETB</p></div>; })}</div>
           )}
         </section>
 
         <section className="rounded-[2rem] border border-white/10 bg-white/[.04] p-5 md:p-6 h-fit lg:sticky lg:top-24">
-          <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#E56B4D]">Guest details</p><h2 className="mt-1 text-2xl font-black">Send to resort staff</h2><p className="mt-2 text-xs leading-relaxed text-white/45">These details are sent through the live order pipeline and stored in Supabase when the backend is available.</p>
+          <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#E56B4D]">Guest details</p><h2 className="mt-1 text-2xl font-black">Send to resort staff</h2><p className="mt-2 text-xs leading-relaxed text-white/45">{tableToken ? 'Your order is linked to the scanned dining table.' : 'Your room-service details will be sent to the resort team.'} Order submission requires a live connection.</p>
           <form onSubmit={submitOrder} className="mt-6 space-y-4">
             <label className="block"><span className="text-[10px] font-black uppercase tracking-[.14em] text-white/45">Full name</span><input value={guestName} onChange={(e) => setGuestName(e.target.value)} className="mt-1.5 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-[#F2B84B]" placeholder="Guest name" required /></label>
-            <label className="block"><span className="text-[10px] font-black uppercase tracking-[.14em] text-white/45">Room number</span><input value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} className="mt-1.5 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-[#F2B84B]" placeholder="e.g. 203" required /></label>
+            {tableToken ? (
+              <div className="rounded-2xl border border-[#F2B84B]/25 bg-[#F2B84B]/10 px-4 py-3 text-sm">
+                <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#F2B84B]">QR table ordering</p>
+                <p className="mt-1 text-white/75">This order will be associated with the scanned table.</p>
+              </div>
+            ) : (
+              <label className="block"><span className="text-[10px] font-black uppercase tracking-[.14em] text-white/45">Room number</span><input value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} className="mt-1.5 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-[#F2B84B]" placeholder="e.g. 203" required /></label>
+            )}
             <label className="block"><span className="text-[10px] font-black uppercase tracking-[.14em] text-white/45">Phone</span><input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-[#F2B84B]" placeholder="+251..." required /></label>
+            {menuLoading ? <p className="text-xs text-white/50">Loading the current menu…</p> : null}
+            {menuError ? <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{menuError}</div> : null}
             {submitError ? <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{submitError}</div> : null}
-            <div className="pt-3 border-t border-white/10 flex items-end justify-between gap-4"><div><p className="text-[9px] font-black uppercase tracking-[.18em] text-white/35">Grand total</p><p className="mt-1 text-3xl font-black">{totalPrice.toLocaleString()} <span className="text-xs text-white/45">ETB</span></p></div><button disabled={!selected.length || isSubmitting} type="submit" className="rounded-full bg-[#F2B84B] px-5 py-3 text-xs font-black uppercase tracking-[.12em] text-stone-950 disabled:cursor-not-allowed disabled:opacity-30">{isSubmitting ? 'Submitting...' : 'Submit order'}</button></div>
+            <div className="pt-3 border-t border-white/10 flex items-end justify-between gap-4"><div><p className="text-[9px] font-black uppercase tracking-[.18em] text-white/35">Grand total</p><p className="mt-1 text-3xl font-black">{totalPrice.toLocaleString()} <span className="text-xs text-white/45">ETB</span></p></div><button disabled={!selected.length || isSubmitting || menuLoading || Boolean(menuError)} type="submit" className="rounded-full bg-[#F2B84B] px-5 py-3 text-xs font-black uppercase tracking-[.12em] text-stone-950 disabled:cursor-not-allowed disabled:opacity-30">{isSubmitting ? 'Submitting...' : 'Submit order'}</button></div>
           </form>
         </section>
       </main>
