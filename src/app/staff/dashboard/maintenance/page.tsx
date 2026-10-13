@@ -4,17 +4,19 @@ import { FormEvent, useEffect, useState } from 'react';
 import { AlertTriangle, Send } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
+type MaintenanceRequest = { id: string; title: string; description: string | null; status: string; priority: string; created_at: string };
+
 export default function MaintenancePage() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<MaintenanceRequest[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [roomId, setRoomId] = useState('');
 
   async function load() {
     const { data } = await supabase.from('maintenance_requests').select('*').order('created_at', { ascending: false });
-    setItems(data ?? []);
+    setItems((data ?? []) as MaintenanceRequest[]);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, []);
 
   async function report(event: FormEvent) {
     event.preventDefault();
