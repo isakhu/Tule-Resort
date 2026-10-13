@@ -87,7 +87,7 @@ export default function SettingsPage() {
         setConfirmPassword('');
       }
     } catch (err: unknown) {
-      setPasswordMsg({ type: 'error', text: err?.message || 'Failed to update password.' });
+      setPasswordMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to update password.' });
     } finally {
       setPasswordSaving(false);
     }
