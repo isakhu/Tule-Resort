@@ -17,15 +17,16 @@ This branch contains a first hardening pass for Tule Resort. It is not a declara
 
 ## Required Supabase migration
 
-Apply migrations in the repository's intended order in a staging Supabase project first. In particular, migration 022 depends on the existing `021_dining_tables_and_qr_ordering.sql`, and the prior authorization helper created by `013_security_hardening.sql`.
+Apply migrations in the repository's intended order in a staging Supabase project first. Migration 022 depends on the existing `021_dining_tables_and_qr_ordering.sql` and the authorization helper created by `013_security_hardening.sql`. Migration 023 depends on the existing room-reservation tables and replaces the reservation RPCs with an atomic room-lock, overlap-check and insert operation.
 
 1. Verify migrations through `021_dining_tables_and_qr_ordering.sql` have already been applied.
 2. Apply `022_dining_table_security_hardening.sql`.
-3. Verify `public.is_manager_or_admin()` exists and `dining_tables` is readable only through the protected staff path or the server-side token lookup.
-4. Verify the old sample QR tokens were rotated. Existing printed QR codes using the old seeded tokens will need to be regenerated from the staff Tables page.
-5. Only publish after the live menu schema includes the fields used by the app, including `is_active` and `is_available`.
+3. Apply `023_reservation_concurrency_hardening.sql` to install the server-only, atomic reservation RPC.
+4. Verify `public.is_manager_or_admin()` and `public.is_staff_or_manager_or_admin()` exist and that dining tables are not publicly enumerable.
+5. Verify the old sample QR tokens were rotated. Existing printed QR codes using the old seeded tokens will need to be regenerated from the staff Tables page.
+6. Only publish after the live menu schema includes the fields used by the app, including `is_active` and `is_available`.
 
-Migration 022 intentionally removes predictable sample tokens. Do not apply it without planning to reprint any cards that use those sample links. Review the seeded demo table statuses and table records before actual resort use.
+Migration 022 intentionally removes predictable sample tokens. Do not apply it without planning to reprint any cards that use those sample links. Review the seeded demo table statuses and table records before actual resort use. Migration 023 makes reservation calls through the protected server API atomic; do not expose its service-role-only RPC to anonymous clients.
 
 ## PWA and QR notes
 
