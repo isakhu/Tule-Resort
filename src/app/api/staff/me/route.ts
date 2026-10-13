@@ -1,21 +1,25 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '../../../../../lib/adminAuth';
+import { requireStaffOrAdmin } from '../../../../../lib/staffAuth';
 import supabaseServer from '../../../../../lib/supabaseServer';
 
 export async function GET(req: Request) {
-  const auth = await requireAdmin(req);
+  const auth = await requireStaffOrAdmin(req);
   if (!auth.ok) {
     return NextResponse.json({ authorized: false, error: auth.error }, { status: auth.status ?? 401 });
   }
 
-  // Fetch user profile, role name, and department
-  const { data: user } = await supabaseServer
+  // Fetch the current staff profile after role-aware authorization.
+  const { data: user, error: userError } = await supabaseServer
     .from('users')
     .select('id, email, full_name, role_id, primary_department_id')
     .eq('id', auth.userId)
     .single();
 
-  let roleName = 'manager';
+  if (userError || !user) {
+    return NextResponse.json({ authorized: false, error: 'Staff profile was not found.' }, { status: 403 });
+  }
+
+  let roleName = auth.role;
   let departmentName: string | null = null;
 
   if (user?.role_id) {
