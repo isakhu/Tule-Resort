@@ -19,6 +19,14 @@ CREATE POLICY dining_tables_manager_all ON public.dining_tables
   USING (public.is_manager_or_admin())
   WITH CHECK (public.is_manager_or_admin());
 
+-- Authenticated operational staff may read table labels for order fulfillment,
+-- but anonymous users cannot enumerate tables and only managers/admins can
+-- edit table records directly.
+DROP POLICY IF EXISTS dining_tables_staff_read ON public.dining_tables;
+CREATE POLICY dining_tables_staff_read ON public.dining_tables
+  FOR SELECT TO authenticated
+  USING (public.is_staff_or_manager_or_admin());
+
 -- The original demo tokens are predictable. Rotate only those seeded values;
 -- newly generated tokens use the column's cryptographically random default.
 UPDATE public.dining_tables
