@@ -99,11 +99,12 @@ export default function StaffDashboardPage() {
         const { data, error } = await supabase
           .from('orders')
           .select('id,total,created_at,room_number,status:order_statuses(name)')
-          .gte('created_at', startOfDay.toISOString())
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(500);
 
         if (error) throw error;
         const rows = (data ?? []) as DashboardOrder[];
+        const todayRows = rows.filter((order) => new Date(order.created_at) >= startOfDay);
         const activeStatuses = new Set(['pending', 'confirmed', 'accepted', 'preparing', 'in progress', 'ready']);
         const statusName = (order: DashboardOrder) => (order.status?.name ?? 'pending').toLowerCase();
         const activeRows = rows.filter((order) => activeStatuses.has(statusName(order)));
@@ -116,7 +117,7 @@ export default function StaffDashboardPage() {
         setRecentOrders(rows.slice(0, 5));
         setActiveOrdersCount(activeRows.length);
         // This is order value, not collected revenue: payment integration is not enabled yet.
-        setOrderValueToday(Math.round(rows.reduce((sum, order) => sum + Number(order.total ?? 0), 0)));
+        setOrderValueToday(Math.round(todayRows.reduce((sum, order) => sum + Number(order.total ?? 0), 0)));
         setDelayedOrdersCount(delayedRows.length);
 
         const labels = Array.from({ length: 12 }, (_, index) => {
@@ -128,7 +129,7 @@ export default function StaffDashboardPage() {
         });
         setHourlySales(labels.map(({ hour, hour24 }) => ({
           hour,
-          value: Math.round(rows
+          value: Math.round(todayRows
             .filter((order) => new Date(order.created_at).getHours() === hour24)
             .reduce((sum, order) => sum + Number(order.total ?? 0), 0)),
         })));
