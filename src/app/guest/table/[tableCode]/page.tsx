@@ -116,8 +116,8 @@ export default function GuestTableOrderingPage({
       });
 
       const json = await res.json();
-      if (res.ok && json.success) {
-        setSubmittedOrderId(json.orderId || 'CONFIRMED');
+      if (res.ok && json.success && typeof json.orderId === 'string' && json.orderId) {
+        setSubmittedOrderId(json.orderId);
         setCart({});
       } else {
         setOrderError(json.error || 'Failed to place order. Please call your server.');
@@ -177,9 +177,9 @@ export default function GuestTableOrderingPage({
             <span className="rounded-full bg-orange-50 px-3 py-1 text-[11px] font-black text-[#FF6B00]">
               {table.table_number} • {table.section}
             </span>
-            <h2 className="text-2xl font-black text-gray-900 pt-2">Order Confirmed!</h2>
+            <h2 className="text-2xl font-black text-gray-900 pt-2">Order Received</h2>
             <p className="text-xs text-gray-500">
-              Your order has been sent directly to the resort kitchen.
+              Your order has been received by the resort system. The service team will process it shortly.
             </p>
           </div>
 
@@ -188,15 +188,15 @@ export default function GuestTableOrderingPage({
             <div className="flex items-center justify-between text-xs font-extrabold text-gray-800">
               <span className="flex items-center gap-1.5 text-[#FF6B00]">
                 <Clock className="h-4 w-4" />
-                Preparing in Kitchen
+                Order submitted
               </span>
-              <span>Est: 15–20 min</span>
+              <span>Reference</span>
             </div>
             <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-[#FF6B00] to-[#FA812F] rounded-full w-2/5 animate-pulse" />
             </div>
             <p className="text-[10px] text-gray-500">
-              Our service team will bring your food and beverages directly to {table.table_number}.
+              Please keep this order reference if you need help from the service team.
             </p>
           </div>
 
