@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0B3D4A"/>
+  <circle cx="256" cy="210" r="137" fill="none" stroke="#D8C7A3" stroke-width="12"/>
+  <path d="M250 101c-44 31-69 74-74 127 38-26 83-28 124-2-5-55-21-95-50-125Z" fill="#D8C7A3"/>
+  <path d="M256 123v143M252 165l-46-28M259 179l47-29M253 208l-48-3M259 226l46-10" fill="none" stroke="#F8F5EE" stroke-width="12" stroke-linecap="round"/>
+  <path d="M153 300h207M170 318l86-37 87 37" fill="none" stroke="#D8C7A3" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M111 354c53-25 103-25 151 0s98 25 151 0M111 386c53-25 103-25 151 0s98 25 151 0" fill="none" stroke="#159A9C" stroke-width="13" stroke-linecap="round"/>
+  <text x="256" y="455" text-anchor="middle" font-family="Georgia,serif" font-weight="700" font-size="35" letter-spacing="8" fill="#F8F5EE">TULE</text>
+</svg>
