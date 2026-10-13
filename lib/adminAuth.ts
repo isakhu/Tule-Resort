@@ -29,7 +29,7 @@ export async function requireAdmin(req: Request) {
     if (roleIds.includes(data.role_id)) return { ok: true, method: 'session', userId: uid };
 
     return { ok: false, status: 403, error: 'Insufficient permissions' };
-  } catch (err: any) {
-    return { ok: false, status: 500, error: String(err?.message ?? err) };
+  } catch (err: unknown) {
+    return { ok: false, status: 500, error: err instanceof Error ? err.message : 'Authentication check failed.' };
   }
 }
