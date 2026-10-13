@@ -71,7 +71,7 @@ export default function RoomEditor({ initial, onSaved, onCancel }: { initial?: P
       const result = form.id ? await supabase.from('rooms').update(payload).eq('id', form.id) : await supabase.from('rooms').insert(payload)
       if (result.error) throw result.error
       onSaved?.()
-    } catch (err: any) { setError(err?.message ?? 'Could not save room.') }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Could not save room.') }
     finally { setSaving(false) }
   }
 
