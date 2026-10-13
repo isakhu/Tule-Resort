@@ -61,7 +61,7 @@ export default function GalleryManagerPage() {
     setLoading(false);
   }
 
-  useEffect(() => { void loadItems(); }, []);
+  useEffect(() => { const timer = window.setTimeout(() => { void loadItems(); }, 0); return () => window.clearTimeout(timer); }, []);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
