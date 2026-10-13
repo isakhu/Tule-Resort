@@ -16,7 +16,7 @@ import {
   AlertCircle,
   ChefHat
 } from 'lucide-react';
-import { getMenuItems, MenuItem } from '@/lib/menu';
+import type { MenuItem } from '@/lib/menu';
 import { getDiningTableByToken, DiningTable } from '@/lib/diningTables';
 import { createOrder } from '@/lib/orders';
 
@@ -31,6 +31,8 @@ export default function GuestTableOrderingPage({
   const [table, setTable] = useState<DiningTable | null>(null);
   const [loadingTable, setLoadingTable] = useState(true);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuError, setMenuError] = useState<string | null>(null);
+  const [loadingMenu, setLoadingMenu] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -47,8 +49,25 @@ export default function GuestTableOrderingPage({
       setLoadingTable(false);
     });
 
-    // 2. Fetch active restaurant menu items
-    getMenuItems().then(setMenuItems);
+    // Load only database-backed current menu records. Never show static demo
+    // items as if they could be ordered from a live table.
+    let cancelled = false;
+    fetch('/api/menu', { cache: 'no-store' })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok || payload.success !== true || !Array.isArray(payload.items)) {
+          throw new Error(payload.error || 'The menu is temporarily unavailable.');
+        }
+        if (!cancelled) setMenuItems(payload.items as MenuItem[]);
+      })
+      .catch(() => {
+        if (!cancelled) setMenuError('The current menu is temporarily unavailable. Please ask a member of staff for help.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMenu(false);
+      });
+
+    return () => { cancelled = true; };
   }, [tableCode]);
 
   const updateCart = (itemId: string, delta: number) => {
@@ -164,6 +183,19 @@ export default function GuestTableOrderingPage({
     );
   }
 
+  if (menuError) {
+    return (
+      <div className="min-h-screen bg-[#FFF9F2] flex items-center justify-center p-6">
+        <div className="max-w-md w-full rounded-3xl bg-white p-8 shadow-xl text-center space-y-4">
+          <AlertCircle className="mx-auto h-10 w-10 text-[#FF6B00]" />
+          <h1 className="text-xl font-black text-gray-900">Menu temporarily unavailable</h1>
+          <p className="text-sm text-gray-500">{menuError}</p>
+          <button onClick={() => window.location.reload()} className="rounded-xl bg-[#073B4C] px-5 py-3 text-sm font-bold text-white">Try again</button>
+        </div>
+      </div>
+    );
+  }
+
   // ─── ORDER CONFIRMATION VIEW ───
   if (submittedOrderId) {
     return (
@@ -261,6 +293,10 @@ export default function GuestTableOrderingPage({
           </div>
         </div>
       </section>
+
+      {loadingMenu ? (
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 text-sm text-gray-500">Loading the current menu…</div>
+      ) : null}
 
       {/* ─── SEARCH & CATEGORY FILTER ─── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-4">
