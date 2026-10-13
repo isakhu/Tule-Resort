@@ -81,7 +81,7 @@ function OrderCard({ order, onStatusUpdate }: { order: Order; onStatusUpdate: (o
       <div className="mb-3 space-y-1.5 text-sm">
         {order.guest_name && <p className="font-medium text-gray-700">{order.guest_name}</p>}
         {order.dining_table?.table_number ? (
-          <span className="flex items-center gap-1 font-bold text-[#0B4F6C]"><Utensils className="h-4 w-4" />Table {order.dining_table.table_number}</span>
+          <span className="flex items-center gap-1 font-bold text-[#0B4F6C]"><Utensils className="h-4 w-4" />{order.dining_table.table_number}</span>
         ) : order.room_number ? (
           <span className="flex items-center gap-1 text-gray-600"><MapPin className="h-4 w-4" />Room {order.room_number}</span>
         ) : (
