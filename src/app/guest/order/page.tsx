@@ -76,7 +76,7 @@ export default function GuestOrderPage() {
 
   const selected = useMemo(
     () => menuItems.filter((item) => (cart[item.id] ?? 0) > 0),
-    [cart],
+    [cart, menuItems],
   );
 
   const totalItems = selected.reduce((sum, item) => sum + (cart[item.id] ?? 0), 0);
