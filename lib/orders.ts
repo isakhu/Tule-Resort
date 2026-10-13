@@ -34,17 +34,19 @@ export async function createOrder(orderData: CreateOrderInput) {
   if (!items.length) return { success: false, error: 'At least one order item is required.' };
 
   const { data: sessionData } = await supabase.auth.getSession();
-  const userId = sessionData.session?.user.id ?? null;
+  const accessToken = sessionData.session?.access_token;
 
   const response = await fetch('/api/orders', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
     body: JSON.stringify({
       guest_name: orderData.guest_name,
       room_number: orderData.room_number,
       table_token: orderData.table_token,
       notes: orderData.special_instructions ?? orderData.notes ?? null,
-      user_id: userId,
       items,
     }),
   });
