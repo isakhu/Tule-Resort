@@ -31,6 +31,7 @@ interface DashboardOrder {
   total: number | string | null;
   created_at: string;
   room_number?: string | null;
+  dining_table?: { table_number?: string } | null;
   status?: { name?: string } | null;
 }
 
@@ -95,7 +96,7 @@ export default function StaffDashboardPage() {
         startOfDay.setHours(0, 0, 0, 0);
         const { data, error } = await supabase
           .from('orders')
-          .select('id,total,created_at,room_number,status:order_statuses(name)')
+          .select('id,total,created_at,room_number,dining_table:dining_tables(table_number),status:order_statuses(name)')
           .order('created_at', { ascending: false })
           .limit(500);
 
@@ -372,7 +373,7 @@ export default function StaffDashboardPage() {
               </Link>
 
               <Link
-                href="/staff/dashboard/kitchen"
+                href="/staff/dashboard/orders"
                 className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-[#FF6B00] transition-all group flex items-center justify-between"
               >
                 <div className="flex items-center gap-2.5">
@@ -494,7 +495,7 @@ export default function StaffDashboardPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-gray-900">Order #{order.id.slice(0, 8).toUpperCase()}</p>
                     <p className="text-[11px] text-gray-500">
-                      {order.room_number ? `Room ${order.room_number}` : 'Restaurant order'} • {(order.status?.name ?? 'Pending').toLowerCase()}
+                      {order.dining_table?.table_number ? `Table ${order.dining_table.table_number}` : order.room_number ? `Room ${order.room_number}` : 'Restaurant order'} • {(order.status?.name ?? 'Pending').toLowerCase()}
                     </p>
                     <p className="text-[10px] text-gray-400">{Number(order.total ?? 0).toLocaleString()} ETB order value</p>
                   </div>
