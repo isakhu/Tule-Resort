@@ -4,17 +4,19 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
+type HousekeepingTask = { id: string; room_id: string; task_type: string; priority: string; status: string; notes: string | null; created_at: string };
+
 export default function HousekeepingPage() {
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<HousekeepingTask[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
     const { data } = await supabase.from('housekeeping_tasks').select('id,room_id,task_type,priority,status,notes,created_at').order('created_at', { ascending: false });
-    setTasks(data ?? []);
+    setTasks((data ?? []) as HousekeepingTask[]);
     setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, []);
 
   async function complete(id: string) {
     await supabase.from('housekeeping_tasks').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', id);
