@@ -13,8 +13,6 @@ import {
   Users,
   Settings,
   ArrowRight,
-  TrendingDown,
-  TrendingUp,
   UtensilsCrossed,
   ChefHat,
   Sparkles,
@@ -169,7 +167,7 @@ export default function StaffDashboardPage() {
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
             {greeting},{' '}
             <span className="text-[#FF6B00]">
-              {profile?.fullName?.split(' ')[0] || 'Ahmed'}
+              {profile?.fullName?.split(' ')[0] || 'Team'}
             </span>
           </h1>
           <p className="text-xs sm:text-sm text-gray-300">
@@ -229,9 +227,7 @@ export default function StaffDashboardPage() {
             <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Clock className="h-5 w-5" />
             </div>
-            <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
-              <TrendingDown className="h-3 w-3" /> 6 min
-            </span>
+            <span className="text-[10px] font-bold text-gray-400">Not measured</span>
           </div>
           <div className="mt-3">
             <p className="text-xs font-semibold text-gray-500">Avg. Prep Time</p>
@@ -246,9 +242,7 @@ export default function StaffDashboardPage() {
             <div className="h-9 w-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
               <DollarSign className="h-5 w-5" />
             </div>
-            <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
-              <TrendingUp className="h-3 w-3" /> 12%
-            </span>
+            <span className="text-[10px] font-bold text-gray-400">Live</span>
           </div>
           <div className="mt-3">
             <p className="text-xs font-semibold text-gray-500">Today&apos;s Order Value</p>
@@ -325,10 +319,12 @@ export default function StaffDashboardPage() {
             </div>
             <div className="mt-2">
               <h4 className="text-sm font-extrabold text-gray-900">
-                Kitchen congestion detected
+                {delayedOrdersCount > 0 ? 'Kitchen attention needed' : 'No overdue orders detected'}
               </h4>
               <p className="text-xs text-gray-600 mt-1">
-                7 orders are waiting for preparation for more than 20 minutes on the grill and hot wot stations.
+                {delayedOrdersCount > 0
+                  ? `${delayedOrdersCount} active order${delayedOrdersCount === 1 ? '' : 's'} have been waiting for at least 20 minutes based on recorded timestamps.`
+                  : 'No active orders currently exceed the 20-minute alert threshold.'}
               </p>
             </div>
             <div className="mt-4">
