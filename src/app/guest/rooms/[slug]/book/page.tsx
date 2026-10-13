@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, BedDouble, ShieldCheck, Sparkles, Check, Compass, Maximize2, Users, MapPin, Phone } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Sparkles, BedDouble } from 'lucide-react';
 import RoomBookingForm from '@/components/RoomBookingForm';
 import { getRoomBySlug } from '@/lib/rooms';
 
@@ -10,12 +10,17 @@ export default async function RoomBookPage({ params }: { params: Promise<{ slug:
 
   if (!room) {
     return (
-      <main className="min-h-screen bg-[#070A0F] px-4 py-20 text-white flex items-center justify-center">
-        <div className="mx-auto max-w-md rounded-3xl border border-[#C5A059]/30 bg-[#121822] p-8 text-center shadow-2xl">
-          <h1 className="text-2xl font-black text-[#F5E2B3]">Room Not Found</h1>
-          <p className="mt-3 text-sm text-slate-300">The requested room accommodation could not be found or is currently archived.</p>
-          <Link href="/guest/rooms" className="mt-6 inline-flex rounded-full bg-gradient-to-r from-[#D4AF37] to-[#B38E33] px-6 py-3 text-xs font-black uppercase tracking-wider text-[#0A0E14] hover:brightness-110">
-            Back to luxury rooms
+      <main className="min-h-screen bg-[#FFF9F2] px-4 py-20 text-[#1E293B] flex items-center justify-center">
+        <div className="mx-auto max-w-md rounded-3xl border border-gray-100 bg-white p-8 text-center shadow-xl">
+          <h1 className="text-2xl font-black text-gray-900">Accommodation Not Found</h1>
+          <p className="mt-3 text-xs text-gray-500">
+            The requested room accommodation could not be found or is currently unavailable.
+          </p>
+          <Link
+            href="/guest/rooms"
+            className="mt-6 inline-flex rounded-xl bg-[#073B4C] px-6 py-2.5 text-xs font-bold text-white hover:bg-[#0B4F6C]"
+          >
+            Back to Accommodations
           </Link>
         </div>
       </main>
@@ -27,125 +32,41 @@ export default async function RoomBookPage({ params }: { params: Promise<{ slug:
   const currency = 'ETB';
 
   return (
-    <main className="min-h-screen bg-[#070A0F] text-[#ECEFF1] pb-20">
-      {/* Top Banner */}
-      <header className="relative border-b border-[#C5A059]/20 bg-gradient-to-b from-[#0A0E15] via-[#101722] to-[#0A0E15] py-8 sm:py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+    <main className="min-h-screen bg-[#F8FBFC] text-[#1E293B] pb-24">
+      {/* ─── TOP HEADER (Image 3 Header) ─── */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200/80 px-4 py-4 shadow-xs">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Link
-            href="/guest/rooms"
-            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 transition hover:text-[#DFB76C]"
+            href={`/guest/rooms/${encodeURIComponent(room.slug || room.id)}`}
+            className="flex items-center justify-center h-9 w-9 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" /> All Luxury Accommodations
+            <ArrowLeft className="h-4 w-4" />
           </Link>
 
-          <div className="mt-6 flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.25em] text-[#DFB76C]">
-                <BedDouble className="h-4 w-4" /> Tule Resort · Reservation & Stay
-              </div>
-              {room.nameAm && (
-                <p className="mt-1 text-sm font-serif text-[#DFB76C]">{room.nameAm}</p>
-              )}
-              <h1 className="mt-2 text-3xl font-black tracking-tight text-white font-serif sm:text-5xl">
-                Reserve {room.name}
-              </h1>
-              <p className="mt-3 max-w-2xl text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Experience comfort by Lake Hawassa. Select your stay dates and guest details. Your reservation request will be confirmed with our concierge desk upon submission.
-              </p>
-            </div>
+          <h1 className="text-base font-black text-gray-900 tracking-tight">
+            Complete Booking
+          </h1>
 
-            {/* Nightly rate badge */}
-            <div className="rounded-2xl border border-[#C5A059]/30 bg-[#16202E]/80 p-4 backdrop-blur-md">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nightly Rate</span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-3xl font-black text-[#F5E2B3] font-serif">{price.toLocaleString()}</span>
-                <span className="text-xs font-bold text-[#DFB76C]">ETB</span>
-              </div>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Breakfast & Taxes Included</span>
-            </div>
-          </div>
+          <div className="w-9" /> {/* Spacer for centering */}
         </div>
       </header>
 
-      {/* Main Reservation Section */}
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
-        <div className="grid gap-8 lg:grid-cols-12">
-          {/* Left Column: Room Summary Card */}
-          <div className="lg:col-span-5">
-            <div className="sticky top-20 overflow-hidden rounded-3xl border border-[#C5A059]/30 bg-[#121924] shadow-2xl">
-              <div className="relative h-64 w-full overflow-hidden bg-black">
-                <img
-                  src={room.imageUrl}
-                  alt={room.name}
-                  className="h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#121924] via-transparent to-transparent" />
-                <div className="absolute top-4 left-4">
-                  <span className="rounded-full border border-[#C5A059]/40 bg-[#0A0E14]/80 px-3 py-1 text-[10px] font-bold text-[#F5E2B3] backdrop-blur-md">
-                    {room.view || room.type}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-6">
-                <h3 className="font-serif text-xl font-black text-white">{room.name}</h3>
-                <p className="mt-2 text-xs leading-relaxed text-slate-300">{room.description}</p>
-
-                {/* Specs */}
-                <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-[#C5A059]/15 bg-[#16202E]/50 p-2.5 text-center">
-                  {room.bedType && (
-                    <div className="border-r border-[#C5A059]/15 pr-1">
-                      <span className="text-[9px] uppercase font-bold text-slate-400 block">Bed</span>
-                      <span className="text-[11px] font-bold text-slate-200">{room.bedType}</span>
-                    </div>
-                  )}
-                  {room.sizeSqm && (
-                    <div className="border-r border-[#C5A059]/15 px-1">
-                      <span className="text-[9px] uppercase font-bold text-slate-400 block">Size</span>
-                      <span className="text-[11px] font-bold text-slate-200">{room.sizeSqm} m²</span>
-                    </div>
-                  )}
-                  <div className="pl-1">
-                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Capacity</span>
-                    <span className="text-[11px] font-bold text-slate-200">{maxGuests} Guests</span>
-                  </div>
-                </div>
-
-                {/* Included Amenities */}
-                {room.amenities && room.amenities.length > 0 && (
-                  <div className="mt-5">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[#DFB76C]">
-                      Included Privileges
-                    </span>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {room.amenities.slice(0, 6).map((am) => (
-                        <span
-                          key={am}
-                          className="inline-flex items-center gap-1 rounded-full border border-[#C5A059]/20 bg-[#16202E]/30 px-2.5 py-1 text-[10px] text-slate-300"
-                        >
-                          <Check className="h-3 w-3 text-[#D4AF37]" />
-                          {am}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Booking Form */}
-          <div className="lg:col-span-7">
-            <RoomBookingForm
-              roomId={room.id}
-              roomName={room.name}
-              price={price}
-              currency={currency}
-              maxGuests={maxGuests}
-            />
-          </div>
-        </div>
-      </section>
+      {/* ─── COMPLETE BOOKING FORM CONTAINER ─── */}
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6">
+        <RoomBookingForm
+          roomId={room.id}
+          roomName={room.name}
+          price={price}
+          currency={currency}
+          maxGuests={maxGuests}
+          imageUrl={room.imageUrl}
+          roomType={room.type}
+          bedType={room.bedType}
+          sizeSqm={room.sizeSqm}
+          location="Hawassa, Sidama • Lake Shorefront"
+          view={room.view}
+        />
+      </div>
     </main>
   );
 }

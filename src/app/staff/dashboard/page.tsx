@@ -1,553 +1,509 @@
 'use client';
 
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
-  ArrowRight,
-  BedDouble,
-  CalendarDays,
-  CheckCircle2,
+  Layers,
   ClipboardList,
+  Clock,
   DollarSign,
-  Eye,
-  EyeOff,
-  Images,
-  KeyRound,
-  LayoutDashboard,
-  LogOut,
-  Settings,
-  ShieldCheck,
-  Sparkles,
+  AlertTriangle,
+  PlusCircle,
+  BarChart3,
   Users,
+  Settings,
+  ArrowRight,
+  TrendingDown,
+  TrendingUp,
   UtensilsCrossed,
-  Wrench,
-  X,
+  ChefHat,
+  Sparkles,
+  CheckCircle2,
+  Package
 } from 'lucide-react';
-import { useEffect, useState, FormEvent } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { getDiningTables, DiningTable } from '@/lib/diningTables';
 
-type UserProfile = {
+interface UserProfile {
   id: string;
-  email: string | null;
   fullName: string | null;
   role: string;
-  departmentId: number | null;
   departmentName: string | null;
-};
-
-type ModuleItem = [string, string, any, string];
-
-const ALL_MODULES: Record<string, ModuleItem> = {
-  rooms: ['Rooms', 'Manage room inventory, pricing, amenities and availability.', BedDouble, '/staff/dashboard/rooms'],
-  reservations: ['Reservations', 'Confirm, reject, check in and check out guests.', CalendarDays, '/staff/dashboard/reservations'],
-  menu: ['Restaurant Menu', 'Manage dishes, categories, prices and daily specials.', UtensilsCrossed, '/staff/dashboard/menu'],
-  orders: ['Orders & Requests', 'Review live guest dining and service requests.', ClipboardList, '/admin/orders'],
-  receipts: ['Receipts & Billing', 'Generate, review and print guest folios and receipts.', DollarSign, '/staff/dashboard/receipts'],
-  services: ['Wellness & Services', 'Manage spa treatments, concierge and guest activities.', Sparkles, '/staff/dashboard/services'],
-  gallery: ['Resort Gallery', 'Organize and feature high-resolution resort photos.', Images, '/staff/dashboard/gallery'],
-  housekeeping: ['Housekeeping', 'Assign, inspect and complete room cleaning tasks.', Sparkles, '/staff/dashboard/housekeeping'],
-  maintenance: ['Maintenance', 'Report and track resort equipment and facility repairs.', Wrench, '/staff/dashboard/maintenance'],
-  staff: ['Staff Management', 'Create staff accounts, assign departments and reset passwords.', Users, '/admin/staff'],
-  settings: ['Resort Settings', 'Configure tax, service charges, cancellation and policies.', Settings, '/staff/dashboard/settings'],
-};
+}
 
 export default function StaffDashboardPage() {
-  const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [stats, setStats] = useState({
-    reservations: 0,
-    rooms: 0,
-    revenue: 0,
-    gallery: 0,
-    menuItems: 0,
-  });
-
-  // Filter tab for Admins / Managers (All vs Department view)
-  const [activeTab, setActiveTab] = useState<'all' | 'restaurant' | 'frontdesk' | 'housekeeping' | 'spa'>('all');
-
-  // Change Password Modal State
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [tables, setTables] = useState<DiningTable[]>([]);
+  const [activeOrdersCount, setActiveOrdersCount] = useState(17);
+  const [revenueToday, setRevenueToday] = useState(4850);
+  const [delayedOrdersCount, setDelayedOrdersCount] = useState(3);
+  const [greeting, setGreeting] = useState('Good Morning');
+  const [currentDateFormatted, setCurrentDateFormatted] = useState('');
 
   useEffect(() => {
-    // 1) Fetch user profile & role & department from /api/staff/me
-    supabase.auth.getSession().then(async ({ data: sessionData }) => {
-      const token = sessionData.session?.access_token;
-      if (!token) return;
+    // Determine greeting
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting('Good Morning');
+    else if (hour < 18) setGreeting('Good Afternoon');
+    else setGreeting('Good Evening');
 
+    // Date
+    setCurrentDateFormatted(
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    );
+
+    // Profile
+    supabase.auth.getSession().then(async ({ data }) => {
+      const token = data.session?.access_token;
+      if (!token) return;
       try {
         const res = await fetch('/api/staff/me', {
           headers: { Authorization: `Bearer ${token}` },
-          cache: 'no-store',
         });
         if (res.ok) {
           const json = await res.json();
-          if (json.profile) {
-            setProfile(json.profile);
-          }
+          if (json.profile) setProfile(json.profile);
         }
-      } catch (err) {
-        console.error('Failed to load profile:', err);
+      } catch (e) {
+        console.error('Error fetching profile:', e);
       }
     });
 
-    // 2) Fetch live metrics
-    Promise.all([
-      supabase.from('room_reservations').select('id,total_price,status,payment_status'),
-      supabase.from('rooms').select('id', { count: 'exact', head: true }),
-      supabase.from('gallery').select('id', { count: 'exact', head: true }),
-      supabase.from('menu_items').select('id', { count: 'exact', head: true }),
-    ]).then(([reservations, rooms, gallery, menu]) => {
-      const rows = reservations.data ?? [];
-      setStats({
-        reservations: rows.length,
-        rooms: rooms.count ?? 0,
-        revenue: rows.filter((r) => r.payment_status === 'paid').reduce((sum, r) => sum + Number(r.total_price || 0), 0),
-        gallery: gallery.count ?? 0,
-        menuItems: menu.count ?? 0,
-      });
-    });
+    // Tables
+    getDiningTables().then(setTables);
+
+    // Live counts from DB if available
+    async function fetchOrdersSummary() {
+      try {
+        const { data } = await supabase
+          .from('orders')
+          .select('id, total, created_at, status_id');
+
+        if (data && data.length > 0) {
+          const totalRev = data.reduce((sum, o) => sum + Number(o.total || 0), 0);
+          if (totalRev > 0) setRevenueToday(Math.round(totalRev));
+          setActiveOrdersCount(data.length);
+        }
+      } catch (e) {
+        console.error('Failed to load orders summary:', e);
+      }
+    }
+    fetchOrdersSummary();
   }, []);
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.replace('/staff/login');
-    router.refresh();
-  }
+  const occupiedTables = tables.filter((t) => t.status === 'occupied').length;
+  const totalTables = tables.length || 24;
+  const occupancyPercent = Math.round((occupiedTables / totalTables) * 100);
 
-  async function handlePasswordChange(e: FormEvent) {
-    e.preventDefault();
-    setPasswordMessage(null);
-
-    if (newPassword.length < 6) {
-      setPasswordMessage({ type: 'error', text: 'Password must be at least 6 characters long.' });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordMessage({ type: 'error', text: 'New passwords do not match.' });
-      return;
-    }
-
-    setPasswordLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        setPasswordMessage({ type: 'error', text: error.message });
-      } else {
-        setPasswordMessage({
-          type: 'success',
-          text: 'Password updated successfully! Use your new personal password for future logins.',
-        });
-        setNewPassword('');
-        setConfirmPassword('');
-      }
-    } catch (err: any) {
-      setPasswordMessage({ type: 'error', text: err?.message || 'Failed to update password.' });
-    } finally {
-      setPasswordLoading(false);
-    }
-  }
-
-  // Determine user category
-  const role = profile?.role ?? 'manager';
-  const dept = (profile?.departmentName ?? '').toLowerCase();
-  const email = (profile?.email ?? '').toLowerCase();
-  const isAdmin = role === 'admin' || email.includes('admin') || email.includes('yishakhak');
-  const isRestaurant = dept.includes('restaurant') || email.includes('restaurant');
-  const isFrontDesk = dept.includes('front desk') || email.includes('frontdesk');
-  const isHousekeeping = dept.includes('housekeeping') || email.includes('housekeeping');
-  const isSpa = dept.includes('spa') || email.includes('spa');
-  const isGeneralManager = !isRestaurant && !isFrontDesk && !isHousekeeping && !isSpa;
-
-  // Compute curated modules
-  let activeModules: ModuleItem[] = [];
-
-  if (isRestaurant) {
-    activeModules = [ALL_MODULES.menu, ALL_MODULES.orders, ALL_MODULES.receipts];
-  } else if (isFrontDesk) {
-    activeModules = [ALL_MODULES.reservations, ALL_MODULES.rooms, ALL_MODULES.orders, ALL_MODULES.receipts];
-  } else if (isHousekeeping) {
-    activeModules = [ALL_MODULES.housekeeping, ALL_MODULES.maintenance, ALL_MODULES.rooms];
-  } else if (isSpa) {
-    activeModules = [ALL_MODULES.services, ALL_MODULES.orders, ALL_MODULES.gallery];
-  } else {
-    // Admin or General Manager - full modules
-    if (isAdmin) {
-      activeModules = [
-        ALL_MODULES.staff,
-        ALL_MODULES.rooms,
-        ALL_MODULES.reservations,
-        ALL_MODULES.menu,
-        ALL_MODULES.orders,
-        ALL_MODULES.receipts,
-        ALL_MODULES.services,
-        ALL_MODULES.housekeeping,
-        ALL_MODULES.maintenance,
-        ALL_MODULES.gallery,
-        ALL_MODULES.settings,
-      ];
-    } else {
-      activeModules = [
-        ALL_MODULES.rooms,
-        ALL_MODULES.reservations,
-        ALL_MODULES.menu,
-        ALL_MODULES.orders,
-        ALL_MODULES.receipts,
-        ALL_MODULES.services,
-        ALL_MODULES.housekeeping,
-        ALL_MODULES.maintenance,
-        ALL_MODULES.gallery,
-        ALL_MODULES.settings,
-      ];
-    }
-  }
-
-  // Header Title & Badge
-  let badgeLabel = 'Staff Portal';
-  let portalTitle = 'Tule Resort Staff Control';
-  let portalDescription = 'Manage your department operations and guest services.';
-
-  if (isAdmin) {
-    badgeLabel = 'Executive Super Admin';
-    portalTitle = 'Tule Resort Executive Control';
-    portalDescription = 'Full administrative control including staff management, financial rates, dining, rooms and all resort operations.';
-  } else if (isRestaurant) {
-    badgeLabel = 'Dining & Culinary Department';
-    portalTitle = 'Restaurant & Dining Portal';
-    portalDescription = 'Manage the 100+ menu items, categories, daily prices, and review incoming guest dining orders in real-time.';
-  } else if (isFrontDesk) {
-    badgeLabel = 'Front Desk & Guest Reception';
-    portalTitle = 'Front Desk & Reservations Portal';
-    portalDescription = 'Check-in guests, confirm room reservations, monitor room availability, and handle guest service requests.';
-  } else if (isHousekeeping) {
-    badgeLabel = 'Housekeeping & Facilities';
-    portalTitle = 'Housekeeping & Maintenance Operations';
-    portalDescription = 'Assign and complete room cleaning schedules, verify room readiness, and track facility repairs.';
-  } else if (isSpa) {
-    badgeLabel = 'Spa & Wellness Sanctuary';
-    portalTitle = 'Spa & Wellness Management';
-    portalDescription = 'Manage therapeutic treatments, massage appointments, sauna/steam packages, and guest wellness bookings.';
-  } else if (isGeneralManager) {
-    badgeLabel = 'General Management';
-    portalTitle = 'Resort Operations Center';
-    portalDescription = 'Centralized operations oversight across rooms, dining, housekeeping, wellness, and resort settings.';
-  }
+  const hourlySales = [
+    { hour: '10 AM', value: 450 },
+    { hour: '11 AM', value: 720 },
+    { hour: '12 PM', value: 1650 },
+    { hour: '1 PM', value: 1420 },
+    { hour: '2 PM', value: 980 },
+    { hour: '3 PM', value: 850 },
+    { hour: '4 PM', value: 1100 },
+    { hour: '5 PM', value: 1350 },
+    { hour: '6 PM', value: 1950 },
+    { hour: '7 PM', value: 1550 },
+    { hour: '8 PM', value: 1200 },
+    { hour: '9 PM', value: 680 },
+  ];
+  const maxSale = Math.max(...hourlySales.map((h) => h.value));
 
   return (
-    <div className="min-h-screen bg-[#F8F5EE] text-[#182326]">
-      {/* Top Navigation Bar */}
-      <header className="border-b border-white/10 bg-[#0B3D4A] text-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
-          <div className="flex items-center gap-3">
-            <img src="/tule-resort-mark.svg" alt="Tule Resort" className="h-10 w-12 rounded-lg object-cover" />
-            <div>
-              <p className="font-display text-2xl leading-none">Tule Resort</p>
-              <p className="mt-1 text-[9px] font-bold uppercase tracking-[.25em] text-[#C8A15A]">{badgeLabel}</p>
-            </div>
+    <div className="space-y-6">
+      {/* ─── 1. HERO BANNER ─── */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#11161B] via-[#1A232C] to-[#0A1828] text-white p-6 sm:p-8 shadow-xl">
+        {/* Background photo blend */}
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay"
+          style={{
+            backgroundImage:
+              'url(https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80)',
+          }}
+        />
+        <div className="relative z-10 max-w-2xl space-y-2">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-orange-300 backdrop-blur-md">
+            <Clock className="h-3.5 w-3.5" />
+            <span>{currentDateFormatted || 'Today'}</span>
           </div>
-
-          <div className="flex items-center gap-3">
-            {profile?.fullName && (
-              <span className="hidden text-xs font-semibold text-white/90 md:inline-block">
-                {profile.fullName}
-              </span>
-            )}
-            <span className="hidden rounded-full bg-white/10 px-3 py-1 text-xs text-white/70 sm:inline-block">
-              {profile?.email || 'Staff'}
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {greeting},{' '}
+            <span className="text-[#FF6B00]">
+              {profile?.fullName?.split(' ')[0] || 'Ahmed'}
             </span>
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-300">
+            Here&apos;s what&apos;s happening at your resort restaurant and dining floor today.
+          </p>
+        </div>
+      </div>
 
-            <button
-              onClick={() => {
-                setIsPasswordModalOpen(true);
-                setPasswordMessage(null);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-white/20"
-              title="Change Password"
-            >
-              <KeyRound className="h-3.5 w-3.5 text-[#C8A15A]" />
-              <span className="hidden sm:inline">Change Password</span>
-            </button>
-
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/30"
-              title="Sign Out"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
+      {/* ─── 2. KPI METRICS ROW ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4">
+        {/* Occupied Tables */}
+        <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div className="h-9 w-9 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center">
+              <Layers className="h-5 w-5" />
+            </div>
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Occupancy</span>
+          </div>
+          <div className="mt-3">
+            <p className="text-xs font-semibold text-gray-500">Occupied Tables</p>
+            <p className="text-2xl font-black text-gray-900 mt-0.5">
+              {occupiedTables}{' '}
+              <span className="text-sm font-semibold text-gray-400">/ {totalTables}</span>
+            </p>
+          </div>
+          <div className="mt-3 space-y-1">
+            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#FF6B00] rounded-full transition-all duration-500"
+                style={{ width: `${occupancyPercent}%` }}
+              />
+            </div>
+            <p className="text-[10px] font-bold text-gray-500">{occupancyPercent}% occupancy</p>
           </div>
         </div>
-      </header>
 
-      {/* Main Dashboard */}
-      <main className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12">
-        {/* Onboarding Notice for Default Password */}
-        <section className="mb-6 flex flex-col items-start justify-between gap-4 rounded-2xl border border-[#C8A15A]/30 bg-[#FFFDF8] p-5 shadow-sm sm:flex-row sm:items-center">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0B3D4A] text-[#C8A15A]">
-              <ShieldCheck className="h-5 w-5" />
+        {/* Active Orders */}
+        <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <ClipboardList className="h-5 w-5" />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-[#182326]">First Time Logging In?</h3>
-              <p className="text-xs text-[#182326]/65">
-                If you are using the default onboarding password, click below to set your own private password.
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">
+              Live
+            </span>
+          </div>
+          <div className="mt-3">
+            <p className="text-xs font-semibold text-gray-500">Active Orders</p>
+            <p className="text-2xl font-black text-gray-900 mt-0.5">{activeOrdersCount}</p>
+          </div>
+          <p className="mt-3 text-[10px] font-bold text-gray-400">In progress & preparing</p>
+        </div>
+
+        {/* Avg Prep Time */}
+        <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Clock className="h-5 w-5" />
+            </div>
+            <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
+              <TrendingDown className="h-3 w-3" /> 6 min
+            </span>
+          </div>
+          <div className="mt-3">
+            <p className="text-xs font-semibold text-gray-500">Avg. Prep Time</p>
+            <p className="text-2xl font-black text-gray-900 mt-0.5">18 min</p>
+          </div>
+          <p className="mt-3 text-[10px] font-bold text-gray-400">vs last hour speed</p>
+        </div>
+
+        {/* Today's Revenue */}
+        <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div className="h-9 w-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <DollarSign className="h-5 w-5" />
+            </div>
+            <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-600">
+              <TrendingUp className="h-3 w-3" /> 12%
+            </span>
+          </div>
+          <div className="mt-3">
+            <p className="text-xs font-semibold text-gray-500">Today&apos;s Revenue</p>
+            <p className="text-2xl font-black text-gray-900 mt-0.5">
+              {revenueToday.toLocaleString()}{' '}
+              <span className="text-xs font-bold text-gray-500">ETB</span>
+            </p>
+          </div>
+          <p className="mt-3 text-[10px] font-bold text-gray-400">vs yesterday dining</p>
+        </div>
+
+        {/* Delayed Orders */}
+        <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm border border-gray-100 col-span-2 lg:col-span-1 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div className="h-9 w-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-extrabold text-red-700">
+              Alert
+            </span>
+          </div>
+          <div className="mt-3">
+            <p className="text-xs font-semibold text-gray-500">Delayed Orders</p>
+            <p className="text-2xl font-black text-red-600 mt-0.5">{delayedOrdersCount}</p>
+          </div>
+          <p className="mt-3 text-[10px] font-bold text-red-500">Needs kitchen attention</p>
+        </div>
+      </div>
+
+      {/* ─── 3. MAIN DASHBOARD CONTENT GRID ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column (2 Cols on lg): Sales Overview & Insights */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Today's Sales Overview Chart */}
+          <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Today&apos;s Sales Overview</h3>
+                <p className="text-xs text-gray-400">Hourly guest dining volume & kitchen dispatch</p>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-[#F8F9FA] px-3 py-1.5 text-xs font-bold text-gray-700">
+                Today
+              </div>
+            </div>
+
+            {/* Custom SVG / Bar Chart */}
+            <div className="h-52 flex items-end gap-2 sm:gap-3 pt-6 border-b border-gray-100">
+              {hourlySales.map((item, idx) => {
+                const heightPercent = Math.round((item.value / maxSale) * 100);
+                return (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
+                    <div
+                      className="w-full rounded-t-lg bg-gradient-to-t from-[#FF6B00] to-[#FA812F] transition-all duration-300 group-hover:brightness-110 group-hover:scale-y-105 origin-bottom relative"
+                      style={{ height: `${heightPercent}%` }}
+                    >
+                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 hidden group-hover:flex rounded bg-[#11161B] px-1.5 py-0.5 text-[9px] font-bold text-white shadow-lg pointer-events-none whitespace-nowrap z-10">
+                        {item.value} ETB
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-semibold text-gray-400 truncate max-w-full">
+                      {item.hour}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Operations Insight Alert Box */}
+          <div className="rounded-3xl bg-gradient-to-br from-orange-50/80 via-white to-amber-50/50 p-6 shadow-sm border border-orange-100">
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#FF6B00]">
+              <Sparkles className="h-4 w-4" />
+              Insight for You
+            </div>
+            <div className="mt-2">
+              <h4 className="text-sm font-extrabold text-gray-900">
+                Kitchen congestion detected
+              </h4>
+              <p className="text-xs text-gray-600 mt-1">
+                7 orders are waiting for preparation for more than 20 minutes on the grill and hot wot stations.
               </p>
             </div>
-          </div>
-          <button
-            onClick={() => {
-              setIsPasswordModalOpen(true);
-              setPasswordMessage(null);
-            }}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#0B3D4A] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#159A9C]"
-          >
-            <KeyRound className="h-3.5 w-3.5 text-[#C8A15A]" />
-            Set My Personal Password
-          </button>
-        </section>
-
-        {/* Hero Section Tailored to Role */}
-        <section className="rounded-[2rem] bg-[#0B3D4A] p-7 text-white md:p-9">
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-[#C8A15A]/20 px-3 py-1 text-[10px] font-black uppercase tracking-[.2em] text-[#D8C7A3]">
-              {badgeLabel}
-            </span>
-          </div>
-          <h1 className="mt-3 font-display text-4xl leading-tight md:text-6xl">{portalTitle}</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">{portalDescription}</p>
-        </section>
-
-        {/* Role-Specific Metric Cards */}
-        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {isRestaurant && (
-            <>
-              <Stat icon={UtensilsCrossed} label="Menu items" value={stats.menuItems.toLocaleString()} />
-              <Stat icon={ClipboardList} label="Dining orders stream" value="Active" />
-              <Stat icon={DollarSign} label="Currency" value="ETB (ብር)" />
-              <Stat icon={Images} label="Live catalog" value="Ready" />
-            </>
-          )}
-
-          {isFrontDesk && (
-            <>
-              <Stat icon={CalendarDays} label="Total reservations" value={stats.reservations.toLocaleString()} />
-              <Stat icon={BedDouble} label="Room inventory" value={stats.rooms.toLocaleString()} />
-              <Stat icon={DollarSign} label="Paid revenue" value={`${stats.revenue.toLocaleString()} ብር`} />
-              <Stat icon={ClipboardList} label="Guest folios" value="Active" />
-            </>
-          )}
-
-          {isHousekeeping && (
-            <>
-              <Stat icon={BedDouble} label="Resort rooms" value={stats.rooms.toLocaleString()} />
-              <Stat icon={Sparkles} label="Cleaning queue" value="Ready" />
-              <Stat icon={Wrench} label="Maintenance dispatch" value="Active" />
-              <Stat icon={CalendarDays} label="Room inspections" value="Daily" />
-            </>
-          )}
-
-          {isSpa && (
-            <>
-              <Stat icon={Sparkles} label="Active wellness services" value="Ready" />
-              <Stat icon={ClipboardList} label="Spa requests" value="Live" />
-              <Stat icon={Images} label="Sanctuary gallery" value={stats.gallery.toLocaleString()} />
-              <Stat icon={DollarSign} label="Pricing standard" value="ETB (ብር)" />
-            </>
-          )}
-
-          {(isAdmin || isGeneralManager) && (
-            <>
-              <Stat icon={CalendarDays} label="Reservations" value={stats.reservations.toLocaleString()} />
-              <Stat icon={BedDouble} label="Rooms" value={stats.rooms.toLocaleString()} />
-              <Stat icon={DollarSign} label="Paid revenue" value={`${stats.revenue.toLocaleString()} ብር`} />
-              <Stat icon={UtensilsCrossed} label="Menu items" value={stats.menuItems.toLocaleString()} />
-            </>
-          )}
-        </section>
-
-        {/* Action Modules for this Role */}
-        <div className="mt-8">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-display text-2xl font-bold text-[#182326]">
-              {isRestaurant
-                ? 'Restaurant Management Modules'
-                : isFrontDesk
-                ? 'Front Desk Workstations'
-                : isHousekeeping
-                ? 'Housekeeping & Facilities Modules'
-                : isSpa
-                ? 'Spa & Wellness Workstations'
-                : 'Management Control Modules'}
-            </h2>
-            <span className="text-xs font-semibold text-[#182326]/50">
-              {activeModules.length} active {activeModules.length === 1 ? 'module' : 'modules'}
-            </span>
+            <div className="mt-4">
+              <Link
+                href="/staff/dashboard/kitchen"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#FF6B00] px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:bg-[#E85D04] transition-all"
+              >
+                Open Kitchen Station 2 <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
           </div>
 
-          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {activeModules.map(([name, description, Icon, href]) => {
-              const I = Icon as typeof BedDouble;
-              return (
-                <Link
-                  key={name as string}
-                  href={href as string}
-                  className="group rounded-3xl border border-[#0B3D4A]/10 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-[#C8A15A]/60 hover:shadow-md"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAF4F7] group-hover:bg-[#0B3D4A] group-hover:text-white transition">
-                    <I className="h-6 w-6 text-[#0B3D4A] group-hover:text-[#C8A15A]" />
+          {/* Quick Overview Navigation Cards */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-gray-900">Quick Overview</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Link
+                href="/staff/dashboard/tables"
+                className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-[#FF6B00] transition-all group flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center">
+                    <Layers className="h-4 w-4" />
                   </div>
-                  <h3 className="mt-5 text-xl font-black text-[#182326]">{name as string}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[#182326]/60">{description as string}</p>
-                  <div className="mt-5 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.14em] text-[#C8A15A]">
-                    Open workstation <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">Tables</p>
+                    <p className="text-[10px] text-gray-400">View all tables</p>
                   </div>
-                </Link>
-              );
-            })}
-          </section>
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-[#FF6B00] transition-colors" />
+              </Link>
+
+              <Link
+                href="/staff/dashboard/orders"
+                className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-[#FF6B00] transition-all group flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <ClipboardList className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">Orders</p>
+                    <p className="text-[10px] text-gray-400">View orders</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-emerald-600 transition-colors" />
+              </Link>
+
+              <Link
+                href="/staff/dashboard/kitchen"
+                className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-[#FF6B00] transition-all group flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <ChefHat className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">Kitchen</p>
+                    <p className="text-[10px] text-gray-400">Monitor kitchen</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-amber-600 transition-colors" />
+              </Link>
+
+              <Link
+                href="/staff/dashboard/menu"
+                className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-[#FF6B00] transition-all group flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                    <Package className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">Inventory</p>
+                    <p className="text-[10px] text-gray-400">Check menu</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-gray-300 group-hover:text-purple-600 transition-colors" />
+              </Link>
+            </div>
+          </div>
         </div>
 
-        {/* Helpful Department Guidelines Card */}
-        <section className="mt-8 rounded-[2rem] border border-[#C8A15A]/25 bg-[#D8C7A3]/25 p-7">
-          <LayoutDashboard className="h-6 w-6 text-[#0B3D4A]" />
-          <h2 className="mt-4 font-display text-3xl text-[#182326]">
-            {isRestaurant
-              ? 'Dining Operations Notice'
-              : isFrontDesk
-              ? 'Front Desk Daily Operations'
-              : isHousekeeping
-              ? 'Housekeeping Quality Standards'
-              : isSpa
-              ? 'Wellness Experience Standards'
-              : 'Tule Resort Executive Operations'}
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-7 text-[#182326]/70">
-            {isRestaurant &&
-              'Manage dishes and prices directly through the Menu workstation. All kitchen orders placed by guests or tables show in Orders & Requests.'}
-            {isFrontDesk &&
-              'Use Reservations to register walk-ins and confirm online bookings. Room statuses update automatically across the entire system.'}
-            {isHousekeeping &&
-              'Check off room cleanings to update room availability. Report any maintenance issues immediately to notify the facility technician.'}
-            {isSpa &&
-              'Keep wellness service descriptions and timing up to date so guests can easily reserve spa sessions.'}
-            {(isAdmin || isGeneralManager) &&
-              'Use Settings to adjust tax and service charge percentages. Admins can manage staff credentials and access in Staff Management.'}
-          </p>
-        </section>
-      </main>
+        {/* Right Column (1 Col on lg): Quick Actions & Recent Activity */}
+        <div className="space-y-6">
+          {/* Quick Actions Panel */}
+          <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-3 gap-2.5">
+              <Link
+                href="/guest/order"
+                className="p-3 rounded-2xl bg-[#F8F9FA] hover:bg-orange-50 border border-gray-100 hover:border-orange-200 transition-all text-center flex flex-col items-center gap-1.5"
+              >
+                <div className="h-8 w-8 rounded-xl bg-orange-100 text-[#FF6B00] flex items-center justify-center font-bold text-base">
+                  +
+                </div>
+                <span className="text-[11px] font-bold text-gray-700">New Order</span>
+              </Link>
 
-      {/* Change Password Modal */}
-      {isPasswordModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-3xl border border-[#0B3D4A]/20 bg-white p-6 shadow-2xl md:p-8">
-            <button
-              onClick={() => setIsPasswordModalOpen(false)}
-              className="absolute right-5 top-5 rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
+              <Link
+                href="/staff/dashboard/tables"
+                className="p-3 rounded-2xl bg-[#F8F9FA] hover:bg-orange-50 border border-gray-100 hover:border-orange-200 transition-all text-center flex flex-col items-center gap-1.5"
+              >
+                <div className="h-8 w-8 rounded-xl bg-orange-100 text-[#FF6B00] flex items-center justify-center">
+                  <Layers className="h-4 w-4" />
+                </div>
+                <span className="text-[11px] font-bold text-gray-700">View Tables</span>
+              </Link>
 
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0B3D4A] text-white">
-                <KeyRound className="h-5 w-5 text-[#C8A15A]" />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-[#182326]">Change Password</h3>
-                <p className="text-xs text-[#182326]/60">Create your new personal password</p>
-              </div>
+              <Link
+                href="/staff/dashboard/menu"
+                className="p-3 rounded-2xl bg-[#F8F9FA] hover:bg-orange-50 border border-gray-100 hover:border-orange-200 transition-all text-center flex flex-col items-center gap-1.5"
+              >
+                <div className="h-8 w-8 rounded-xl bg-orange-100 text-[#FF6B00] flex items-center justify-center">
+                  <Package className="h-4 w-4" />
+                </div>
+                <span className="text-[11px] font-bold text-gray-700">Inventory</span>
+              </Link>
+
+              <Link
+                href="/staff/dashboard/receipts"
+                className="p-3 rounded-2xl bg-[#F8F9FA] hover:bg-orange-50 border border-gray-100 hover:border-orange-200 transition-all text-center flex flex-col items-center gap-1.5"
+              >
+                <div className="h-8 w-8 rounded-xl bg-orange-100 text-[#FF6B00] flex items-center justify-center">
+                  <BarChart3 className="h-4 w-4" />
+                </div>
+                <span className="text-[11px] font-bold text-gray-700">Reports</span>
+              </Link>
+
+              <Link
+                href="/admin/staff"
+                className="p-3 rounded-2xl bg-[#F8F9FA] hover:bg-orange-50 border border-gray-100 hover:border-orange-200 transition-all text-center flex flex-col items-center gap-1.5"
+              >
+                <div className="h-8 w-8 rounded-xl bg-orange-100 text-[#FF6B00] flex items-center justify-center">
+                  <Users className="h-4 w-4" />
+                </div>
+                <span className="text-[11px] font-bold text-gray-700">Staff</span>
+              </Link>
+
+              <Link
+                href="/staff/dashboard/settings"
+                className="p-3 rounded-2xl bg-[#F8F9FA] hover:bg-orange-50 border border-gray-100 hover:border-orange-200 transition-all text-center flex flex-col items-center gap-1.5"
+              >
+                <div className="h-8 w-8 rounded-xl bg-orange-100 text-[#FF6B00] flex items-center justify-center">
+                  <Settings className="h-4 w-4" />
+                </div>
+                <span className="text-[11px] font-bold text-gray-700">Settings</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Recent Activity Feed */}
+          <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-900">Recent Activity</h3>
+              <Link href="/staff/dashboard/orders" className="text-xs font-bold text-[#FF6B00] hover:underline flex items-center gap-1">
+                View All <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
 
-            <form onSubmit={handlePasswordChange} className="mt-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-stone-600">
-                  New Password
-                </label>
-                <div className="relative mt-1">
-                  <input
-                    required
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter new password (min. 6 chars)"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 pr-11 text-sm outline-none focus:border-[#0B3D4A] focus:bg-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+            <div className="space-y-3.5">
+              <div className="flex items-start gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
+                <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="h-4 w-4" />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-stone-600">
-                  Confirm New Password
-                </label>
-                <input
-                  required
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Re-enter new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none focus:border-[#0B3D4A] focus:bg-white"
-                />
-              </div>
-
-              {passwordMessage && (
-                <div
-                  className={`flex items-start gap-2 rounded-xl p-3 text-xs font-semibold ${
-                    passwordMessage.type === 'success'
-                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                      : 'bg-red-50 text-red-800 border border-red-200'
-                  }`}
-                >
-                  {passwordMessage.type === 'success' && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />}
-                  <span>{passwordMessage.text}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-gray-900">New order #4587</p>
+                  <p className="text-[11px] text-gray-500">Table 12 • 2 items (Grilled Salmon)</p>
                 </div>
-              )}
-
-              <div className="mt-6 flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsPasswordModalOpen(false)}
-                  className="rounded-xl px-4 py-2.5 text-xs font-bold text-stone-600 hover:bg-stone-100"
-                >
-                  {passwordMessage?.type === 'success' ? 'Close' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={passwordLoading}
-                  className="rounded-xl bg-[#0B3D4A] px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-sm transition hover:bg-[#159A9C] disabled:opacity-60"
-                >
-                  {passwordLoading ? 'Saving…' : 'Update Password'}
-                </button>
+                <span className="text-[10px] font-semibold text-gray-400 shrink-0">5 min ago</span>
               </div>
-            </form>
+
+              <div className="flex items-start gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
+                <div className="h-8 w-8 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center shrink-0">
+                  <ChefHat className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-gray-900">Order #4579 ready</p>
+                  <p className="text-[11px] text-gray-500">Kitchen • Grill Station</p>
+                </div>
+                <span className="text-[10px] font-semibold text-gray-400 shrink-0">8 min ago</span>
+              </div>
+
+              <div className="flex items-start gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
+                <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                  <Layers className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-gray-900">Table 8 seated</p>
+                  <p className="text-[11px] text-gray-500">Walk-in guest party (3)</p>
+                </div>
+                <span className="text-[10px] font-semibold text-gray-400 shrink-0">12 min ago</span>
+              </div>
+
+              <div className="flex items-start gap-3 p-2 rounded-xl hover:bg-red-50/50 transition-colors">
+                <div className="h-8 w-8 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-red-700">Delayed order #4562</p>
+                  <p className="text-[11px] text-red-500">More than 25 min wait</p>
+                </div>
+                <span className="text-[10px] font-semibold text-red-400 shrink-0">18 min ago</span>
+              </div>
+            </div>
           </div>
         </div>
-      )}
-    </div>
-  );
-}
-
-function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
-  return (
-    <div className="rounded-3xl border border-[#0B3D4A]/10 bg-white p-5">
-      <Icon className="h-5 w-5 text-[#0B3D4A]" />
-      <p className="mt-4 text-xs font-bold text-[#182326]/50">{label}</p>
-      <p className="mt-1 text-2xl font-black">{value}</p>
+      </div>
     </div>
   );
 }

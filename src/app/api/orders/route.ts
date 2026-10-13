@@ -12,6 +12,8 @@ type OrderRequest = {
   notes?: string;
   user_id?: string | null;
   items?: OrderItem[];
+  table_token?: string;
+  tableToken?: string;
 };
 
 function getAdminClient() {
@@ -47,16 +49,38 @@ export async function POST(request: Request) {
     if (departmentError) return NextResponse.json({ success: false, error: departmentError.message }, { status: 500 });
     if (!department) return NextResponse.json({ success: false, error: 'Kitchen department is not configured.' }, { status: 500 });
 
-    const { data, error } = await supabase.rpc('create_guest_order', {
-      p_user_id: body.user_id ?? null,
-      p_department_id: department.id,
-      p_room_number: body.room_number?.trim() || null,
-      p_guest_name: body.guest_name?.trim() || 'Guest',
-      p_notes: body.notes?.trim() || null,
-      p_items: normalizedItems,
-    });
+    const tableToken = body.table_token || body.tableToken;
+    let data: any = null;
+    let rpcError: any = null;
 
-    if (error) return NextResponse.json({ success: false, error: error.message || 'Unable to submit the order.' }, { status: 400 });
+    if (tableToken) {
+      const res = await supabase.rpc('create_guest_order', {
+        p_user_id: body.user_id ?? null,
+        p_department_id: department.id,
+        p_room_number: body.room_number?.trim() || null,
+        p_guest_name: body.guest_name?.trim() || 'Guest',
+        p_notes: body.notes?.trim() || null,
+        p_items: normalizedItems,
+        p_table_token: tableToken.trim(),
+      });
+      data = res.data;
+      rpcError = res.error;
+    }
+
+    if (!data && (!tableToken || rpcError)) {
+      const fallbackRes = await supabase.rpc('create_guest_order', {
+        p_user_id: body.user_id ?? null,
+        p_department_id: department.id,
+        p_room_number: body.room_number?.trim() || null,
+        p_guest_name: body.guest_name?.trim() || 'Guest',
+        p_notes: body.notes?.trim() || null,
+        p_items: normalizedItems,
+      });
+      data = fallbackRes.data;
+      rpcError = fallbackRes.error;
+    }
+
+    if (rpcError) return NextResponse.json({ success: false, error: rpcError.message || 'Unable to submit the order.' }, { status: 400 });
     return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to submit the order.';

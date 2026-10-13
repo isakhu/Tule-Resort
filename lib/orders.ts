@@ -11,6 +11,7 @@ export interface OrderItemInput {
 export interface CreateOrderInput {
   guest_name?: string;
   room_number?: string;
+  table_token?: string;
   items: OrderItemInput[];
   total_amount?: number;
   service_type?: string;
@@ -41,6 +42,7 @@ export async function createOrder(orderData: CreateOrderInput) {
     body: JSON.stringify({
       guest_name: orderData.guest_name,
       room_number: orderData.room_number,
+      table_token: orderData.table_token,
       notes: orderData.special_instructions ?? orderData.notes ?? null,
       user_id: userId,
       items,

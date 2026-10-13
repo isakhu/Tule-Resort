@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Loader2, LogOut } from 'lucide-react';
 import supabase from '../../../../lib/supabaseClient';
 
+import StaffShell from '@/src/components/staff/StaffShell';
+
 export default function StaffDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
@@ -49,24 +51,14 @@ export default function StaffDashboardLayout({ children }: { children: React.Rea
     };
   }, [router]);
 
-  async function logout() {
-    await supabase.auth.signOut();
-    router.replace('/staff/login');
-    router.refresh();
-  }
-
   if (checking || !authorized) {
-    return <main className="min-h-screen bg-[#040D1A] text-white flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#159A9C]" /></main>;
+    return (
+      <main className="min-h-screen bg-[#11161B] text-white flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-[#FF6B00]" />
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Loading Tule Operations...</p>
+      </main>
+    );
   }
 
-  return (
-    <div>
-      <div className="fixed bottom-5 right-5 z-50">
-        <button onClick={logout} className="inline-flex items-center gap-2 rounded-full bg-[#073B4C] px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-xl hover:bg-[#0B4F6C]">
-          <LogOut className="h-4 w-4" /> Sign out
-        </button>
-      </div>
-      {children}
-    </div>
-  );
+  return <StaffShell>{children}</StaffShell>;
 }
