@@ -25,7 +25,7 @@ export async function requireAdmin(req: Request) {
 
     // Resolve role names for admin/manager
     const { data: roles } = await supabaseServer.from('roles').select('id,name').in('name', ['admin','manager']);
-    const roleIds = (roles || []).map((r: any) => r.id);
+    const roleIds = (roles ?? []).map((r: { id: number }) => r.id);
     if (roleIds.includes(data.role_id)) return { ok: true, method: 'session', userId: uid };
 
     return { ok: false, status: 403, error: 'Insufficient permissions' };
