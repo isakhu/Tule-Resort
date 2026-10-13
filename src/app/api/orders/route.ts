@@ -10,7 +10,6 @@ type OrderRequest = {
   guest_name?: string;
   room_number?: string;
   notes?: string;
-  user_id?: string | null;
   items?: OrderItem[];
   table_token?: string;
   tableToken?: string;
@@ -39,48 +38,76 @@ export async function POST(request: Request) {
     }
 
     const supabase = getAdminClient();
-    const { data: department, error: departmentError } = await supabase
-      .from('departments')
-      .select('id,name')
-      .ilike('name', '%kitchen%')
-      .limit(1)
-      .maybeSingle();
 
-    if (departmentError) return NextResponse.json({ success: false, error: departmentError.message }, { status: 500 });
-    if (!department) return NextResponse.json({ success: false, error: 'Kitchen department is not configured.' }, { status: 500 });
+    // The client may submit an access token, but it may never choose the user_id
+    // that is attached to an order. Anonymous guest ordering remains supported.
+    let verifiedUserId: string | null = null;
+    const authorization = request.headers.get('authorization');
+    if (authorization) {
+      const match = authorization.match(/^Bearer\s+(.+)$/i);
+      if (!match) {
+        return NextResponse.json({ success: false, error: 'Invalid authorization header.' }, { status: 401 });
+      }
+      const { data: authData, error: authError } = await supabase.auth.getUser(match[1]);
+      if (authError || !authData.user) {
+        return NextResponse.json({ success: false, error: 'Your session has expired. Please sign in again.' }, { status: 401 });
+      }
+      verifiedUserId = authData.user.id;
+    }
 
-    const tableToken = body.table_token || body.tableToken;
-    let data: any = null;
-    let rpcError: any = null;
+    const { data: kitchen, error: kitchenError } = await supabase
+      .from('departments').select('id,name').ilike('name', '%kitchen%').limit(1).maybeSingle();
+
+    if (kitchenError) return NextResponse.json({ success: false, error: 'Unable to prepare the order right now.' }, { status: 500 });
+
+    let department = kitchen;
+    if (!department) {
+      const restaurantResult = await supabase
+        .from('departments').select('id,name').ilike('name', '%restaurant%').limit(1).maybeSingle();
+      if (restaurantResult.error) return NextResponse.json({ success: false, error: 'Unable to prepare the order right now.' }, { status: 500 });
+      department = restaurantResult.data;
+    }
+    if (!department) return NextResponse.json({ success: false, error: 'The restaurant ordering department is not configured.' }, { status: 503 });
+
+    const tableToken = (body.table_token || body.tableToken || '').trim();
+    let data: unknown;
+    let rpcError: { message?: string } | null;
 
     if (tableToken) {
-      const res = await supabase.rpc('create_guest_order', {
-        p_user_id: body.user_id ?? null,
+      // A table order must never silently fall back to an unassigned order.
+      const result = await supabase.rpc('create_guest_table_order', {
+        p_user_id: verifiedUserId,
         p_department_id: department.id,
-        p_room_number: body.room_number?.trim() || null,
         p_guest_name: body.guest_name?.trim() || 'Guest',
         p_notes: body.notes?.trim() || null,
         p_items: normalizedItems,
-        p_table_token: tableToken.trim(),
+        p_table_token: tableToken,
       });
-      data = res.data;
-      rpcError = res.error;
-    }
-
-    if (!data && (!tableToken || rpcError)) {
-      const fallbackRes = await supabase.rpc('create_guest_order', {
-        p_user_id: body.user_id ?? null,
+      data = result.data;
+      rpcError = result.error;
+    } else {
+      const result = await supabase.rpc('create_guest_order', {
+        p_user_id: verifiedUserId,
         p_department_id: department.id,
         p_room_number: body.room_number?.trim() || null,
         p_guest_name: body.guest_name?.trim() || 'Guest',
         p_notes: body.notes?.trim() || null,
         p_items: normalizedItems,
       });
-      data = fallbackRes.data;
-      rpcError = fallbackRes.error;
+      data = result.data;
+      rpcError = result.error;
     }
 
-    if (rpcError) return NextResponse.json({ success: false, error: rpcError.message || 'Unable to submit the order.' }, { status: 400 });
+    if (rpcError) {
+      console.error('Guest order creation failed:', rpcError.message);
+      return NextResponse.json(
+        { success: false, error: tableToken
+          ? 'We could not place this table order. Please reload the menu and try again.'
+          : 'We could not place your order right now. Please try again.' },
+        { status: 400 },
+      );
+    }
+    if (!data) return NextResponse.json({ success: false, error: 'No order confirmation was returned.' }, { status: 500 });
     return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to submit the order.';
