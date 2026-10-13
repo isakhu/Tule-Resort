@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Clock, Loader2, MapPin, Package, Utensils } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
@@ -9,8 +9,8 @@ import { updateOrderStatus } from '@/lib/orders';
 interface OrderItem {
   id?: string;
   name?: string;
-  quantity?: number;
-  price?: number;
+  quantity?: number | string;
+  price?: number | string;
   menu_item_id?: string;
 }
 
@@ -20,10 +20,18 @@ interface Order {
   room_number?: string | null;
   dining_table?: { table_number?: string } | null;
   items?: OrderItem[];
-  total?: number;
+  total?: number | string;
   notes?: string;
   status?: { id: number; name: string } | null;
   created_at: string;
+}
+
+interface OrderQueryItem extends OrderItem {
+  menu_item?: { name?: string | null } | null;
+}
+
+interface OrderQueryRow extends Omit<Order, 'items'> {
+  items?: OrderQueryItem[] | null;
 }
 
 type StatusFilter = 'all' | 'pending' | 'preparing' | 'completed' | 'cancelled';
@@ -111,7 +119,7 @@ export default function AdminOrdersPage() {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
 
-  async function loadOrders() {
+  const loadOrders = useCallback(async () => {
     try {
       setError('');
       const { data, error: fetchError } = await supabase
@@ -121,10 +129,14 @@ export default function AdminOrdersPage() {
         .limit(200);
 
       if (fetchError) throw fetchError;
-      const normalized = ((data ?? []) as any[]).map((row) => ({
+      const rows = (data ?? []) as unknown as OrderQueryRow[];
+      const normalized: Order[] = rows.map((row) => ({
         ...row,
-        items: (row.items ?? []).map((item: any) => ({ ...item, name: item.menu_item?.name ?? 'Menu item' })),
-      })) as Order[];
+        items: (row.items ?? []).map((item) => ({
+          ...item,
+          name: item.menu_item?.name ?? item.name ?? 'Menu item',
+        })),
+      }));
       setOrders(normalized);
     } catch (err) {
       console.warn('Failed to load initial orders:', err);
@@ -132,9 +144,12 @@ export default function AdminOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  useEffect(() => { void loadOrders(); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadOrders(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadOrders]);
 
   useEffect(() => {
     const channel = supabase
@@ -142,7 +157,7 @@ export default function AdminOrdersPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => { void loadOrders(); })
       .subscribe();
     return () => { void channel.unsubscribe(); };
-  }, []);
+  }, [loadOrders]);
 
   const filteredOrders = useMemo(() => orders.filter((order) => statusFilter === 'all' || NORMALIZE_STATUS(order.status?.name) === statusFilter), [orders, statusFilter]);
 
