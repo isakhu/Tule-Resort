@@ -53,21 +53,22 @@ export default function StaffDashboardPage() {
   const [currentDateFormatted, setCurrentDateFormatted] = useState('');
 
   useEffect(() => {
-    // Determine greeting
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting('Good Morning');
-    else if (hour < 18) setGreeting('Good Afternoon');
-    else setGreeting('Good Evening');
+    // Defer browser-local display hydration until after the initial render.
+    const displayTimer = window.setTimeout(() => {
+      const hour = new Date().getHours();
+      if (hour < 12) setGreeting('Good Morning');
+      else if (hour < 18) setGreeting('Good Afternoon');
+      else setGreeting('Good Evening');
 
-    // Date
-    setCurrentDateFormatted(
-      new Date().toLocaleDateString('en-US', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
-    );
+      setCurrentDateFormatted(
+        new Date().toLocaleDateString('en-US', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })
+      );
+    }, 0);
 
     // Profile
     supabase.auth.getSession().then(async ({ data }) => {
@@ -138,6 +139,7 @@ export default function StaffDashboardPage() {
       }
     }
     void fetchOrdersSummary();
+    return () => window.clearTimeout(displayTimer);
   }, []);
 
   const occupiedTables = tables.filter((t) => t.status === 'occupied').length;
