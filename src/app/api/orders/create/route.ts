@@ -14,10 +14,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'At least one item is required.' }, { status: 400 });
     }
 
-    const normalizedItems = items.map((item: any) => ({
-      menu_item_id: typeof item?.menuItemId === 'string' ? item.menuItemId : String(item?.menu_item_id ?? ''),
-      quantity: Number(item?.quantity),
-    }));
+    const normalizedItems = (items as unknown[]).map((value) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return { menu_item_id: '', quantity: Number.NaN };
+      }
+      const item = value as { menuItemId?: unknown; menu_item_id?: unknown; quantity?: unknown };
+      const menuItemId = typeof item.menuItemId === 'string'
+        ? item.menuItemId.trim()
+        : typeof item.menu_item_id === 'string'
+          ? item.menu_item_id.trim()
+          : '';
+      return { menu_item_id: menuItemId, quantity: Number(item.quantity) };
+    });
 
     if (normalizedItems.some((item) => !item.menu_item_id || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 50)) {
       return NextResponse.json({ error: 'One or more order items are invalid.' }, { status: 400 });
