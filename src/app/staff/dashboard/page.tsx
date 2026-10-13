@@ -495,7 +495,7 @@ export default function StaffDashboardPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-gray-900">Order #{order.id.slice(0, 8).toUpperCase()}</p>
                     <p className="text-[11px] text-gray-500">
-                      {order.dining_table?.table_number ? `Table ${order.dining_table.table_number}` : order.room_number ? `Room ${order.room_number}` : 'Restaurant order'} • {(order.status?.name ?? 'Pending').toLowerCase()}
+                      {order.dining_table?.table_number ? order.dining_table.table_number : order.room_number ? `Room ${order.room_number}` : 'Restaurant order'} • {(order.status?.name ?? 'Pending').toLowerCase()}
                     </p>
                     <p className="text-[10px] text-gray-400">{Number(order.total ?? 0).toLocaleString()} ETB order value</p>
                   </div>
