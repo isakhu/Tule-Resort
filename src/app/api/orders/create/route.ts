@@ -6,6 +6,10 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { items, roomNumber, guestName, notes, tableToken } = body ?? {};
 
+    if (tableToken !== undefined && tableToken !== null && typeof tableToken !== 'string') {
+      return NextResponse.json({ success: false, error: 'Invalid dining table code.' }, { status: 400 });
+    }
+
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'At least one item is required.' }, { status: 400 });
     }
