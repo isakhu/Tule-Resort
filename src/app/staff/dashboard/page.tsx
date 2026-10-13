@@ -133,7 +133,7 @@ export default function StaffDashboardPage() {
         })));
         setDashboardLoadError('');
       } catch (error) {
-        console.error('Failed to load today's order summary:', error);
+        console.error("Failed to load today's order summary:", error);
         setDashboardLoadError('Live order metrics could not be loaded. Check the connection and staff permissions.');
       }
     }
