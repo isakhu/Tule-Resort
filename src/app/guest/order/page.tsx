@@ -24,13 +24,17 @@ export default function GuestOrderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(CART_KEY) ?? window.localStorage.getItem(LEGACY_CART_KEY);
-      if (saved) setCart(JSON.parse(saved));
-      setTableToken(new URLSearchParams(window.location.search).get('table')?.trim() ?? '');
-    } catch {
-      setCart({});
-    }
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = window.localStorage.getItem(CART_KEY) ?? window.localStorage.getItem(LEGACY_CART_KEY);
+        if (saved) setCart(JSON.parse(saved));
+        setTableToken(new URLSearchParams(window.location.search).get('table')?.trim() ?? '');
+      } catch {
+        setCart({});
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
