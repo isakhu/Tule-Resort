@@ -70,7 +70,7 @@ export default function ServiceEditor({ initial, onSaved, onCancel }: {
         : await supabase.from('resort_services').insert(payload)
       if (result.error) throw result.error
       onSaved?.()
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err?.message ?? 'Could not save service.')
     } finally { setSaving(false) }
   }
