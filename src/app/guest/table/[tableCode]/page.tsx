@@ -4,21 +4,17 @@ import React, { useState, useEffect, useMemo, use } from 'react';
 import Link from 'next/link';
 import {
   UtensilsCrossed,
-  Layers,
   ShoppingBag,
   Search,
   Plus,
   Minus,
   CheckCircle2,
-  Clock,
   ArrowRight,
-  Sparkles,
   AlertCircle,
   ChefHat
 } from 'lucide-react';
 import type { MenuItem } from '@/lib/menu';
 import { getDiningTableByToken, DiningTable } from '@/lib/diningTables';
-import { createOrder } from '@/lib/orders';
 
 export default function GuestTableOrderingPage({
   params,
