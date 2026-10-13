@@ -23,9 +23,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
       });
+      const payload = await response.json().catch(() => null);
+      const role = payload?.profile?.role;
       if (!response.ok) {
         await supabase.auth.signOut();
         router.replace('/staff/login');
+        return;
+      }
+      if (!['admin', 'manager'].includes(role)) {
+        router.replace('/staff/dashboard');
         return;
       }
       if (mounted) {
