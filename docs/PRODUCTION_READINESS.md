@@ -34,6 +34,10 @@ Migration 022 intentionally removes predictable sample tokens. Do not apply it w
 - The QR image helper currently requests SVG QR images from a third-party QR generation service. Only the public table URL/token is sent to that service. For a stricter self-hosted production deployment, replace it with a locally bundled, standards-compliant QR encoder.
 - Confirm icon/installation behavior in current Android Chrome and iOS Safari. If store-distributed Android/iOS apps are required, that is a separate packaging project and is not included here.
 
+## Environment configuration
+
+The CI build uses placeholder Supabase URLs/keys only when Next.js is executing its production-build phase, so TypeScript/build checks can run without the resort's credentials. This does not enable database operations. Configure real `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` in the deployment environment before running the application; never put a service-role key in a `NEXT_PUBLIC_*` variable or expose it to the browser.
+
 ## Verification checklist
 
 Run locally with a configured `.env.local` and a staging Supabase project:
