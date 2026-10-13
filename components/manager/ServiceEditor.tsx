@@ -71,7 +71,7 @@ export default function ServiceEditor({ initial, onSaved, onCancel }: {
       if (result.error) throw result.error
       onSaved?.()
     } catch (err: unknown) {
-      setError(err?.message ?? 'Could not save service.')
+      setError(err instanceof Error ? err.message : 'Could not save service.')
     } finally { setSaving(false) }
   }
 
