@@ -1,31 +1,65 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
-:root {
-  --background: #F8F5EE;
-  --foreground: #182326;
-  --lake-deep: #0B3D4A;
-  --lake: #159A9C;
-  --sand: #D8C7A3;
-  --cream: #F8F5EE;
-  --charcoal: #182326;
-  --green: #5D7563;
+/* ═══════════════════════════════════════════════════════════════
+   TULE RESORT — 3D Cel-Shaded Luxury Design Token System
+   Tailwind CSS v4 @theme Semantic Palette
+   ═══════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Core Surfaces ── */
+  --color-background: #07191E;           /* Deep abyssal lake petrol */
+  --color-surface: #0B252C;              /* Elevated petrol card & panel surface */
+  --color-surface-hover: #0E2F37;        /* Interactive hover state */
+
+  /* ── Brand Accents ── */
+  --color-primary: #F59E0B;              /* Vibrant sunset gold / amber CTA */
+  --color-primary-foreground: #040E12;   /* High-contrast dark text on primary */
+  --color-secondary: #159A9C;            /* Luminous lake teal / anime water glow */
+
+  /* ── Typography ── */
+  --color-foreground: #F8F5EE;           /* Warm resort cream/ivory primary text */
+  --color-muted: #94B0B7;               /* Subdued mist-teal text */
+
+  /* ── Structural ── */
+  --color-border: #1A434E;               /* Cel-shaded crisp glass border */
+
+  /* ── Status ── */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+
+  /* ── Extended Brand ── */
+  --color-gold: #C9902F;                 /* Tule crest gold */
+  --color-gold-light: #F8D77A;           /* Light gold / badge shimmer */
+  --color-sand: #D8C7A3;                 /* Warm desert sand accent */
+  --color-cream: #F8F5EE;               /* Resort ivory */
+
+  /* ── Font Families ── */
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Cormorant Garamond', ui-serif, Georgia, serif;
 }
 
+/* ── Base Resets ── */
 html { scroll-behavior: smooth; }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Manrope', sans-serif;
+  color: var(--color-foreground);
+  background: var(--color-background);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, h6,
 .font-display {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
 }
 
-/* Tule Resort Lake Luxury design tokens */
+/* ═══════════════════════════════════════════════════════════════
+   FORM TOKENS — Unified field styling (dark theme)
+   ═══════════════════════════════════════════════════════════════ */
+
 .field-label {
   display: block;
   font-size: 0.625rem;
@@ -33,38 +67,118 @@ h1, h2, h3, h4, h5, h6,
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: rgb(24 35 38 / 0.55);
+  color: var(--color-muted);
 }
 
 .field-input {
   width: 100%;
   border-radius: 1rem;
-  border: 1px solid rgb(11 61 74 / 0.14);
-  background: rgb(255 255 255 / 0.72);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   padding: 0.75rem 0.9rem;
-  color: var(--charcoal);
+  color: var(--color-foreground);
   font-size: 0.875rem;
   line-height: 1.25rem;
   outline: none;
   transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
 }
 
-.field-input::placeholder { color: rgb(24 35 38 / 0.35); }
-
-.field-input:focus {
-  border-color: rgb(21 154 156 / 0.65);
-  background: white;
-  box-shadow: 0 0 0 3px rgb(21 154 156 / 0.10);
+.field-input::placeholder {
+  color: color-mix(in srgb, var(--color-muted) 60%, transparent);
 }
 
-.field-input option { color: var(--charcoal); background: white; }
+.field-input:focus {
+  border-color: var(--color-secondary);
+  background: var(--color-surface-hover);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-secondary) 15%, transparent);
+}
 
-/* Useful global brand utilities */
-.tule-lake { color: var(--lake); }
-.tule-lake-deep { color: var(--lake-deep); }
-.tule-sand { color: var(--sand); }
-.tule-green { color: var(--green); }
-.bg-tule-lake { background-color: var(--lake); }
-.bg-tule-lake-deep { background-color: var(--lake-deep); }
-.bg-tule-cream { background-color: var(--cream); }
-.bg-tule-sand { background-color: var(--sand); }
+.field-input option {
+  color: var(--color-foreground);
+  background: var(--color-surface);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATION UTILITIES — 3D / Cel-Shaded Luxury Microinteractions
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Staggered fade-in entrance */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out both;
+}
+
+/* Subtle floating glow pulse */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 15px 0 color-mix(in srgb, var(--color-secondary) 20%, transparent); }
+  50%      { box-shadow: 0 0 25px 5px color-mix(in srgb, var(--color-secondary) 35%, transparent); }
+}
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* 3D card tilt perspective container */
+.perspective-container {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease-out;
+}
+
+/* Gold shimmer for premium elements */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(
+    110deg,
+    var(--color-gold) 0%,
+    var(--color-gold-light) 40%,
+    var(--color-gold) 60%,
+    var(--color-gold-light) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Ambient particle float */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33%      { transform: translateY(-8px) rotate(1deg); }
+  66%      { transform: translateY(4px) rotate(-1deg); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Cel-shaded card border glow on hover */
+.cel-card {
+  border: 1.5px solid var(--color-border);
+  border-radius: 1.5rem;
+  background: var(--color-surface);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+.cel-card:hover {
+  border-color: var(--color-secondary);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-secondary) 25%, transparent),
+    0 8px 32px -8px color-mix(in srgb, var(--color-secondary) 15%, transparent);
+  transform: translateY(-2px);
+}
+
+/* Scrollbar styling for dark theme */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-background); }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-secondary); }

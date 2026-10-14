@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2, LogIn } from 'lucide-react';
-import supabase from '../../../../lib/supabaseClient';
+import supabase from '@/lib/supabaseClient';
 
 export default function StaffLoginPage() {
   const router = useRouter();
@@ -49,12 +49,23 @@ export default function StaffLoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#040D1A] flex items-center justify-center p-6">
-      <form onSubmit={handleSubmit} className="w-full max-w-md rounded-[2rem] bg-[#07152B] p-8 shadow-2xl border border-white/10">
-        <div className="mb-8 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[.28em] text-[#C8A15A]">Tule Resort</p>
-          <h1 className="mt-3 text-3xl font-black text-white">Staff Login</h1>
-          <p className="mt-2 text-sm text-white/50">Manager and administrator access</p>
+    <main className="min-h-screen bg-gradient-to-b from-[#0B252C] via-[#07191E] to-[#040E12] flex items-center justify-center p-4 sm:p-6 text-white">
+      <form onSubmit={handleSubmit} className="w-full max-w-md rounded-[2.5rem] bg-[#0E2F37]/90 backdrop-blur-xl p-8 sm:p-10 shadow-2xl border border-white/10 space-y-6">
+        <div className="text-center space-y-3">
+          {/* Official Tule Resort Logo */}
+          <div className="mx-auto w-24 h-20 flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/tule-resort-mark.svg"
+              alt="Tule Resort Logo"
+              className="w-full h-full object-contain drop-shadow-md"
+            />
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[.28em] text-[#C9902F]">Tule Resort & Spa</p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-black text-white tracking-tight">Staff Portal</h1>
+            <p className="mt-1 text-xs text-teal-200/60">Manager, front desk & kitchen operations</p>
+          </div>
         </div>
 
         <div className="space-y-5">
@@ -76,9 +87,9 @@ export default function StaffLoginPage() {
 
         {error && <p role="alert" className="mt-5 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-200 border border-red-400/20">{error}</p>}
 
-        <button type="submit" disabled={loading} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#159A9C] px-5 py-3.5 text-sm font-black text-white disabled:opacity-60">
+        <button type="submit" disabled={loading} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0E7480] to-[#14919B] hover:brightness-110 px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-[#0E7480]/30 disabled:opacity-60 transition-all">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
-          {loading ? 'Signing in…' : 'Sign in'}
+          {loading ? 'Signing in…' : 'Sign In to Dashboard'}
         </button>
       </form>
     </main>

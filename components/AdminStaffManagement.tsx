@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import supabase from '../../lib/supabaseClient';
+import supabase from '@/lib/supabaseClient';
 
 type UserRow = { id: string; email: string; full_name?: string; role_id?: number; primary_department_id?: number };
 

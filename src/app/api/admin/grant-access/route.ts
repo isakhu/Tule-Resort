@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import supabaseServer from '../../../../../lib/supabaseServer';
-import { requireAdmin } from '../../../../../lib/adminAuth';
+import supabaseServer from '@/lib/supabaseServer';
+import { requireAdmin } from '@/lib/adminAuth';
 
 export async function POST(req: Request) {
   try {

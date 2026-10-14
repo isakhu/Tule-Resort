@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import supabaseServer from '../../../../../lib/supabaseServer';
+import supabaseServer from '@/lib/supabaseServer';
 
 function parseDate(value: unknown): string | null {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;

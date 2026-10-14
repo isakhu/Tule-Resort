@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import supabaseServer from '../../../../../lib/supabaseServer';
-import { requireStaffOrAdmin } from '../../../../../lib/staffAuth';
+import supabaseServer from '@/lib/supabaseServer';
+import { requireStaffOrAdmin } from '@/lib/staffAuth';
 
 export async function GET(req: Request) {
   try {

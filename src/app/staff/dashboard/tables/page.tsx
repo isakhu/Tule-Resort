@@ -63,15 +63,15 @@ export default function StaffTablesPage() {
 
   const getTableColorClass = (status: DiningTable['status'], isSelected: boolean) => {
     let base = '';
-    if (status === 'occupied') base = 'bg-[#FF6B00] text-white ring-2 ring-orange-300';
-    else if (status === 'available') base = 'bg-emerald-500 text-white';
-    else if (status === 'cleaning') base = 'bg-purple-600 text-white';
+    if (status === 'occupied') base = 'bg-[#0E7480] text-white ring-2 ring-[#C9902F] shadow-sm';
+    else if (status === 'available') base = 'bg-emerald-500 text-white shadow-sm';
+    else if (status === 'cleaning') base = 'bg-purple-600 text-white shadow-sm';
     else base = 'bg-gray-400 text-white';
 
     if (isSelected) {
-      return `${base} ring-4 ring-[#FF6B00]/40 scale-110 z-20 shadow-xl`;
+      return `${base} ring-4 ring-[#14919B]/50 scale-110 z-20 shadow-xl`;
     }
-    return `${base} shadow-md hover:scale-105 z-10`;
+    return `${base} shadow-xs hover:scale-105 z-10`;
   };
 
   // Printable table card QR link
@@ -88,8 +88,8 @@ export default function StaffTablesPage() {
       {/* ─── PAGE HEADER & NEW ACTION ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Tables</h1>
-          <p className="text-xs text-gray-500">Manage table status, guests and generate QR table codes</p>
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Tables Layout</h1>
+          <p className="text-xs text-gray-500">Manage table availability, seating and generate official QR cards</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -97,14 +97,14 @@ export default function StaffTablesPage() {
             onClick={() => {
               if (selectedTable) setQrModalTable(selectedTable);
             }}
-            className="flex items-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2 text-xs font-bold text-gray-700 shadow-sm hover:bg-gray-50 transition-all"
+            className="flex items-center gap-2 rounded-xl bg-white border border-gray-200 px-4 py-2 text-xs font-bold text-gray-700 shadow-xs hover:bg-gray-50 transition-all cursor-pointer"
           >
-            <QrCode className="h-4 w-4 text-[#FF6B00]" />
+            <QrCode className="h-4 w-4 text-[#0E7480]" />
             Print Table QR
           </button>
           <Link
             href="/staff/dashboard/reservations"
-            className="flex items-center gap-2 rounded-xl bg-[#FF6B00] px-4 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:bg-[#E85D04] transition-all"
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0E7480] to-[#14919B] px-4 py-2 text-xs font-bold text-white shadow-md shadow-[#0E7480]/20 hover:brightness-110 transition-all"
           >
             <Plus className="h-4 w-4" />
             New Reservation
@@ -112,12 +112,12 @@ export default function StaffTablesPage() {
         </div>
       </div>
 
-      {/* ─── 1. TOP KPI SUMMARY ROW (Image 3) ─── */}
+      {/* ─── 1. TOP KPI SUMMARY ROW ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
         {/* Occupied */}
-        <div className="rounded-2xl bg-white p-4 shadow-sm border border-gray-100 flex flex-col justify-between">
+        <div className="rounded-2xl bg-white p-4 shadow-xs border border-gray-200 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <div className="h-8 w-8 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center">
+            <div className="h-8 w-8 rounded-xl bg-teal-50 text-[#0E7480] flex items-center justify-center">
               <Layers className="h-4 w-4" />
             </div>
             <span className="text-[10px] font-bold text-gray-400">
@@ -133,7 +133,7 @@ export default function StaffTablesPage() {
           </div>
           <div className="mt-2 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#FF6B00] rounded-full"
+              className="h-full bg-[#0E7480] rounded-full"
               style={{ width: `${(occupiedCount / totalCount) * 100}%` }}
             />
           </div>
@@ -214,7 +214,7 @@ export default function StaffTablesPage() {
                   onClick={() => setSelectedFloor(floor)}
                   className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
                     selectedFloor === floor
-                      ? 'bg-[#FF6B00] text-white shadow-md shadow-orange-500/20'
+                      ? 'bg-[#0B252C] text-[#F8D77A] shadow-md shadow-[#0B252C]/20 border border-[#C9902F]/30'
                       : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
                   }`}
                 >
@@ -370,8 +370,8 @@ export default function StaffTablesPage() {
                     <Users className="h-4 w-4 text-gray-400" />
                     Assigned Waiter:
                   </span>
-                  <span className="font-extrabold text-[#FF6B00]">
-                    {selectedTable.active_waiter || 'Omar Ahmed'}
+                  <span className="font-extrabold text-[#0E7480]">
+                    {selectedTable.active_waiter || 'Front Desk / Waitstaff'}
                   </span>
                 </div>
               </div>
@@ -380,89 +380,64 @@ export default function StaffTablesPage() {
               <div className="grid grid-cols-2 gap-2">
                 <Link
                   href="/staff/dashboard/orders"
-                  className="rounded-xl bg-[#FF6B00] px-4 py-2 text-xs font-bold text-white text-center shadow-md shadow-orange-500/20 hover:bg-[#E85D04]"
+                  className="rounded-xl bg-gradient-to-r from-[#0E7480] to-[#14919B] px-4 py-2.5 text-xs font-bold text-white text-center shadow-md shadow-[#0E7480]/20 hover:brightness-110 transition-all"
                 >
-                  View Order
+                  View All Orders
                 </Link>
                 <button
                   onClick={() => handleStatusChange(selectedTable.status === 'occupied' ? 'available' : 'occupied')}
                   disabled={isUpdating}
-                  className="rounded-xl bg-gray-100 hover:bg-gray-200 px-4 py-2 text-xs font-bold text-gray-700 text-center transition-all"
+                  className="rounded-xl bg-gray-100 hover:bg-gray-200 px-4 py-2.5 text-xs font-bold text-gray-700 text-center transition-all cursor-pointer"
                 >
                   {selectedTable.status === 'occupied' ? 'Clear Table' : 'Seat Table'}
                 </button>
               </div>
 
-              {/* Order Details Line Items */}
-              <div className="rounded-2xl bg-[#F8F9FA] p-4 border border-gray-100 space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-gray-200/60">
-                  <span className="text-xs font-black text-gray-900">Order Details</span>
-                  <span className="text-xs font-bold text-gray-400">#4587</span>
-                </div>
-
-                <div className="space-y-2.5 text-xs">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-gray-900">Grilled Salmon</p>
-                      <p className="text-[10px] text-gray-400">× 2 portions</p>
-                    </div>
-                    <span className="font-extrabold text-gray-900">560 ETB</span>
+              {/* Table Seating State Card */}
+              {selectedTable.status === 'occupied' ? (
+                <div className="rounded-2xl bg-teal-50/60 p-4 border border-teal-200/60 space-y-2">
+                  <div className="flex items-center justify-between pb-2 border-b border-teal-200/40">
+                    <span className="text-xs font-black text-gray-900">Seated Table Status</span>
+                    <span className="text-[10px] font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-full">Occupied</span>
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-gray-900">Caesar Salad</p>
-                      <p className="text-[10px] text-gray-400">× 1 portion</p>
-                    </div>
-                    <span className="font-extrabold text-gray-900">140 ETB</span>
+                  <p className="text-xs text-gray-600">
+                    Guests are currently seated at {selectedTable.table_number}. When orders are placed via table QR code, dishes and tickets appear on the orders dispatch board.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-[#F4F7F8] p-5 border border-gray-200 text-center space-y-2">
+                  <div className="h-10 w-10 mx-auto rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5" />
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-gray-900">Fresh Lemonade</p>
-                      <p className="text-[10px] text-gray-400">× 2 cups</p>
-                    </div>
-                    <span className="font-extrabold text-gray-900">100 ETB</span>
-                  </div>
+                  <p className="text-xs font-black text-gray-900">Table Available</p>
+                  <p className="text-[11px] text-gray-500 max-w-[240px] mx-auto">
+                    No active orders on this table. Seat guests or generate an official Table QR tent card for direct table ordering.
+                  </p>
                 </div>
-
-                <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between font-black text-sm text-gray-900">
-                  <span>Total</span>
-                  <span className="text-[#FF6B00]">800.00 ETB</span>
-                </div>
-
-                {/* Status bar */}
-                <div className="rounded-xl bg-orange-100/60 p-2.5 flex items-center justify-between text-xs text-orange-900 font-bold">
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-[#FF6B00]" />
-                    Order in Progress
-                  </span>
-                  <span className="text-[10px] text-orange-700">Est. 10 min</span>
-                </div>
-              </div>
+              )}
 
               {/* Quick Actions Grid & QR Generator Button */}
               <div className="space-y-2 pt-1">
                 <button
                   onClick={() => setQrModalTable(selectedTable)}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#073B4C] to-[#159A9C] p-3 text-xs font-black uppercase tracking-wider text-white shadow-md hover:brightness-110 transition-all"
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0B252C] via-[#0E7480] to-[#14919B] p-3 text-xs font-black uppercase tracking-wider text-white shadow-md hover:brightness-110 transition-all cursor-pointer"
                 >
                   <QrCode className="h-4 w-4" />
-                  Generate & Print Table QR
+                  Generate &amp; Print Table QR
                 </button>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-bold text-gray-700">
                   <button
                     onClick={() => handleStatusChange('cleaning')}
-                    className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-center"
+                    className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-center cursor-pointer"
                   >
                     Mark Cleaning
                   </button>
                   <button
                     onClick={() => handleStatusChange('available')}
-                    className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-center"
+                    className="p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-center cursor-pointer"
                   >
-                    Mark Ready
+                    Mark Available
                   </button>
                 </div>
               </div>
@@ -484,12 +459,12 @@ export default function StaffTablesPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 border-b border-gray-100 print:hidden">
               <div className="flex items-center gap-2 text-gray-900 font-bold text-sm">
-                <QrCode className="h-5 w-5 text-[#FF6B00]" />
+                <QrCode className="h-5 w-5 text-[#0E7480]" />
                 Official Table QR Tent Card
               </div>
               <button
                 onClick={() => setQrModalTable(null)}
-                className="p-1 rounded-lg text-gray-400 hover:bg-gray-100"
+                className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -498,14 +473,22 @@ export default function StaffTablesPage() {
             {/* Printable Tent Card Canvas */}
             <div
               id="printable-tent-card"
-              className="mt-4 rounded-3xl bg-gradient-to-b from-[#073B4C] via-[#0A1828] to-[#11161B] p-6 text-white text-center shadow-xl space-y-4 border-4 border-[#FF6B00]/30"
+              className="mt-4 rounded-3xl bg-gradient-to-b from-[#0B252C] via-[#0E353F] to-[#041216] p-6 text-white text-center shadow-xl space-y-4 border-4 border-[#C9902F]/40"
             >
-              {/* Resort Branding */}
+              {/* Resort Official Branding */}
               <div className="space-y-1">
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#FF6B00]">
-                  TULE RESORT & SPA
+                <div className="mx-auto w-16 h-12 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/tule-resort-mark.svg"
+                    alt="Tule Resort Logo"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#F8D77A]">
+                  TULE RESORT &amp; SPA
                 </p>
-                <h2 className="text-2xl font-black tracking-tight text-white">
+                <h2 className="text-2xl font-black tracking-tight text-white font-serif">
                   {qrModalTable.table_number}
                 </h2>
                 <p className="text-xs text-teal-200/90 font-medium">{qrModalTable.section}</p>
@@ -526,10 +509,10 @@ export default function StaffTablesPage() {
                 <p className="text-xs font-bold text-white">
                   Scan to View Menu &amp; Order
                 </p>
-                <p className="text-[10px] text-gray-300">
+                <p className="text-[10px] text-teal-100/70">
                   No app download needed • Direct table service
                 </p>
-                <p className="text-[9px] font-mono text-[#FF6B00] pt-1 truncate opacity-80">
+                <p className="text-[9px] font-mono text-[#F8D77A] pt-1 truncate opacity-80">
                   {qrUrl}
                 </p>
               </div>
@@ -539,13 +522,13 @@ export default function StaffTablesPage() {
             <div className="mt-6 flex items-center justify-end gap-2 print:hidden">
               <button
                 onClick={() => setQrModalTable(null)}
-                className="rounded-xl px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100"
+                className="rounded-xl px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
               >
                 Close
               </button>
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-2 rounded-xl bg-[#FF6B00] px-5 py-2 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:bg-[#E85D04]"
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0E7480] to-[#14919B] px-5 py-2 text-xs font-bold text-white shadow-md shadow-[#0E7480]/20 hover:brightness-110 cursor-pointer"
               >
                 <Printer className="h-4 w-4" />
                 Print Table Card

@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, LogOut } from 'lucide-react';
-import supabase from '../../../../lib/supabaseClient';
+import supabase from '@/lib/supabaseClient';
 
-import StaffShell from '@/src/components/staff/StaffShell';
+import StaffShell from '@/components/staff/StaffShell';
 
 export default function StaffDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -53,9 +53,9 @@ export default function StaffDashboardLayout({ children }: { children: React.Rea
 
   if (checking || !authorized) {
     return (
-      <main className="min-h-screen bg-[#11161B] text-white flex flex-col items-center justify-center gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-[#FF6B00]" />
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Loading Tule Operations...</p>
+      <main className="min-h-screen bg-[#0B252C] text-white flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-[#0E7480]" />
+        <p className="text-xs font-semibold text-[#F8D77A]/80 uppercase tracking-widest">Loading Tule Operations...</p>
       </main>
     );
   }
