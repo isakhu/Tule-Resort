@@ -1,217 +1,315 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  BedDouble,
-  UtensilsCrossed,
-  QrCode,
+  ArrowDown,
   ArrowRight,
-  Sparkles,
+  ArrowUpRight,
+  BedDouble,
+  Compass,
+  Lock,
   MapPin,
   Phone,
-  Lock
+  QrCode,
+  Sparkles,
+  UtensilsCrossed,
+  Waves,
 } from 'lucide-react';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { tuleCopy, TuleLanguage } from '@/lib/tuleBrand';
 
+const experiences = [
+  {
+    eyebrow: 'STAY A LITTLE LONGER',
+    title: 'Rooms with room to breathe.',
+    description: 'Find your next quiet corner, explore the available rooms, and plan a stay at your own pace.',
+    image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1200&q=85',
+    alt: 'Warm, thoughtfully designed hotel room',
+    href: '/guest/rooms',
+    action: 'Explore rooms',
+    icon: BedDouble,
+    number: '01',
+  },
+  {
+    eyebrow: 'GATHER AROUND THE TABLE',
+    title: 'Let the good things be shared.',
+    description: 'Browse the restaurant menu and discover a more convenient way to order while you unwind.',
+    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=85',
+    alt: 'Welcoming restaurant with warm ambient lighting',
+    href: '/guest/restaurant',
+    action: 'Explore dining',
+    icon: UtensilsCrossed,
+    number: '02',
+  },
+  {
+    eyebrow: 'MAKE TIME FOR YOURSELF',
+    title: 'More than a place to stay.',
+    description: 'Explore the services and experiences available to help shape your time at Tule Resort.',
+    image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=85',
+    alt: 'Resort pool surrounded by tropical greenery',
+    href: '/guest/services',
+    action: 'Discover experiences',
+    icon: Waves,
+    number: '03',
+  },
+];
+
 export default function Home() {
   const [language, setLanguage] = useState<TuleLanguage>('en');
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const copy = tuleCopy[language];
 
   useEffect(() => {
     const onChange = (event: Event) =>
       setLanguage((event as CustomEvent<TuleLanguage>).detail);
     window.addEventListener('tule-language-change', onChange);
+
+    const elements = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduceMotion || !('IntersectionObserver' in window)) {
+      elements.forEach((element) => element.classList.add('is-visible'));
+    } else {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.14, rootMargin: '0px 0px -40px 0px' },
+      );
+      elements.forEach((element) => observer.observe(element));
+      return () => {
+        observer.disconnect();
+        window.removeEventListener('tule-language-change', onChange);
+      };
+    }
+
     return () => window.removeEventListener('tule-language-change', onChange);
   }, []);
 
+  const handleHeroPointer = (event: React.MouseEvent<HTMLElement>) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width - 0.5;
+    const y = (event.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)) });
+  };
+
+  const resetHeroPointer = () => setTilt({ x: 0, y: 0 });
+
   return (
-    <main className="h-[100dvh] max-h-[100dvh] min-h-[100dvh] w-screen overflow-hidden relative flex flex-col justify-between bg-background text-foreground select-none">
-      {/* ─── 1. CINEMATIC FULL-SCREEN BACKGROUND ─── */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-105"
-        style={{
-          backgroundImage:
-            'url(https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=2000&q=85)',
-        }}
-      />
-
-      {/* Luxury Twilight Vignette & Teal-Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/85 pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(21,154,156,0.25),transparent_50%)] pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(245,158,11,0.15),transparent_40%)] pointer-events-none" />
-
-      {/* ─── 2. TOP HEADER NAVIGATION ─── */}
-      <header className="relative z-30 w-full px-4 py-3 sm:px-8 sm:py-4 flex items-center justify-between border-b border-border backdrop-blur-md bg-background/20 shrink-0">
-        {/* Left: Brand Identity with Official Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="h-11 w-14 sm:h-12 sm:w-16 shrink-0 flex items-center justify-center group-hover:scale-105 transition-transform">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/tule-resort-mark.svg"
-              alt="Tule Resort Logo"
-              className="h-full w-full object-contain drop-shadow-md"
-            />
-          </div>
-          <div>
-            <span className="block text-sm sm:text-lg font-black tracking-tight text-foreground font-serif leading-none">
-              Tule Resort
+    <main className="min-h-screen overflow-x-hidden bg-[#07191E] text-[#F8F5EE]">
+      <header className="relative z-40 border-b border-white/10 bg-[#07191E]/85 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-4 py-3.5 sm:px-7 lg:px-10">
+          <Link href="/" aria-label="Tule Resort home" className="group flex shrink-0 items-center gap-2.5 sm:gap-3">
+            <span className="flex h-11 w-12 items-center justify-center transition-transform duration-500 group-hover:scale-105 sm:h-12 sm:w-14">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/tule-resort-mark.svg" alt="" className="h-full w-full object-contain drop-shadow-[0_4px_18px_rgba(248,215,122,.16)]" />
             </span>
-            <span className="block text-[8px] sm:text-[9px] font-extrabold uppercase tracking-[.25em] text-gold mt-0.5">
-              Hawassa • Lake Luxury
+            <span>
+              <span className="block font-display text-xl font-semibold leading-none tracking-wide sm:text-2xl">Tule Resort</span>
+              <span className="mt-1 block text-[8px] font-extrabold uppercase tracking-[.28em] text-[#D7B66A] sm:text-[9px]">Hawassa · Ethiopia</span>
             </span>
+          </Link>
+
+          <nav aria-label="Main navigation" className="hidden items-center gap-7 text-[11px] font-bold uppercase tracking-[.15em] text-white/65 lg:flex">
+            <Link href="/guest/rooms" className="transition-colors hover:text-[#F8D77A]">{copy.exploreRooms}</Link>
+            <Link href="/guest/restaurant" className="transition-colors hover:text-[#F8D77A]">{copy.dining}</Link>
+            <Link href="/guest/services" className="transition-colors hover:text-[#F8D77A]">{copy.experiences}</Link>
+            <Link href="/guest/table/tule-tbl-01-lakeview" className="transition-colors hover:text-[#F8D77A]">Table QR order</Link>
+          </nav>
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <LanguageSwitcher />
+            <Link href="/staff/login" className="hidden items-center gap-1.5 rounded-full border border-white/15 px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-white/75 transition hover:border-[#D7B66A]/70 hover:text-[#F8D77A] sm:inline-flex">
+              <Lock className="h-3 w-3" /> Staff
+            </Link>
+            <Link href="/guest/rooms" className="group inline-flex items-center gap-2 rounded-full bg-[#D7B66A] px-4 py-2.5 text-[10px] font-black uppercase tracking-[.12em] text-[#07191E] shadow-[0_8px_30px_rgba(215,182,106,.16)] transition duration-300 hover:-translate-y-0.5 hover:bg-[#F8D77A] sm:px-5">
+              {copy.book}<ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </Link>
           </div>
-        </Link>
-
-        {/* Center: Quick Links (Desktop) */}
-        <nav className="hidden md:flex items-center gap-6 text-xs font-bold uppercase tracking-wider text-muted">
-          <Link href="/guest/rooms" className="hover:text-primary transition-colors">
-            {copy.exploreRooms}
-          </Link>
-          <Link href="/guest/restaurant" className="hover:text-primary transition-colors">
-            {copy.dining}
-          </Link>
-          <Link href="/guest/table/tule-tbl-01-lakeview" className="hover:text-primary transition-colors">
-            Table QR Order
-          </Link>
-          <Link href="/guest/services" className="hover:text-primary transition-colors">
-            {copy.experiences}
-          </Link>
-        </nav>
-
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <LanguageSwitcher />
-
-          <Link
-            href="/staff/login"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border bg-surface/50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-foreground hover:bg-surface-hover transition-all backdrop-blur-md"
-          >
-            <Lock className="h-3 w-3 text-gold" />
-            Staff POS
-          </Link>
-
-          <Link
-            href="/guest/rooms"
-            className="rounded-full bg-gradient-to-r from-gold to-gold-light hover:brightness-110 px-4 sm:px-5 py-1.5 sm:py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-primary-foreground shadow-lg shadow-gold/30 transition-all"
-          >
-            {copy.book}
-          </Link>
         </div>
       </header>
 
-      {/* ─── 3. CENTER HERO DISPLAY (ONE SCREEN - NO SCROLL) ─── */}
-      <section className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-8 flex-1 flex flex-col justify-center py-2 sm:py-4 min-h-0">
-        <div className="max-w-3xl space-y-2 sm:space-y-3 animate-fade-in-up">
-          {/* Eyebrow badge */}
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[9px] sm:text-[10px] font-black uppercase tracking-[.22em] text-gold-light backdrop-blur-md">
-            <Sparkles className="h-3 w-3 text-gold" />
-            Hawassa Lakeside Sanctuary • Sidama, Ethiopia
+      <section
+        className="tule-hero relative isolate flex min-h-[680px] items-center overflow-hidden sm:min-h-[760px] lg:min-h-[calc(100svh-76px)]"
+        onMouseMove={handleHeroPointer}
+        onMouseLeave={resetHeroPointer}
+      >
+        <div
+          aria-hidden="true"
+          className="tule-hero-image absolute -inset-5 -z-30"
+          style={{
+            transform: `translate3d(${tilt.x * -10}px, ${tilt.y * -7}px, 0) scale(1.055)`,
+          }}
+        />
+        <div aria-hidden="true" className="absolute inset-0 -z-20 bg-[linear-gradient(90deg,rgba(4,17,21,.94)_0%,rgba(4,17,21,.78)_42%,rgba(4,17,21,.2)_100%)]" />
+        <div aria-hidden="true" className="absolute inset-0 -z-20 bg-[linear-gradient(0deg,#07191E_0%,rgba(7,25,30,.18)_35%,rgba(7,25,30,.18)_75%,rgba(7,25,30,.58)_100%)]" />
+        <div aria-hidden="true" className="tule-ambient-glow pointer-events-none absolute -right-44 top-12 -z-10 h-[34rem] w-[34rem] rounded-full" />
+
+        <div className="mx-auto grid w-full max-w-[1440px] items-center gap-12 px-4 pb-20 pt-20 sm:px-7 sm:pb-24 sm:pt-24 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,.85fr)] lg:gap-8 lg:px-10 lg:py-20 xl:gap-16">
+          <div className="relative z-10 max-w-3xl">
+            <div className="tule-intro inline-flex items-center gap-2 rounded-full border border-[#D7B66A]/35 bg-[#07191E]/45 px-3.5 py-2 text-[9px] font-extrabold uppercase tracking-[.2em] text-[#F8D77A] backdrop-blur-md sm:text-[10px]">
+              <Sparkles className="h-3.5 w-3.5" />
+              Hawassa lakeside · Sidama, Ethiopia
+            </div>
+
+            <p className="tule-intro mt-8 text-[10px] font-bold uppercase tracking-[.35em] text-white/60 sm:mt-10" style={{ animationDelay: '100ms' }}>
+              An invitation to slow down
+            </p>
+            <h1 className="tule-intro mt-4 max-w-4xl font-display text-[clamp(3.5rem,8vw,7.8rem)] font-medium leading-[.84] tracking-[-.045em] text-[#FFFDF7]" style={{ animationDelay: '180ms' }}>
+              Find your
+              <br />
+              <span className="tule-title-accent italic">own horizon.</span>
+            </h1>
+            <p className="tule-intro mt-7 max-w-xl text-sm leading-7 text-white/75 sm:mt-8 sm:text-base sm:leading-8" style={{ animationDelay: '260ms' }}>
+              A lakeside escape shaped by warm Ethiopian hospitality, thoughtful stays, and moments worth remembering.
+            </p>
+
+            <div className="tule-intro mt-8 flex flex-wrap items-center gap-3 sm:mt-9" style={{ animationDelay: '340ms' }}>
+              <Link href="/guest/rooms" className="group inline-flex items-center gap-3 rounded-full bg-[#D7B66A] px-6 py-3.5 text-[10px] font-black uppercase tracking-[.14em] text-[#07191E] transition duration-300 hover:-translate-y-1 hover:bg-[#F8D77A] hover:shadow-[0_12px_38px_rgba(215,182,106,.22)]">
+                Explore your stay <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+              <Link href="/guest/services" className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/[.06] px-5 py-3.5 text-[10px] font-bold uppercase tracking-[.13em] text-white/90 backdrop-blur-md transition hover:border-white/60 hover:bg-white/10">
+                <Compass className="h-3.5 w-3.5" /> Discover the resort
+              </Link>
+            </div>
+
+            <div className="tule-intro mt-10 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-white/20 pt-5 text-[9px] font-bold uppercase tracking-[.16em] text-white/55 sm:mt-12 sm:pt-6" style={{ animationDelay: '420ms' }}>
+              <span className="inline-flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-[#D7B66A]" /> Lake Hawassa, Ethiopia</span>
+              <span className="hidden h-1 w-1 rounded-full bg-[#D7B66A] sm:block" />
+              <span>Relax. Enjoy. Remember.</span>
+            </div>
           </div>
 
-          {/* Grand Headline */}
-          <h1 className="text-3xl sm:text-6xl md:text-7xl font-black tracking-tight text-foreground font-serif leading-[1.04]">
-            Where the Lake <br className="hidden sm:inline" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-light via-gold to-secondary">
-              Meets Luxury.
-            </span>
-          </h1>
+          <div className="relative mx-auto hidden w-full max-w-[490px] lg:block" aria-label="Explore the Tule Resort guest experience">
+            <div
+              className="tule-3d-frame relative aspect-[.78] w-full"
+              style={{
+                transform: `rotateY(${tilt.x * 5}deg) rotateX(${tilt.y * -4}deg)`,
+              }}
+            >
+              <div className="tule-photo-panel absolute inset-[5%_8%_11%_8%] overflow-hidden rounded-[2rem] border border-white/20 bg-[#102D33] shadow-[0_35px_100px_rgba(0,0,0,.45)]">
+                <div className="tule-photo-panel-image absolute inset-0" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#041115] via-[#041115]/15 to-transparent" />
+                <div className="absolute inset-x-5 top-5 flex items-start justify-between">
+                  <span className="rounded-full border border-white/20 bg-black/25 px-3 py-2 text-[9px] font-bold uppercase tracking-[.18em] text-white/85 backdrop-blur-lg">Your resort, your rhythm</span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/25 text-[#F8D77A] backdrop-blur-lg"><Waves className="h-4 w-4" /></span>
+                </div>
+                <div className="absolute inset-x-6 bottom-7">
+                  <p className="text-[9px] font-bold uppercase tracking-[.3em] text-[#F8D77A]">Tule Resort · Hawassa</p>
+                  <p className="mt-2 font-display text-4xl leading-none text-white xl:text-5xl">Breathe in.<br /><span className="italic">Let go.</span></p>
+                  <div className="mt-5 h-px w-full bg-white/25" />
+                  <div className="mt-4 flex items-center justify-between text-[9px] font-bold uppercase tracking-[.14em] text-white/65">
+                    <span>Stay · Dine · Discover</span><ArrowUpRight className="h-4 w-4 text-[#F8D77A]" />
+                  </div>
+                </div>
+              </div>
 
-          {/* Subtitle */}
-          <p className="text-xs sm:text-sm md:text-base text-muted max-w-xl leading-relaxed line-clamp-2 sm:line-clamp-none">
-            {language === 'am'
-              ? 'በሀይቁ ዳርቻ ውብ እረፍት፣ የኢትዮጵያ ጣዕም ያለው ምግብ፣ እና የዘመናዊ ጠረጴዛ QR አገልግሎት በአንድ ላይ።'
-              : 'Panoramic shoreline villas, authentic Ethiopian gastronomy, tranquil lake breezes, and instant mobile table service.'}
-          </p>
+              <div className="tule-float-card absolute -left-1 top-[24%] z-10 rounded-2xl border border-white/20 bg-[#0B252C]/85 p-4 shadow-[0_18px_45px_rgba(0,0,0,.35)] backdrop-blur-xl xl:-left-4">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7B66A]/15 text-[#F8D77A]"><BedDouble className="h-4.5 w-4.5" /></span>
+                  <span><span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-white/45">01 / Stay</span><span className="mt-1 block text-xs font-bold text-white">A room to recharge</span></span>
+                </div>
+              </div>
+
+              <div className="tule-float-card absolute -right-1 bottom-[22%] z-10 rounded-2xl border border-white/20 bg-[#0B252C]/85 p-4 shadow-[0_18px_45px_rgba(0,0,0,.35)] backdrop-blur-xl [animation-delay:-2.5s] xl:-right-5">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#159A9C]/15 text-[#6DE0D2]"><UtensilsCrossed className="h-4.5 w-4.5" /></span>
+                  <span><span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-white/45">02 / Dine</span><span className="mt-1 block text-xs font-bold text-white">A taste of the moment</span></span>
+                </div>
+              </div>
+              <span aria-hidden="true" className="absolute -right-2 top-[12%] h-16 w-16 rounded-full border border-[#D7B66A]/30 [transform:translateZ(45px)]" />
+              <span aria-hidden="true" className="absolute bottom-[8%] left-[1%] h-2.5 w-2.5 rounded-full bg-[#F8D77A] shadow-[0_0_24px_8px_rgba(248,215,122,.2)]" />
+            </div>
+            <div className="mt-2 flex items-center justify-center gap-2 text-[9px] font-bold uppercase tracking-[.26em] text-white/35">
+              <span className="h-px w-8 bg-white/25" /> Your escape begins here <span className="h-px w-8 bg-white/25" />
+            </div>
+          </div>
         </div>
 
-        {/* ─── 3 ACTION PORTALS (Responsive Grid - Fits Screen) ─── */}
-        <div className="mt-5 sm:mt-8 grid grid-cols-3 gap-2 sm:gap-4 max-w-4xl">
-          {/* Portal 1: Rooms */}
-          <Link
-            href="/guest/rooms"
-            className="group cel-card p-3 sm:p-5 backdrop-blur-xl shadow-xl flex flex-col justify-between"
-          >
-            <div>
-              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl bg-secondary/20 text-secondary flex items-center justify-center group-hover:scale-110 transition-transform">
-                <BedDouble className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <h3 className="mt-2 sm:mt-3 text-xs sm:text-base font-black text-foreground group-hover:text-gold-light transition-colors truncate">
-                Lake Suites
-              </h3>
-              <p className="hidden sm:block mt-1 text-xs text-muted line-clamp-2">
-                12 luxury rooms, private lake terraces, and king suites.
-              </p>
-            </div>
-            <div className="mt-2 sm:mt-4 flex items-center gap-1 text-[10px] sm:text-xs font-black uppercase tracking-wider text-gold group-hover:text-gold-light">
-              <span className="truncate">Explore Stays</span>
-              <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 group-hover:translate-x-1 transition-transform shrink-0" />
-            </div>
-          </Link>
+        <Link href="#experiences" className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2 text-[8px] font-bold uppercase tracking-[.25em] text-white/55 transition hover:text-white sm:bottom-7">
+          Explore below <ArrowDown className="h-4 w-4 animate-bounce" />
+        </Link>
+      </section>
 
-          {/* Portal 2: Dining */}
-          <Link
-            href="/guest/restaurant"
-            className="group cel-card p-3 sm:p-5 backdrop-blur-xl shadow-xl flex flex-col justify-between"
-          >
-            <div>
-              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl bg-secondary/20 text-secondary flex items-center justify-center group-hover:scale-110 transition-transform">
-                <UtensilsCrossed className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <h3 className="mt-2 sm:mt-3 text-xs sm:text-base font-black text-foreground group-hover:text-gold-light transition-colors truncate">
-                Lakeside Dining
-              </h3>
-              <p className="hidden sm:block mt-1 text-xs text-muted line-clamp-2">
-                Culinary specialties, fresh Lake Tilapia, and fine drinks.
-              </p>
+      <section id="experiences" className="relative z-10 bg-[#07191E] px-4 py-20 sm:px-7 sm:py-28 lg:px-10 lg:py-32">
+        <div className="mx-auto max-w-[1440px]">
+          <div data-reveal className="tule-reveal mb-10 flex flex-col gap-5 md:mb-14 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-[9px] font-extrabold uppercase tracking-[.32em] text-[#D7B66A] sm:text-[10px]">The Tule experience</p>
+              <h2 className="mt-4 font-display text-5xl font-medium leading-[.95] tracking-[-.035em] text-white sm:text-6xl lg:text-7xl">Make space for <span className="italic text-[#D7B66A]">what matters.</span></h2>
             </div>
-            <div className="mt-2 sm:mt-4 flex items-center gap-1 text-[10px] sm:text-xs font-black uppercase tracking-wider text-gold group-hover:text-gold-light">
-              <span className="truncate">View Menu</span>
-              <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 group-hover:translate-x-1 transition-transform shrink-0" />
-            </div>
-          </Link>
+            <p className="max-w-md text-sm leading-7 text-white/55">From choosing a room to ordering a meal, the guest experience is designed to feel considered, clear, and easy to explore.</p>
+          </div>
 
-          {/* Portal 3: Table QR Ordering */}
-          <Link
-            href="/guest/table/tule-tbl-01-lakeview"
-            className="group cel-card p-3 sm:p-5 backdrop-blur-xl shadow-xl flex flex-col justify-between"
-          >
-            <div>
-              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl bg-primary/20 text-gold-light flex items-center justify-center group-hover:scale-110 transition-transform">
-                <QrCode className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <h3 className="mt-2 sm:mt-3 text-xs sm:text-base font-black text-foreground group-hover:text-gold-light transition-colors truncate">
-                Table QR Order
-              </h3>
-              <p className="hidden sm:block mt-1 text-xs text-muted line-clamp-2">
-                Order food &amp; drinks directly from your terrace table.
-              </p>
-            </div>
-            <div className="mt-2 sm:mt-4 flex items-center gap-1 text-[10px] sm:text-xs font-black uppercase tracking-wider text-gold group-hover:text-gold-light">
-              <span className="truncate">Order Table</span>
-              <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 group-hover:translate-x-1 transition-transform shrink-0" />
-            </div>
-          </Link>
+          <div className="grid gap-5 md:grid-cols-3 md:gap-4 xl:gap-6">
+            {experiences.map((experience, index) => {
+              const Icon = experience.icon;
+              return (
+                <article key={experience.number} data-reveal className="tule-reveal group relative min-h-[450px] overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0B252C]" style={{ transitionDelay: `${index * 100}ms` }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={experience.image} alt={experience.alt} loading="lazy" className="tule-experience-image absolute inset-0 h-full w-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#041115] via-[#041115]/45 to-[#041115]/5" />
+                  <div className="absolute left-5 right-5 top-5 flex items-center justify-between">
+                    <span className="rounded-full border border-white/20 bg-black/25 px-3 py-2 text-[8px] font-extrabold uppercase tracking-[.2em] text-white/80 backdrop-blur-md">{experience.eyebrow}</span>
+                    <span className="font-display text-2xl italic text-white/60">{experience.number}</span>
+                  </div>
+                  <div className="absolute inset-x-5 bottom-5 sm:inset-x-6 sm:bottom-6">
+                    <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-[#F8D77A] backdrop-blur-md"><Icon className="h-5 w-5" /></span>
+                    <h3 className="max-w-sm font-display text-3xl leading-[1.02] text-white sm:text-4xl">{experience.title}</h3>
+                    <p className="mt-3 max-w-sm text-xs leading-6 text-white/70 sm:text-sm">{experience.description}</p>
+                    <Link href={experience.href} className="mt-5 inline-flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[#F8D77A] transition-colors hover:text-white">
+                      {experience.action}<ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      {/* ─── 4. BOTTOM STATUS BAR FOOTER (FIXED - NO SCROLL) ─── */}
-      <footer className="relative z-30 w-full px-4 py-2.5 sm:px-8 sm:py-3.5 border-t border-border backdrop-blur-md bg-background/30 text-[10px] sm:text-xs text-muted flex items-center justify-between gap-2 shrink-0">
-        <div className="flex items-center gap-1.5 truncate">
-          <MapPin className="h-3 w-3 text-gold shrink-0" />
-          <span className="truncate">Lake Hawassa Shore, Sidama, Ethiopia</span>
+      <section className="relative overflow-hidden border-y border-white/10 bg-[#0B252C] px-4 py-14 sm:px-7 sm:py-18 lg:px-10 lg:py-20">
+        <div aria-hidden="true" className="absolute -right-20 -top-32 h-96 w-96 rounded-full border border-[#D7B66A]/10" />
+        <div aria-hidden="true" className="absolute -right-8 -top-20 h-72 w-72 rounded-full border border-[#D7B66A]/10" />
+        <div className="relative mx-auto flex max-w-[1440px] flex-col gap-7 md:flex-row md:items-center md:justify-between">
+          <div data-reveal className="tule-reveal max-w-2xl">
+            <p className="text-[9px] font-extrabold uppercase tracking-[.32em] text-[#D7B66A]">A smoother guest journey</p>
+            <h2 className="mt-3 font-display text-4xl leading-tight text-white sm:text-5xl">Your time here. <span className="italic text-[#D7B66A]">Made easier.</span></h2>
+            <p className="mt-3 max-w-xl text-sm leading-7 text-white/55">Explore your stay, browse the menu, or order from a table—all from one connected guest experience.</p>
+          </div>
+          <div data-reveal className="tule-reveal flex flex-wrap gap-3">
+            <Link href="/guest/rooms" className="inline-flex items-center gap-2 rounded-full bg-[#D7B66A] px-5 py-3.5 text-[10px] font-black uppercase tracking-[.13em] text-[#07191E] transition hover:bg-[#F8D77A]">Plan your stay <ArrowUpRight className="h-4 w-4" /></Link>
+            <Link href="/guest/table/tule-tbl-01-lakeview" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-3.5 text-[10px] font-bold uppercase tracking-[.13em] text-white/80 transition hover:border-white/50 hover:bg-white/5"><QrCode className="h-4 w-4" /> Table QR order</Link>
+          </div>
         </div>
+      </section>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="hidden sm:flex items-center gap-1">
-            <Phone className="h-3 w-3 text-secondary" />
-            Concierge: <strong className="text-foreground">+251 994 781 422</strong>
-          </span>
-          <Link href="/staff/login" className="text-gold hover:text-gold-light font-bold transition-colors">
-            Staff Portal →
+      <footer className="bg-[#041115] px-4 py-9 sm:px-7 lg:px-10">
+        <div className="mx-auto flex max-w-[1440px] flex-col gap-7 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/tule-resort-mark.svg" alt="Tule Resort" className="h-10 w-12 object-contain" />
+            <span><span className="block font-display text-xl text-white">Tule Resort</span><span className="mt-1 block text-[8px] font-bold uppercase tracking-[.26em] text-white/40">Hawassa · Ethiopia</span></span>
           </Link>
+          <div className="flex flex-wrap gap-x-6 gap-y-3 text-[10px] font-bold uppercase tracking-[.13em] text-white/50">
+            <Link href="/guest/rooms" className="hover:text-[#F8D77A]">Rooms</Link>
+            <Link href="/guest/restaurant" className="hover:text-[#F8D77A]">Dining</Link>
+            <Link href="/guest/services" className="hover:text-[#F8D77A]">Experiences</Link>
+            <Link href="/staff/login" className="hover:text-[#F8D77A]">Staff portal</Link>
+          </div>
+          <div className="flex flex-col gap-2 text-[10px] text-white/40 sm:items-end">
+            <span className="inline-flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-[#D7B66A]" /> Lake Hawassa Shore, Sidama, Ethiopia</span>
+            <a href="tel:+251994781422" className="inline-flex items-center gap-2 transition hover:text-white"><Phone className="h-3.5 w-3.5 text-[#D7B66A]" /> +251 994 781 422</a>
+          </div>
         </div>
+        <div className="mx-auto mt-8 max-w-[1440px] border-t border-white/10 pt-5 text-[9px] uppercase tracking-[.16em] text-white/30">© {new Date().getFullYear()} Tule Resort · Relax. Enjoy. Remember.</div>
       </footer>
     </main>
   );
