@@ -321,3 +321,28 @@ h1, h2, h3, h4, h5, h6,
   .tule-3d-frame { transform: none !important; }
   .tule-experience-image { transition: none; }
 }
+
+
+/* WebGL canvas surface for the live resort model */
+.tule-diorama {
+  overflow: hidden;
+  touch-action: pan-y;
+  contain: paint;
+}
+
+.tule-diorama canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+.tule-3d-fallback {
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(21,154,156,.3), transparent 58%),
+    linear-gradient(145deg, #102f34, #07191e 72%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tule-diorama canvas { animation: none !important; }
+}
