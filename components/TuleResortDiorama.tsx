@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
@@ -86,9 +88,9 @@ export default function TuleResortDiorama() {
     });
 
     const addMesh = (
-      geometry: THREE.BufferGeometry,
-      mat: THREE.Material,
-      parent: THREE.Object3D,
+      geometry: any,
+      mat: any,
+      parent: any,
       position: [number, number, number],
       rotation: [number, number, number] = [0, 0, 0],
     ) => {
@@ -277,7 +279,7 @@ export default function TuleResortDiorama() {
       ref={mountRef}
       aria-label="Decorative interactive 3D illustration of a lakeside resort"
       role="img"
-      className="tule-diorama absolute inset-0 z-10"
+      className="tule-diorama absolute inset-0 z-0"
     />
   );
 }
