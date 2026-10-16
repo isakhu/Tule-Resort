@@ -198,7 +198,7 @@ export default function Home() {
               <div className="tule-photo-panel absolute inset-[5%_8%_11%_8%] overflow-hidden rounded-[2rem] border border-white/20 bg-[#102D33] shadow-[0_35px_100px_rgba(0,0,0,.45)]">
                 <div className="tule-photo-panel-image absolute inset-0 opacity-25" />
                 <TuleResortDiorama />
-                <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#041115] via-[#041115]/15 to-transparent" />
+                <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#041115]/70 via-[#041115]/10 to-transparent" />
                 <div className="absolute inset-x-5 top-5 z-20 flex items-start justify-between">
                   <span className="rounded-full border border-white/20 bg-black/25 px-3 py-2 text-[9px] font-bold uppercase tracking-[.18em] text-white/85 backdrop-blur-lg">Your resort, your rhythm</span>
                   <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/25 text-[#F8D77A] backdrop-blur-lg"><Waves className="h-4 w-4" /></span>
