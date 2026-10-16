@@ -22,35 +22,35 @@ import { tuleCopy, TuleLanguage } from '@/lib/tuleBrand';
 
 const experiences = [
   {
-    eyebrow: 'STAY A LITTLE LONGER',
-    title: 'Rooms with room to breathe.',
-    description: 'Find your next quiet corner, explore the available rooms, and plan a stay at your own pace.',
+    eyebrow: 'GUEST ROOMS',
+    title: 'Find a room for your Hawassa stay.',
+    description: 'Compare available rooms and choose the dates that work for your visit.',
     image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1200&q=85',
-    alt: 'Warm, thoughtfully designed hotel room',
+    alt: 'Hotel guest room interior',
     href: '/guest/rooms',
-    action: 'Explore rooms',
+    action: 'View rooms',
     icon: BedDouble,
     number: '01',
   },
   {
-    eyebrow: 'GATHER AROUND THE TABLE',
-    title: 'Let the good things be shared.',
-    description: 'Browse the restaurant menu and discover a more convenient way to order while you unwind.',
+    eyebrow: 'RESTAURANT MENU',
+    title: 'Browse the restaurant menu.',
+    description: 'See the dishes on the menu, then use the table-ordering page when you are ready.',
     image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=85',
-    alt: 'Welcoming restaurant with warm ambient lighting',
+    alt: 'Restaurant dining area',
     href: '/guest/restaurant',
-    action: 'Explore dining',
+    action: 'Open menu',
     icon: UtensilsCrossed,
     number: '02',
   },
   {
-    eyebrow: 'MAKE TIME FOR YOURSELF',
-    title: 'More than a place to stay.',
-    description: 'Explore the services and experiences available to help shape your time at Tule Resort.',
+    eyebrow: 'GUEST SERVICES',
+    title: 'Check guest services.',
+    description: 'Review the services listed by Tule Resort and find the options relevant to your visit.',
     image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=85',
-    alt: 'Resort pool surrounded by tropical greenery',
+    alt: 'Pool area surrounded by greenery',
     href: '/guest/services',
-    action: 'Discover experiences',
+    action: 'View services',
     icon: Waves,
     number: '03',
   },
@@ -122,7 +122,7 @@ export default function Home() {
             <Link href="/guest/rooms" className="transition-colors hover:text-[#F8D77A]">{copy.exploreRooms}</Link>
             <Link href="/guest/restaurant" className="transition-colors hover:text-[#F8D77A]">{copy.dining}</Link>
             <Link href="/guest/services" className="transition-colors hover:text-[#F8D77A]">{copy.experiences}</Link>
-            <Link href="/guest/table/tule-tbl-01-lakeview" className="transition-colors hover:text-[#F8D77A]">Table QR order</Link>
+            <Link href="/guest/table/tule-tbl-01-lakeview" className="transition-colors hover:text-[#F8D77A]">Open table ordering</Link>
           </nav>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
@@ -161,34 +161,34 @@ export default function Home() {
             </div>
 
             <p className="tule-intro mt-8 text-[10px] font-bold uppercase tracking-[.35em] text-white/60 sm:mt-10" style={{ animationDelay: '100ms' }}>
-              An invitation to slow down
+              ROOMS · RESTAURANT · GUEST SERVICES
             </p>
             <h1 className="tule-intro mt-4 max-w-4xl font-display text-[clamp(3.5rem,8vw,7.8rem)] font-medium leading-[.84] tracking-[-.045em] text-[#FFFDF7]" style={{ animationDelay: '180ms' }}>
-              Find your
+              View rooms in
               <br />
-              <span className="tule-title-accent italic">own horizon.</span>
+              <span className="tule-title-accent italic">Hawassa.</span>
             </h1>
             <p className="tule-intro mt-7 max-w-xl text-sm leading-7 text-white/75 sm:mt-8 sm:text-base sm:leading-8" style={{ animationDelay: '260ms' }}>
-              A lakeside escape shaped by warm Ethiopian hospitality, thoughtful stays, and moments worth remembering.
+              View the available rooms, browse the restaurant menu, and check the guest services offered at Tule Resort in Hawassa.
             </p>
 
             <div className="tule-intro mt-8 flex flex-wrap items-center gap-3 sm:mt-9" style={{ animationDelay: '340ms' }}>
               <Link href="/guest/rooms" className="group inline-flex items-center gap-3 rounded-full bg-[#D7B66A] px-6 py-3.5 text-[10px] font-black uppercase tracking-[.14em] text-[#07191E] transition duration-300 hover:-translate-y-1 hover:bg-[#F8D77A] hover:shadow-[0_12px_38px_rgba(215,182,106,.22)]">
-                Explore your stay <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                View rooms <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
               <Link href="/guest/services" className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/[.06] px-5 py-3.5 text-[10px] font-bold uppercase tracking-[.13em] text-white/90 backdrop-blur-md transition hover:border-white/60 hover:bg-white/10">
-                <Compass className="h-3.5 w-3.5" /> Discover the resort
+                <Compass className="h-3.5 w-3.5" /> Guest services
               </Link>
             </div>
 
             <div className="tule-intro mt-10 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-white/20 pt-5 text-[9px] font-bold uppercase tracking-[.16em] text-white/55 sm:mt-12 sm:pt-6" style={{ animationDelay: '420ms' }}>
               <span className="inline-flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-[#D7B66A]" /> Lake Hawassa, Ethiopia</span>
               <span className="hidden h-1 w-1 rounded-full bg-[#D7B66A] sm:block" />
-              <span>Relax. Enjoy. Remember.</span>
+              <span>Rooms · Restaurant · Guest services</span>
             </div>
           </div>
 
-          <div className="relative mx-auto hidden w-full max-w-[490px] lg:block" aria-label="Explore the Tule Resort guest experience">
+          <div className="relative mx-auto hidden w-full max-w-[490px] lg:block" aria-label="Illustrated 3D view of a resort">
             <div
               className="tule-3d-frame relative aspect-[.78] w-full"
               style={{
@@ -200,15 +200,15 @@ export default function Home() {
                 <TuleResortDiorama />
                 <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#041115]/70 via-[#041115]/10 to-transparent" />
                 <div className="absolute inset-x-5 top-5 z-20 flex items-start justify-between">
-                  <span className="rounded-full border border-white/20 bg-black/25 px-3 py-2 text-[9px] font-bold uppercase tracking-[.18em] text-white/85 backdrop-blur-lg">Your resort, your rhythm</span>
+                  <span className="rounded-full border border-white/20 bg-black/25 px-3 py-2 text-[9px] font-bold uppercase tracking-[.18em] text-white/85 backdrop-blur-lg">3D resort illustration</span>
                   <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/25 text-[#F8D77A] backdrop-blur-lg"><Waves className="h-4 w-4" /></span>
                 </div>
                 <div className="absolute inset-x-6 bottom-7 z-20">
                   <p className="text-[9px] font-bold uppercase tracking-[.3em] text-[#F8D77A]">Tule Resort · Hawassa</p>
-                  <p className="mt-2 font-display text-4xl leading-none text-white xl:text-5xl">Breathe in.<br /><span className="italic">Let go.</span></p>
+                  <p className="mt-2 font-display text-4xl leading-none text-white xl:text-5xl">Rooms.<br /><span className="italic">Dining.</span></p>
                   <div className="mt-5 h-px w-full bg-white/25" />
                   <div className="mt-4 flex items-center justify-between text-[9px] font-bold uppercase tracking-[.14em] text-white/65">
-                    <span>Stay · Dine · Discover</span><ArrowUpRight className="h-4 w-4 text-[#F8D77A]" />
+                    <span>Rooms · Restaurant · Services</span><ArrowUpRight className="h-4 w-4 text-[#F8D77A]" />
                   </div>
                 </div>
               </div>
@@ -216,27 +216,27 @@ export default function Home() {
               <div className="tule-float-card absolute -left-1 top-[24%] z-10 rounded-2xl border border-white/20 bg-[#0B252C]/85 p-4 shadow-[0_18px_45px_rgba(0,0,0,.35)] backdrop-blur-xl xl:-left-4">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7B66A]/15 text-[#F8D77A]"><BedDouble className="h-4.5 w-4.5" /></span>
-                  <span><span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-white/45">01 / Stay</span><span className="mt-1 block text-xs font-bold text-white">A room to recharge</span></span>
+                  <span><span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-white/45">01 / Rooms</span><span className="mt-1 block text-xs font-bold text-white">View room options</span></span>
                 </div>
               </div>
 
               <div className="tule-float-card absolute -right-1 bottom-[22%] z-10 rounded-2xl border border-white/20 bg-[#0B252C]/85 p-4 shadow-[0_18px_45px_rgba(0,0,0,.35)] backdrop-blur-xl [animation-delay:-2.5s] xl:-right-5">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#159A9C]/15 text-[#6DE0D2]"><UtensilsCrossed className="h-4.5 w-4.5" /></span>
-                  <span><span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-white/45">02 / Dine</span><span className="mt-1 block text-xs font-bold text-white">A taste of the moment</span></span>
+                  <span><span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-white/45">02 / Menu</span><span className="mt-1 block text-xs font-bold text-white">Browse the menu</span></span>
                 </div>
               </div>
               <span aria-hidden="true" className="absolute -right-2 top-[12%] h-16 w-16 rounded-full border border-[#D7B66A]/30 [transform:translateZ(45px)]" />
               <span aria-hidden="true" className="absolute bottom-[8%] left-[1%] h-2.5 w-2.5 rounded-full bg-[#F8D77A] shadow-[0_0_24px_8px_rgba(248,215,122,.2)]" />
             </div>
             <div className="mt-2 flex items-center justify-center gap-2 text-[9px] font-bold uppercase tracking-[.26em] text-white/35">
-              <span className="h-px w-8 bg-white/25" /> Your escape begins here <span className="h-px w-8 bg-white/25" />
+              <span className="h-px w-8 bg-white/25" /> Rooms · Restaurant · Guest services <span className="h-px w-8 bg-white/25" />
             </div>
           </div>
         </div>
 
         <Link href="#experiences" className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2 text-[8px] font-bold uppercase tracking-[.25em] text-white/55 transition hover:text-white sm:bottom-7">
-          Explore below <ArrowDown className="h-4 w-4 animate-bounce" />
+          See rooms and services <ArrowDown className="h-4 w-4 animate-bounce" />
         </Link>
       </section>
 
@@ -244,10 +244,10 @@ export default function Home() {
         <div className="mx-auto max-w-[1440px]">
           <div data-reveal className="tule-reveal mb-10 flex flex-col gap-5 md:mb-14 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
-              <p className="text-[9px] font-extrabold uppercase tracking-[.32em] text-[#D7B66A] sm:text-[10px]">The Tule experience</p>
-              <h2 className="mt-4 font-display text-5xl font-medium leading-[.95] tracking-[-.035em] text-white sm:text-6xl lg:text-7xl">Make space for <span className="italic text-[#D7B66A]">what matters.</span></h2>
+              <p className="text-[9px] font-extrabold uppercase tracking-[.32em] text-[#D7B66A] sm:text-[10px]">Explore Tule Resort</p>
+              <h2 className="mt-4 font-display text-5xl font-medium leading-[.95] tracking-[-.035em] text-white sm:text-6xl lg:text-7xl">Rooms, dining and <span className="italic text-[#D7B66A]">guest services.</span></h2>
             </div>
-            <p className="max-w-md text-sm leading-7 text-white/55">From choosing a room to ordering a meal, the guest experience is designed to feel considered, clear, and easy to explore.</p>
+            <p className="max-w-md text-sm leading-7 text-white/55">Compare room options, open the restaurant menu, or view the services listed for resort guests.</p>
           </div>
 
           <div className="grid gap-5 md:grid-cols-3 md:gap-4 xl:gap-6">
@@ -282,9 +282,9 @@ export default function Home() {
         <div aria-hidden="true" className="absolute -right-8 -top-20 h-72 w-72 rounded-full border border-[#D7B66A]/10" />
         <div className="relative mx-auto flex max-w-[1440px] flex-col gap-7 md:flex-row md:items-center md:justify-between">
           <div data-reveal className="tule-reveal max-w-2xl">
-            <p className="text-[9px] font-extrabold uppercase tracking-[.32em] text-[#D7B66A]">A smoother guest journey</p>
-            <h2 className="mt-3 font-display text-4xl leading-tight text-white sm:text-5xl">Your time here. <span className="italic text-[#D7B66A]">Made easier.</span></h2>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-white/55">Explore your stay, browse the menu, or order from a table—all from one connected guest experience.</p>
+            <p className="text-[9px] font-extrabold uppercase tracking-[.32em] text-[#D7B66A]">Guest links</p>
+            <h2 className="mt-3 font-display text-4xl leading-tight text-white sm:text-5xl">Rooms, menu and <span className="italic text-[#D7B66A]">table orders.</span></h2>
+            <p className="mt-3 max-w-xl text-sm leading-7 text-white/55">Open the room listings, browse the restaurant menu, or visit the table-ordering page.</p>
           </div>
           <div data-reveal className="tule-reveal flex flex-wrap gap-3">
             <Link href="/guest/rooms" className="inline-flex items-center gap-2 rounded-full bg-[#D7B66A] px-5 py-3.5 text-[10px] font-black uppercase tracking-[.13em] text-[#07191E] transition hover:bg-[#F8D77A]">Plan your stay <ArrowUpRight className="h-4 w-4" /></Link>
@@ -311,7 +311,7 @@ export default function Home() {
             <a href="tel:+251994781422" className="inline-flex items-center gap-2 transition hover:text-white"><Phone className="h-3.5 w-3.5 text-[#D7B66A]" /> +251 994 781 422</a>
           </div>
         </div>
-        <div className="mx-auto mt-8 max-w-[1440px] border-t border-white/10 pt-5 text-[9px] uppercase tracking-[.16em] text-white/30">© {new Date().getFullYear()} Tule Resort · Relax. Enjoy. Remember.</div>
+        <div className="mx-auto mt-8 max-w-[1440px] border-t border-white/10 pt-5 text-[9px] uppercase tracking-[.16em] text-white/30">© {new Date().getFullYear()} Tule Resort</div>
       </footer>
     </main>
   );
