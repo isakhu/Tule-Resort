@@ -29,7 +29,7 @@ export default function TuleResortDiorama() {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 50);
-    camera.position.set(4.6, 3.8, 5.6);
+    camera.position.set(4.6, 4.2, 7.2);
     camera.lookAt(0, 0.22, 0);
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -207,6 +207,7 @@ export default function TuleResortDiorama() {
       resort.add(glow);
     });
 
+    resort.scale.setScalar(0.86);
     resort.rotation.y = -0.45;
     resort.rotation.x = -0.05;
 
