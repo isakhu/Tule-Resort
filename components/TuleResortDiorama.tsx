@@ -12,7 +12,7 @@ export default function TuleResortDiorama() {
     const mount = mountRef.current;
     if (!mount) return;
 
-    let renderer: THREE.WebGLRenderer;
+    let renderer: any;
     try {
       renderer = new THREE.WebGLRenderer({
         alpha: true,
@@ -259,12 +259,12 @@ export default function TuleResortDiorama() {
       resizeObserver.disconnect();
       mount.removeEventListener('pointermove', onPointerMove);
       mount.removeEventListener('pointerleave', onPointerLeave);
-      scene.traverse((object: THREE.Object3D) => {
+      scene.traverse((object: any) => {
         const mesh = object as THREE.Mesh;
         if (mesh.geometry) mesh.geometry.dispose();
         if (mesh.material) {
           const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-          materials.forEach((mat: THREE.Material) => mat.dispose());
+          materials.forEach((mat: any) => mat.dispose());
         }
       });
       renderer.dispose();
