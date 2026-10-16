@@ -263,7 +263,7 @@ export default function TuleResortDiorama() {
       mount.removeEventListener('pointermove', onPointerMove);
       mount.removeEventListener('pointerleave', onPointerLeave);
       scene.traverse((object: any) => {
-        const mesh = object as THREE.Mesh;
+        const mesh = object as any;
         if (mesh.geometry) mesh.geometry.dispose();
         if (mesh.material) {
           const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
