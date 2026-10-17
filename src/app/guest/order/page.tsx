@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Minus, Plus, ShoppingBag, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { menuItems } from '@/data/menu-items';
+import type { MenuItem as LiveMenuItem } from '@/lib/menu';
 import { createOrder } from '@/lib/orders';
 
 type Cart = Record<string, number>;
@@ -12,6 +13,9 @@ const LEGACY_CART_KEY = 'haile-resort-cart';
 
 export default function GuestOrderPage() {
   const [cart, setCart] = useState<Cart>({});
+  const [orderMenu, setOrderMenu] = useState<LiveMenuItem[]>(
+    menuItems.map((item) => ({ ...item, isAvailable: true, dietaryTags: [] })),
+  );
   const [submitted, setSubmitted] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [roomNumber, setRoomNumber] = useState('');
@@ -32,9 +36,33 @@ export default function GuestOrderPage() {
     window.localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }, [cart]);
 
+  // The browsing page may be using live Supabase menu rows whose IDs differ
+  // from the bundled fallback dataset. Load the same source for checkout.
+  useEffect(() => {
+    let active = true;
+
+    fetch('/api/menu', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load the live menu.');
+        return response.json() as Promise<{ items?: LiveMenuItem[] }>;
+      })
+      .then((payload) => {
+        if (active && Array.isArray(payload.items) && payload.items.length > 0) {
+          setOrderMenu(payload.items);
+        }
+      })
+      .catch(() => {
+        // Keep the bundled menu as an offline/preview fallback.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const selected = useMemo(
-    () => menuItems.filter((item) => (cart[item.id] ?? 0) > 0),
-    [cart],
+    () => orderMenu.filter((item) => (cart[item.id] ?? 0) > 0),
+    [cart, orderMenu],
   );
 
   const totalItems = selected.reduce((sum, item) => sum + (cart[item.id] ?? 0), 0);
