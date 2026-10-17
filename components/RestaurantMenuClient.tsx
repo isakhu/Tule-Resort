@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check, ChevronDown, Minus, Phone, Plus, Search, ShoppingBag, Sparkles, UtensilsCrossed } from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Minus, Phone, Plus, Search, ShoppingBag, Sparkles, UtensilsCrossed } from 'lucide-react';
 import type { MenuItem } from '@/lib/menu';
 
 function FlowerPriceBadge({ price }: { price: number }) {
@@ -32,11 +32,15 @@ const CATEGORY_TABS = [
   'Beverages',
 ] as const;
 
+const ITEMS_PER_PAGE = 10;
+const SWIPE_THRESHOLD = 55;
+
 export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAll, setShowAll] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
   const [cart, setCart] = useState<Record<string, number>>({});
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   // Restore the customer's bag after a refresh without reading localStorage
   // during the server render (which would cause a hydration mismatch).
@@ -100,13 +104,41 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
     });
   }, [items, activeCategory, searchQuery]);
 
-  // If viewing All and not searching, show featured first unless expanded
+  // Each menu page is a fixed-size book page containing at most 10 items.
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages - 1);
   const displayItems = useMemo(() => {
-    if (searchQuery.trim() || activeCategory !== 'All' || showAll) {
-      return filteredItems;
+    const start = safePage * ITEMS_PER_PAGE;
+    return filteredItems.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredItems, safePage]);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [activeCategory, searchQuery]);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(0, Math.min(page, totalPages - 1)));
+  };
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (touch) touchStart.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const start = touchStart.current;
+    const touch = event.changedTouches[0];
+    touchStart.current = null;
+    if (!start || !touch) return;
+
+    const deltaX = start.x - touch.clientX;
+    const deltaY = start.y - touch.clientY;
+    // Only turn the page for a clear horizontal gesture; ordinary vertical
+    // scrolling through the cards remains natural on mobile.
+    if (Math.abs(deltaX) >= SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      goToPage(safePage + (deltaX > 0 ? 1 : -1));
     }
-    return filteredItems.slice(0, 18);
-  }, [filteredItems, searchQuery, activeCategory, showAll]);
+  };
 
   const totalItems = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
   const totalAmount = useMemo(() => {
@@ -199,7 +231,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                 type="button"
                 onClick={() => {
                   setActiveCategory(tab);
-                  setShowAll(true);
+                  setCurrentPage(0);
                 }}
                 className={`shrink-0 rounded-full px-5 py-2.5 text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                   isActive
@@ -222,19 +254,12 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
               {activeCategory === 'All' ? (searchQuery ? `Search Results` : `Featured Highlights & Catalog`) : activeCategory}
             </h3>
             <p className="text-xs font-bold text-[#0E7480]">
-              Showing {filteredItems.length} available dishes & beverages
+              Page {safePage + 1} of {totalPages} · {filteredItems.length} available items · 10 per page
             </p>
           </div>
-          {activeCategory === 'All' && !searchQuery && (
-            <button
-              type="button"
-              onClick={() => setShowAll((prev) => !prev)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#0E7480]/30 bg-[#EAF2F4] px-4 py-2 text-xs font-black uppercase tracking-wider text-[#0E7480] hover:bg-[#D4E8EC] transition cursor-pointer"
-            >
-              {showAll ? 'Show top highlights' : `View all ${items.length} items`}
-              <ChevronDown className={`h-4 w-4 transition-transform ${showAll ? 'rotate-180' : ''}`} />
-            </button>
-          )}
+          <span className="hidden rounded-full border border-[#D8C7A3] bg-[#FFFEFA] px-4 py-2 text-[10px] font-black uppercase tracking-[.16em] text-[#655B46] sm:inline-flex">
+            Printed menu edition
+          </span>
         </div>
       </section>
 
@@ -256,8 +281,23 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
             </button>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {displayItems.map((item, index) => {
+          <div
+            className="overflow-hidden rounded-[2rem] border border-[#D8C7A3]/70 bg-gradient-to-br from-[#FFFEFA] via-[#F8F5EE] to-[#F0E9DB] p-3 shadow-[0_22px_60px_rgba(28,39,35,0.12)] sm:p-6"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="mb-5 flex items-center justify-between gap-3 border-b border-[#D8C7A3]/80 pb-4">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#7A705A]">Tule Resort · Menu Collection</p>
+                <h4 className="mt-1 text-sm font-black uppercase tracking-[.12em] text-[#273A3B]">Selected for your table</h4>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#7A705A]">Page</p>
+                <p className="text-2xl font-black leading-none text-[#273A3B]">{String(safePage + 1).padStart(2, '0')}<span className="mx-1 text-base text-[#A69A80]">/</span>{String(totalPages).padStart(2, '0')}</p>
+              </div>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {displayItems.map((item, index) => {
               const quantity = cart[item.id] ?? 0;
               const isEven = index % 2 === 0;
 
@@ -362,20 +402,41 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                 </article>
               );
             })}
-          </div>
-        )}
+            </div>
 
-        {/* Show More Button if limited */}
-        {!showAll && activeCategory === 'All' && !searchQuery && displayItems.length < filteredItems.length && (
-          <div className="mt-10 text-center">
-            <button
-              type="button"
-              onClick={() => setShowAll(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#0E7480] to-[#14919B] px-8 py-4 text-xs font-black uppercase tracking-[.18em] text-white shadow-xl shadow-[#0E7480]/20 transition hover:brightness-110 hover:scale-105 active:scale-95 cursor-pointer"
-            >
-              Load All Menu Items
-              <ChevronDown className="h-4 w-4" />
-            </button>
+            <div className="mt-7 flex items-center justify-between gap-3 border-t border-[#D8C7A3]/80 pt-5">
+              <button
+                type="button"
+                onClick={() => goToPage(safePage - 1)}
+                disabled={safePage === 0}
+                aria-label="Go to previous menu page"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#B9AD92] bg-[#FFFEFA] px-4 py-2.5 text-[10px] font-black uppercase tracking-[.12em] text-[#273A3B] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-35 sm:px-5"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Previous</span>
+              </button>
+
+              <div className="min-w-0 text-center" aria-live="polite">
+                <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#273A3B]">
+                  Page {safePage + 1} of {totalPages}
+                </p>
+                <p className="mt-1 text-[9px] font-semibold text-[#7A705A]">
+                  {filteredItems.length === 0 ? '0 items' : `${safePage * ITEMS_PER_PAGE + 1}–${Math.min((safePage + 1) * ITEMS_PER_PAGE, filteredItems.length)} of ${filteredItems.length} items`}
+                </p>
+                <p className="mt-1 hidden text-[9px] font-semibold text-[#7A705A] sm:block">Swipe left or right to turn pages</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => goToPage(safePage + 1)}
+                disabled={safePage >= totalPages - 1}
+                aria-label="Go to next menu page"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#273A3B] px-4 py-2.5 text-[10px] font-black uppercase tracking-[.12em] text-white shadow-md transition hover:bg-[#365355] disabled:cursor-not-allowed disabled:opacity-35 sm:px-5"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         )}
       </section>
