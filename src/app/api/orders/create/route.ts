@@ -4,16 +4,24 @@ import supabaseServer from '@/lib/supabaseServer';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { items, departmentId, roomNumber, guestName, notes, tableToken } = body ?? {};
+    const { items, roomNumber, guestName, notes, tableToken } = body ?? {};
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'At least one item is required.' }, { status: 400 });
     }
 
-    const department = Number(departmentId);
-    if (!Number.isInteger(department) || department <= 0) {
-      return NextResponse.json({ error: 'A valid department is required.' }, { status: 400 });
-    }
+    // This endpoint serves QR restaurant orders, so resolve the kitchen
+    // department on the server instead of trusting a client-supplied department ID.
+    const { data: kitchenDepartment, error: departmentError } = await supabaseServer
+      .from('departments')
+      .select('id')
+      .ilike('name', '%kitchen%')
+      .limit(1)
+      .maybeSingle();
+
+    if (departmentError) return NextResponse.json({ error: 'Unable to resolve the kitchen department.' }, { status: 500 });
+    if (!kitchenDepartment) return NextResponse.json({ error: 'Kitchen department is not configured.' }, { status: 500 });
+    const department = Number(kitchenDepartment.id);
 
     const normalizedItems = items.map((item: any) => ({
       menu_item_id: typeof item?.menuItemId === 'string' ? item.menuItemId : String(item?.menu_item_id ?? ''),
@@ -49,7 +57,8 @@ export async function POST(req: Request) {
       rpcError = res.error;
     }
 
-    if (!orderId && (!tableToken || rpcError)) {
+    // Preserve table-token validation; never retry without the supplied token.
+    if (!orderId && !tableToken) {
       const fallbackRes = await supabaseServer.rpc('create_guest_order', {
         p_user_id: userId,
         p_department_id: department,

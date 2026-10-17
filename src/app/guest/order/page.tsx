@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Minus, Plus, ShoppingBag, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { menuItems } from '@/data/menu-items';
+import type { MenuItem as LiveMenuItem } from '@/lib/menu';
 import { createOrder } from '@/lib/orders';
 
 type Cart = Record<string, number>;
@@ -12,6 +13,9 @@ const LEGACY_CART_KEY = 'haile-resort-cart';
 
 export default function GuestOrderPage() {
   const [cart, setCart] = useState<Cart>({});
+  const [orderMenu, setOrderMenu] = useState<LiveMenuItem[]>(
+    menuItems.map((item) => ({ ...item, isAvailable: true, dietaryTags: [] })),
+  );
   const [submitted, setSubmitted] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [roomNumber, setRoomNumber] = useState('');
@@ -32,9 +36,33 @@ export default function GuestOrderPage() {
     window.localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }, [cart]);
 
+  // The browsing page may be using live Supabase menu rows whose IDs differ
+  // from the bundled fallback dataset. Load the same source for checkout.
+  useEffect(() => {
+    let active = true;
+
+    fetch('/api/menu', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load the live menu.');
+        return response.json() as Promise<{ items?: LiveMenuItem[] }>;
+      })
+      .then((payload) => {
+        if (active && Array.isArray(payload.items) && payload.items.length > 0) {
+          setOrderMenu(payload.items);
+        }
+      })
+      .catch(() => {
+        // Keep the bundled menu as an offline/preview fallback.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const selected = useMemo(
-    () => menuItems.filter((item) => (cart[item.id] ?? 0) > 0),
-    [cart],
+    () => orderMenu.filter((item) => (cart[item.id] ?? 0) > 0),
+    [cart, orderMenu],
   );
 
   const totalItems = selected.reduce((sum, item) => sum + (cart[item.id] ?? 0), 0);
@@ -120,7 +148,15 @@ export default function GuestOrderPage() {
           {selected.length === 0 ? (
             <div className="rounded-[1.5rem] border border-dashed border-white/10 bg-black/20 p-10 text-center"><ShoppingBag className="mx-auto h-10 w-10 text-white/25" /><h2 className="mt-4 text-xl font-black">Your bag is empty</h2><p className="mt-2 text-sm text-white/45">Choose dishes from the visual menu and they will appear here.</p><Link href="/guest/restaurant" className="mt-6 inline-flex rounded-full bg-[#F2B84B] px-5 py-3 text-xs font-black uppercase tracking-[.14em] text-stone-950">Explore menu</Link></div>
           ) : (
-            <div className="space-y-3">{selected.map((item) => { const quantity = cart[item.id] ?? 0; return <div key={item.id} className="rounded-[1.4rem] border border-white/10 bg-black/20 p-3 flex gap-3 items-center"><img src={item.imageUrl} alt={item.name} className="h-20 w-20 rounded-2xl object-cover" /><div className="min-w-0 flex-1"><p className="text-[9px] font-bold uppercase tracking-[.18em] text-[#F2B84B]">{item.amharicName}</p><h3 className="truncate text-base font-black">{item.name}</h3><p className="mt-1 text-xs text-white/45">{item.price.toLocaleString()} ETB each</p></div><div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1"><button type="button" onClick={() => changeQuantity(item.id, -1)} className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center"><Minus className="h-3.5 w-3.5" /></button><span className="min-w-5 text-center text-xs font-black">{quantity}</span><button type="button" onClick={() => changeQuantity(item.id, 1)} className="h-8 w-8 rounded-full bg-white text-stone-950 flex items-center justify-center"><Plus className="h-3.5 w-3.5" /></button></div><p className="hidden sm:block w-24 text-right text-sm font-black">{(item.price * quantity).toLocaleString()} ETB</p></div>; })}</div>
+            <div className="space-y-3">{selected.map((item) => { const quantity = cart[item.id] ?? 0; return <div key={item.id} className="rounded-[1.4rem] border border-white/10 bg-black/20 p-3 flex gap-3 items-center"><img
+                src={item.imageUrl}
+                alt={item.name}
+                className="h-20 w-20 rounded-2xl object-cover"
+                onError={(event) => {
+                  event.currentTarget.onerror = null;
+                  event.currentTarget.src = '/food-placeholder.svg';
+                }}
+              /><div className="min-w-0 flex-1"><p className="text-[9px] font-bold uppercase tracking-[.18em] text-[#F2B84B]">{item.amharicName}</p><h3 className="truncate text-base font-black">{item.name}</h3><p className="mt-1 text-xs text-white/45">{item.price.toLocaleString()} ETB each</p></div><div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1"><button type="button" onClick={() => changeQuantity(item.id, -1)} className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center"><Minus className="h-3.5 w-3.5" /></button><span className="min-w-5 text-center text-xs font-black">{quantity}</span><button type="button" onClick={() => changeQuantity(item.id, 1)} className="h-8 w-8 rounded-full bg-white text-stone-950 flex items-center justify-center"><Plus className="h-3.5 w-3.5" /></button></div><p className="hidden sm:block w-24 text-right text-sm font-black">{(item.price * quantity).toLocaleString()} ETB</p></div>; })}</div>
           )}
         </section>
 
