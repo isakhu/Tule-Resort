@@ -49,7 +49,8 @@ export async function POST(req: Request) {
       rpcError = res.error;
     }
 
-    if (!orderId && (!tableToken || rpcError)) {
+    // Preserve table-token validation; never retry without the supplied token.
+    if (!orderId && !tableToken) {
       const fallbackRes = await supabaseServer.rpc('create_guest_order', {
         p_user_id: userId,
         p_department_id: department,
