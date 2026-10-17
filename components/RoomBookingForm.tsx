@@ -12,11 +12,7 @@ import {
   ChevronRight,
   Sparkles,
   CreditCard,
-  Building,
-  Smartphone,
   MapPin,
-  Star,
-  Check,
   Clock
 } from 'lucide-react';
 
@@ -76,7 +72,6 @@ export default function RoomBookingForm({
     special: '',
   });
 
-  const [paymentMethod, setPaymentMethod] = useState<'telebirr' | 'cbe_birr' | 'bank_transfer' | 'pay_at_resort'>('telebirr');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState<ReservationResponse | null>(null);
@@ -146,7 +141,6 @@ export default function RoomBookingForm({
           guestPhone: form.phone.trim(),
           guestEmail: form.email.trim() || null,
           specialRequests: form.special.trim() || null,
-          paymentMethod,
         }),
       });
 
@@ -200,8 +194,8 @@ export default function RoomBookingForm({
             <span className="font-bold text-gray-900">{form.guests} guests</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">Payment preference:</span>
-            <span className="font-bold text-gray-900 capitalize">{paymentMethod.replace('_', ' ')}</span>
+            <span className="text-gray-500">Payment:</span>
+            <span className="font-bold text-gray-900">Pay at resort</span>
           </div>
           <div className="pt-2 border-t border-gray-200 flex justify-between font-black text-sm text-gray-900">
             <span>Total:</span>
@@ -236,12 +230,6 @@ export default function RoomBookingForm({
           }}
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-amber-500">
-            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-            <span className="text-xs font-black text-gray-800">5.0</span>
-            <span className="text-[10px] text-gray-400 font-semibold">(2.4k reviews)</span>
-          </div>
-
           <h3 className="text-base sm:text-lg font-black text-gray-900 truncate mt-0.5">
             {roomName}
           </h3>
@@ -424,107 +412,21 @@ export default function RoomBookingForm({
         </div>
       </div>
 
-      {/* ─── CARD 6: PAYMENT METHOD (Image 3 Payment Method) ─── */}
+      {/* ─── PAYMENT — ONLINE GATEWAYS ARE NOT CONNECTED YET ─── */}
       <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100 space-y-3">
         <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">
-          Preferred Payment Method
+          Payment
         </h4>
-        <p className="text-[11px] leading-5 text-gray-500">
-          Choose a preferred method for later coordination. Online payment is not connected yet; your reservation remains pending until the resort confirms it.
-        </p>
-
-        <div className="space-y-2">
-          {/* Telebirr */}
-          <label
-            onClick={() => setPaymentMethod('telebirr')}
-            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
-              paymentMethod === 'telebirr'
-                ? 'border-[#FF6B00] bg-orange-50/30 ring-1 ring-[#FF6B00]'
-                : 'border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm">
-                Tb
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-900">Telebirr</p>
-                <p className="text-[10px] text-gray-400">Instant Ethio Telecom mobile pay</p>
-              </div>
-            </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'telebirr' ? 'border-[#FF6B00] bg-[#FF6B00]' : 'border-gray-300'}`}>
-              {paymentMethod === 'telebirr' && <Check className="h-3 w-3 text-white" />}
-            </div>
-          </label>
-
-          {/* CBE Birr */}
-          <label
-            onClick={() => setPaymentMethod('cbe_birr')}
-            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
-              paymentMethod === 'cbe_birr'
-                ? 'border-[#FF6B00] bg-orange-50/30 ring-1 ring-[#FF6B00]'
-                : 'border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black text-xs shadow-sm">
-                CBE
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-900">CBE Birr</p>
-                <p className="text-[10px] text-gray-400">Commercial Bank of Ethiopia mobile</p>
-              </div>
-            </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'cbe_birr' ? 'border-[#FF6B00] bg-[#FF6B00]' : 'border-gray-300'}`}>
-              {paymentMethod === 'cbe_birr' && <Check className="h-3 w-3 text-white" />}
-            </div>
-          </label>
-
-          {/* Bank Transfer */}
-          <label
-            onClick={() => setPaymentMethod('bank_transfer')}
-            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
-              paymentMethod === 'bank_transfer'
-                ? 'border-[#FF6B00] bg-orange-50/30 ring-1 ring-[#FF6B00]'
-                : 'border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
-                <Building className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-900">Direct Bank Transfer</p>
-                <p className="text-[10px] text-gray-400">Awash, CBE, Dashen, Bank of Abyssinia</p>
-              </div>
-            </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'bank_transfer' ? 'border-[#FF6B00] bg-[#FF6B00]' : 'border-gray-300'}`}>
-              {paymentMethod === 'bank_transfer' && <Check className="h-3 w-3 text-white" />}
-            </div>
-          </label>
-
-          {/* Pay at Resort */}
-          <label
-            onClick={() => setPaymentMethod('pay_at_resort')}
-            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
-              paymentMethod === 'pay_at_resort'
-                ? 'border-[#FF6B00] bg-orange-50/30 ring-1 ring-[#FF6B00]'
-                : 'border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-[#073B4C] text-white flex items-center justify-center shadow-sm">
-                <CreditCard className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-900">Pay at Resort Check-in</p>
-                <p className="text-[10px] text-gray-400">Pay cash or card at our front desk</p>
-              </div>
-            </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'pay_at_resort' ? 'border-[#FF6B00] bg-[#FF6B00]' : 'border-gray-300'}`}>
-              {paymentMethod === 'pay_at_resort' && <Check className="h-3 w-3 text-white" />}
-            </div>
-          </label>
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#073B4C] text-white">
+            <CreditCard className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-900">Pay at the resort</p>
+            <p className="mt-1 text-[11px] leading-5 text-gray-500">
+              No online payment is collected here. Telebirr, CBE Birr and bank-payment integration will be added after the resort's payment service is configured.
+            </p>
+          </div>
         </div>
       </div>
 
