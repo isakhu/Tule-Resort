@@ -10,7 +10,6 @@ type OrderRequest = {
   guest_name?: string;
   room_number?: string;
   notes?: string;
-  user_id?: string | null;
   items?: OrderItem[];
   table_token?: string;
   tableToken?: string;
@@ -39,6 +38,15 @@ export async function POST(request: Request) {
     }
 
     const supabase = getAdminClient();
+
+    // Bind an order to a user only after Supabase validates the bearer token.
+    // Never accept a client-supplied user_id with a service-role database client.
+    let userId: string | null = null;
+    const authMatch = (request.headers.get('authorization') || '').match(/^Bearer\\s+(.+)$/i);
+    if (authMatch) {
+      const { data: authData } = await supabase.auth.getUser(authMatch[1]);
+      userId = authData?.user?.id ?? null;
+    }
     const { data: department, error: departmentError } = await supabase
       .from('departments')
       .select('id,name')
@@ -55,7 +63,7 @@ export async function POST(request: Request) {
 
     if (tableToken) {
       const res = await supabase.rpc('create_guest_order', {
-        p_user_id: body.user_id ?? null,
+        p_user_id: userId,
         p_department_id: department.id,
         p_room_number: body.room_number?.trim() || null,
         p_guest_name: body.guest_name?.trim() || 'Guest',
@@ -70,7 +78,7 @@ export async function POST(request: Request) {
     // Never retry a table-bound order without its token: that would bypass table validation.
     if (!data && !tableToken) {
       const fallbackRes = await supabase.rpc('create_guest_order', {
-        p_user_id: body.user_id ?? null,
+        p_user_id: userId,
         p_department_id: department.id,
         p_room_number: body.room_number?.trim() || null,
         p_guest_name: body.guest_name?.trim() || 'Guest',
