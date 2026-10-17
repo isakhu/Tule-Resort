@@ -104,8 +104,7 @@ export default async function RoomDetailPage({
             <div className="flex flex-wrap items-center gap-3 text-xs">
               <div className="flex items-center gap-1.5 text-amber-500 font-black">
                 <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                <span>5.0</span>
-                <span className="text-gray-400 font-semibold">(2.4k reviews)</span>
+                <span className="text-gray-600 font-semibold text-xs">Resort Verified Guest Rating</span>
               </div>
               <span className="text-gray-300">•</span>
               <p className="text-gray-500 flex items-center gap-1">
@@ -190,15 +189,15 @@ export default async function RoomDetailPage({
             </div>
           </div>
 
-          {/* ─── FREE CANCELLATION BADGE (Image 2 Trust Badge) ─── */}
+          {/* ─── RESORT GUARANTEED RESERVATION POLICY ─── */}
           <div className="rounded-2xl bg-teal-50/70 p-4 border border-teal-100 flex items-start gap-3">
             <div className="h-8 w-8 rounded-xl bg-teal-100 text-[#073B4C] flex items-center justify-center shrink-0">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-black text-[#073B4C]">Free Cancellation</p>
+              <p className="text-xs font-black text-[#073B4C]">Resort Direct Guarantee</p>
               <p className="text-[11px] text-teal-800/80 mt-0.5">
-                Cancel up to 24 hours before your check-in date for a 100% full refund with no hidden penalty.
+                Pay upon arrival at the resort. Pending reservations can be cancelled or modified online via My Activity.
               </p>
             </div>
           </div>

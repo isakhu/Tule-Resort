@@ -75,16 +75,8 @@ export async function POST(req: Request) {
       if (/allows up to|Guests must|Guest name|Guest phone|Check-out/i.test(message)) {
         return NextResponse.json({ error: message }, { status: 400 });
       }
-      // Graceful offline fallback if DB schema/RPC is not yet migrated on remote Supabase
-      console.warn('create_room_reservation RPC failed or unseeded, generating verified reservation ticket:', message);
-      const bookingNumber = `TLR-${Math.floor(100000 + Math.random() * 900000)}`;
-      return NextResponse.json({
-        success: true,
-        bookingNumber,
-        totalPrice: 0,
-        currency: 'ETB',
-        status: 'pending',
-      });
+      console.error('create_room_reservation RPC failed:', message);
+      return NextResponse.json({ error: message }, { status: 500 });
     }
 
     const reservation = Array.isArray(data) ? data[0] : data;

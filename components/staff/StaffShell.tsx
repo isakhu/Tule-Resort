@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   ClipboardList,
+  Clock,
   UtensilsCrossed,
   Flame,
   CalendarDays,
@@ -26,9 +27,11 @@ import {
   CheckCircle2,
   Store,
   Layers,
-  ChefHat
+  ChefHat,
+  CheckCheck
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { DashboardModule } from '@/lib/permissions';
 
 interface StaffProfile {
   id: string;
@@ -36,6 +39,7 @@ interface StaffProfile {
   fullName: string | null;
   role: string;
   departmentName?: string | null;
+  allowedModules?: DashboardModule[];
 }
 
 export default function StaffShell({
@@ -55,6 +59,68 @@ export default function StaffShell({
 
   // Password change modal
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  // Live Notifications
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    async function loadNotifications() {
+      try {
+        const { data } = await supabase
+          .from('notifications')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
+        if (data) {
+          setNotifications(data);
+          setUnreadCount(data.filter((n) => !n.is_read).length);
+        }
+      } catch (err) {
+        console.error('Failed to load notifications:', err);
+      }
+    }
+
+    void loadNotifications();
+
+    const channel = supabase
+      .channel('staff_shell_notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload) => {
+          setNotifications((prev) => [payload.new, ...prev].slice(0, 20));
+          setUnreadCount((c) => c + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  async function handleMarkAsRead(id?: string) {
+    try {
+      if (id) {
+        await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+        );
+        setUnreadCount((c) => Math.max(0, c - 1));
+      } else {
+        const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
+        if (unreadIds.length > 0) {
+          await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
+          setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+          setUnreadCount(0);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to mark notification read:', err);
+    }
+  }
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -140,21 +206,35 @@ export default function StaffShell({
     }
   }
 
-  const NAV_ITEMS = [
-    { label: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard },
-    { label: 'Orders', href: '/staff/dashboard/orders', icon: ClipboardList, badge: badgeCounts?.orders ?? 3 },
-    { label: 'Tables', href: '/staff/dashboard/tables', icon: Layers },
-    { label: 'Kitchen', href: '/staff/dashboard/kitchen', icon: ChefHat },
-    { label: 'Menu', href: '/staff/dashboard/menu', icon: UtensilsCrossed },
-    { label: 'Reservations', href: '/staff/dashboard/reservations', icon: CalendarDays },
-    { label: 'Rooms', href: '/staff/dashboard/rooms', icon: BedDouble },
-    { label: 'Receipts & Sales', href: '/staff/dashboard/receipts', icon: DollarSign },
-    { label: 'Wellness & Spa', href: '/staff/dashboard/services', icon: Sparkles },
-    { label: 'Housekeeping', href: '/staff/dashboard/housekeeping', icon: Sparkles },
-    { label: 'Maintenance', href: '/staff/dashboard/maintenance', icon: Wrench },
-    { label: 'Staff Management', href: '/admin/staff', icon: Users },
-    { label: 'Settings', href: '/staff/dashboard/settings', icon: Settings },
+  interface NavItemDef {
+    label: string;
+    href: string;
+    icon: any;
+    module: DashboardModule;
+    badge?: number;
+  }
+
+  const ALL_NAV_ITEMS: NavItemDef[] = [
+    { label: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard, module: 'dashboard' },
+    { label: 'Live Queue', href: '/staff/dashboard/queue', icon: Clock, module: 'queue' },
+    { label: 'Orders', href: '/staff/dashboard/orders', icon: ClipboardList, module: 'orders', badge: badgeCounts?.orders },
+    { label: 'Tables', href: '/staff/dashboard/tables', icon: Layers, module: 'tables' },
+    { label: 'Kitchen', href: '/staff/dashboard/kitchen', icon: ChefHat, module: 'kitchen' },
+    { label: 'Menu', href: '/staff/dashboard/menu', icon: UtensilsCrossed, module: 'menu' },
+    { label: 'Reservations', href: '/staff/dashboard/reservations', icon: CalendarDays, module: 'reservations' },
+    { label: 'Rooms', href: '/staff/dashboard/rooms', icon: BedDouble, module: 'rooms' },
+    { label: 'Receipts & Sales', href: '/staff/dashboard/receipts', icon: DollarSign, module: 'receipts' },
+    { label: 'Wellness & Spa', href: '/staff/dashboard/services', icon: Sparkles, module: 'spa' },
+    { label: 'Housekeeping', href: '/staff/dashboard/housekeeping', icon: Sparkles, module: 'housekeeping' },
+    { label: 'Maintenance', href: '/staff/dashboard/maintenance', icon: Wrench, module: 'maintenance' },
+    { label: 'Staff Management', href: '/admin/staff', icon: Users, module: 'staff_management' },
+    { label: 'Settings', href: '/staff/dashboard/settings', icon: Settings, module: 'settings' },
   ];
+
+  const visibleNavItems = ALL_NAV_ITEMS.filter((item) => {
+    if (!profile?.allowedModules) return true;
+    return profile.allowedModules.includes(item.module);
+  });
 
   return (
     <div className="flex min-h-screen bg-[#F4F7F8] text-[#1E293B]">
@@ -182,7 +262,7 @@ export default function StaffShell({
 
         {/* Navigation Links */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-thin scrollbar-thumb-white/10">
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/staff/dashboard' && pathname.startsWith(item.href));
             const Icon = item.icon;
 
@@ -277,7 +357,7 @@ export default function StaffShell({
             </div>
 
             <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-              {NAV_ITEMS.map((item) => {
+              {visibleNavItems.map((item) => {
                 const isActive = pathname === item.href || (item.href !== '/staff/dashboard' && pathname.startsWith(item.href));
                 const Icon = item.icon;
                 return (
@@ -353,12 +433,106 @@ export default function StaffShell({
             {/* Notification Bell */}
             <div className="relative">
               <button
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
                 className="relative rounded-xl p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
                 title="Notifications"
               >
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[#C9902F] ring-2 ring-white" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#C9902F] px-1 text-[9px] font-black text-white ring-2 ring-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white p-3 shadow-2xl border border-gray-100 z-50 text-xs animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-900 text-sm">Notifications</span>
+                      {unreadCount > 0 && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={() => handleMarkAsRead()}
+                        className="text-[11px] font-semibold text-[#0E7480] hover:underline flex items-center gap-1"
+                      >
+                        <CheckCheck className="h-3 w-3" />
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
+                    {notifications.length === 0 ? (
+                      <div className="py-6 text-center text-gray-400">
+                        <Bell className="h-6 w-6 mx-auto mb-1 text-gray-300" />
+                        <p className="font-semibold">No notifications yet</p>
+                        <p className="text-[10px]">Real-time operational alerts will show here</p>
+                      </div>
+                    ) : (
+                      notifications.map((n) => {
+                        const payload = n.payload || {};
+                        const title =
+                          payload.title ||
+                          (payload.event === 'new_service_request'
+                            ? `New Guest Request: Room ${payload.room_number || 'Floor'}`
+                            : payload.event === 'status_changed'
+                            ? `${payload.entity_type === 'order' ? 'Order' : 'Request'} Status Updated`
+                            : payload.type === 'order'
+                            ? 'New Guest Order'
+                            : 'Resort Notification');
+                        const subtitle =
+                          payload.notes ||
+                          (payload.event === 'new_service_request'
+                            ? `${payload.priority?.toUpperCase() || 'NORMAL'} priority`
+                            : payload.event === 'status_changed'
+                            ? `Status changed from #${payload.from_status_id} to #${payload.to_status_id}`
+                            : 'Tap to view details');
+                        const mins = Math.max(
+                          0,
+                          Math.round((Date.now() - new Date(n.created_at).getTime()) / 60000)
+                        );
+                        const timeStr = mins === 0 ? 'Just now' : mins < 60 ? `${mins}m ago` : `${Math.round(mins / 60)}h ago`;
+
+                        return (
+                          <div
+                            key={n.id}
+                            onClick={() => {
+                              if (!n.is_read) handleMarkAsRead(n.id);
+                              setNotificationsOpen(false);
+                              if (payload.entity_type === 'service_request' || payload.event === 'new_service_request') {
+                                router.push('/staff/dashboard/queue');
+                              } else if (payload.entity_type === 'order' || payload.type === 'order') {
+                                router.push('/staff/dashboard/kitchen');
+                              }
+                            }}
+                            className={`p-2.5 rounded-xl transition-all cursor-pointer border ${
+                              !n.is_read
+                                ? 'bg-amber-50/60 border-amber-200/60 hover:bg-amber-100/60'
+                                : 'bg-gray-50/50 border-transparent hover:bg-gray-100/70'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={`font-semibold ${!n.is_read ? 'text-gray-900 font-bold' : 'text-gray-700'}`}>
+                                {title}
+                              </p>
+                              <span className="text-[9px] font-semibold text-gray-400 shrink-0">
+                                {timeStr}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">{subtitle}</p>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* User Profile Pill & Dropdown */}

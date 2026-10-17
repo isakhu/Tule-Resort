@@ -50,6 +50,17 @@ export default function StaffDashboardPage() {
   const [currentDateFormatted, setCurrentDateFormatted] = useState('');
   const [recentActivities, setRecentActivities] = useState<RecentActivityItem[]>([]);
 
+  const [hourlySales, setHourlySales] = useState<{ hour: string; value: number }[]>([
+    { hour: '8 AM', value: 0 },
+    { hour: '10 AM', value: 0 },
+    { hour: '12 PM', value: 0 },
+    { hour: '2 PM', value: 0 },
+    { hour: '4 PM', value: 0 },
+    { hour: '6 PM', value: 0 },
+    { hour: '8 PM', value: 0 },
+    { hour: '10 PM', value: 0 },
+  ]);
+
   useEffect(() => {
     // Determine greeting
     const hour = new Date().getHours();
@@ -90,22 +101,58 @@ export default function StaffDashboardPage() {
     // Live counts from DB
     async function fetchOrdersSummary() {
       try {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const todayIso = startOfToday.toISOString();
+
         const { data } = await supabase
           .from('orders')
           .select('id, total, created_at, status_id, room_number, table_token, guest_name')
           .order('created_at', { ascending: false });
 
         if (data && data.length > 0) {
-          const totalRev = data.reduce((sum, o) => sum + Number(o.total || 0), 0);
-          setRevenueToday(Math.round(totalRev));
-          setActiveOrdersCount(data.length);
-
           const now = Date.now();
-          const delayed = data.filter((o) => {
+
+          // Today's orders (excluding cancelled status_id === 5)
+          const todayOrders = data.filter(
+            (o) => o.created_at >= todayIso && o.status_id !== 5
+          );
+          const totalRev = todayOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+          setRevenueToday(Math.round(totalRev));
+
+          // Active orders (not completed = 4, not cancelled = 5)
+          const activeOrders = data.filter((o) => o.status_id !== 4 && o.status_id !== 5);
+          setActiveOrdersCount(activeOrders.length);
+
+          // Delayed orders: active orders waiting > 30 minutes
+          const delayed = activeOrders.filter((o) => {
             const diffMins = (now - new Date(o.created_at).getTime()) / 60000;
             return diffMins > 30;
           }).length;
           setDelayedOrdersCount(delayed);
+
+          // Real hourly distribution for today
+          const buckets = [
+            { label: '8 AM', minHour: 0, maxHour: 9 },
+            { label: '10 AM', minHour: 9, maxHour: 11 },
+            { label: '12 PM', minHour: 11, maxHour: 13 },
+            { label: '2 PM', minHour: 13, maxHour: 15 },
+            { label: '4 PM', minHour: 15, maxHour: 17 },
+            { label: '6 PM', minHour: 17, maxHour: 19 },
+            { label: '8 PM', minHour: 19, maxHour: 21 },
+            { label: '10 PM', minHour: 21, maxHour: 24 },
+          ];
+
+          const calculatedHourly = buckets.map((b) => {
+            const val = todayOrders
+              .filter((o) => {
+                const h = new Date(o.created_at).getHours();
+                return h >= b.minHour && h < b.maxHour;
+              })
+              .reduce((sum, o) => sum + Number(o.total || 0), 0);
+            return { hour: b.label, value: Math.round(val) };
+          });
+          setHourlySales(calculatedHourly);
 
           // Build recent activity list from real DB orders
           const acts: RecentActivityItem[] = data.slice(0, 4).map((o) => {
@@ -122,7 +169,7 @@ export default function StaffDashboardPage() {
               location: loc,
               itemsText: `${Number(o.total || 0).toLocaleString()} ETB`,
               timeAgo: mins === 0 ? 'Just now' : `${mins} min ago`,
-              status: 'Active',
+              status: o.status_id === 4 ? 'Completed' : o.status_id === 5 ? 'Cancelled' : 'Active',
             };
           });
           setRecentActivities(acts);
@@ -143,18 +190,6 @@ export default function StaffDashboardPage() {
   const occupiedTables = tables.filter((t) => t.status === 'occupied').length;
   const totalTables = tables.length || 24;
   const occupancyPercent = totalTables > 0 ? Math.round((occupiedTables / totalTables) * 100) : 0;
-
-  const hourlySales = [
-    { hour: '10 AM', value: revenueToday > 0 ? Math.round(revenueToday * 0.05) : 0 },
-    { hour: '11 AM', value: revenueToday > 0 ? Math.round(revenueToday * 0.08) : 0 },
-    { hour: '12 PM', value: revenueToday > 0 ? Math.round(revenueToday * 0.22) : 0 },
-    { hour: '1 PM', value: revenueToday > 0 ? Math.round(revenueToday * 0.18) : 0 },
-    { hour: '2 PM', value: revenueToday > 0 ? Math.round(revenueToday * 0.12) : 0 },
-    { hour: '3 PM', value: revenueToday > 0 ? Math.round(revenueToday * 0.07) : 0 },
-    { hour: '4 PM', value: revenueToday > 0 ? Math.round(revenueToday * 0.06) : 0 },
-    { hour: '5 PM', value: revenueToday > 0 ? Math.round(revenueToday * 0.08) : 0 },
-    { hour: '6 PM', value: revenueToday > 0 ? Math.round(revenueToday * 0.14) : 0 },
-  ];
   const maxSale = Math.max(1, ...hourlySales.map((h) => h.value));
 
   return (

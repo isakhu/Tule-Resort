@@ -9,14 +9,42 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const { userId, departmentId } = body;
-    if (!userId || !departmentId) {
-      return NextResponse.json({ error: 'userId and departmentId are required' }, { status: 400 });
+
+    const parsedDeptId = Number(departmentId);
+    if (!userId || !parsedDeptId || !Number.isInteger(parsedDeptId)) {
+      return NextResponse.json({ error: 'Valid userId and departmentId are required.' }, { status: 400 });
+    }
+
+    // Verify department exists in allowlist
+    const { data: dept } = await supabaseServer
+      .from('departments')
+      .select('id, name, is_active')
+      .eq('id', parsedDeptId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!dept) {
+      return NextResponse.json({ error: 'The selected department is inactive or does not exist.' }, { status: 400 });
+    }
+
+    // Verify user exists
+    const { data: user } = await supabaseServer
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Target staff user not found.' }, { status: 404 });
     }
 
     // Insert into staff_department_access (idempotent by UNIQUE constraint)
     const { data, error } = await supabaseServer
       .from('staff_department_access')
-      .insert({ user_id: userId, department_id: departmentId })
+      .upsert(
+        { user_id: userId, department_id: parsedDeptId },
+        { onConflict: 'user_id,department_id' }
+      )
       .select();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -35,8 +35,24 @@ export default function KitchenStationPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from('orders')
-        .select('*')
-        .in('status', ['pending', 'preparing'])
+        .select(`
+          id,
+          guest_name,
+          room_number,
+          notes,
+          total,
+          status_id,
+          created_at,
+          status:order_statuses(id, name),
+          dining_table:dining_tables(table_number),
+          items:order_items(
+            id,
+            quantity,
+            price,
+            menu_item:menu_items(id, name, category)
+          )
+        `)
+        .in('status_id', [1, 2, 7, 3, 8])
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -53,38 +69,34 @@ export default function KitchenStationPage() {
       const formatted: KitchenTicket[] = data.map((o: any) => {
         const createdAt = o.created_at ? new Date(o.created_at).getTime() : Date.now();
         const elapsedMinutes = Math.max(1, Math.round((Date.now() - createdAt) / 60000));
-        
-        let items: { name: string; quantity: number; notes?: string }[] = [];
-        if (Array.isArray(o.items)) {
-          items = o.items.map((it: any) => ({
-            name: it.name || it.item_name || 'Menu Dish',
-            quantity: it.quantity || 1,
-            notes: it.notes || undefined,
-          }));
-        } else if (typeof o.items === 'string') {
-          try {
-            const parsed = JSON.parse(o.items);
-            if (Array.isArray(parsed)) {
-              items = parsed.map((it: any) => ({
-                name: it.name || it.item_name || 'Menu Dish',
-                quantity: it.quantity || 1,
-                notes: it.notes || undefined,
-              }));
-            }
-          } catch {
-            items = [{ name: 'Order Items', quantity: 1 }];
-          }
-        }
+
+        const items = (o.items || []).map((it: any) => ({
+          name: it.menu_item?.name || 'Dish Item',
+          quantity: Number(it.quantity) || 1,
+          notes: it.menu_item?.category || undefined,
+        }));
+
+        const stName = (o.status?.name || '').toLowerCase();
+        const isPrep = stName.includes('prep') || stName.includes('progress') || o.status_id === 3 || o.status_id === 8;
+        const status: KitchenTicket['status'] = isPrep ? 'preparing' : 'pending';
+
+        const tableLabel = o.dining_table?.table_number
+          ? o.dining_table.table_number
+          : o.room_number
+          ? `Room ${o.room_number}`
+          : o.guest_name
+          ? `Guest: ${o.guest_name}`
+          : 'Dine-In';
 
         return {
           id: o.id,
-          orderNumber: `#${String(o.order_number || o.id).slice(-4).toUpperCase()}`,
-          tableLabel: o.table_code || o.table_number || (o.room_number ? `Room ${o.room_number}` : 'Dine-In'),
+          orderNumber: `#${String(o.id).slice(-4).toUpperCase()}`,
+          tableLabel,
           station: 'General Kitchen',
           items,
-          status: o.status === 'preparing' ? 'preparing' : 'pending',
+          status,
           elapsedMinutes,
-          serverName: o.server_name || o.waiter_name || 'Tule Waitstaff',
+          serverName: 'Tule Waitstaff',
         };
       });
 
@@ -114,17 +126,29 @@ export default function KitchenStationPage() {
   }, [fetchLiveKitchenOrders]);
 
   const handleUpdateStatus = async (ticketId: string, nextStatus: KitchenTicket['status']) => {
+    // Optimistic UI update
     setTickets((prev) =>
       prev.map((t) => (t.id === ticketId ? { ...t, status: nextStatus } : t))
     );
 
+    // Target status ID: 3 = Preparing, 4 = Ready
+    const targetStatusId = nextStatus === 'preparing' ? 3 : nextStatus === 'ready' ? 4 : 1;
+
     try {
-      await supabase
-        .from('orders')
-        .update({ status: nextStatus, updated_at: new Date().toISOString() })
-        .eq('id', ticketId);
+      const { error } = await supabase.rpc('update_entity_status', {
+        p_entity_type: 'order',
+        p_entity_id: ticketId,
+        p_to_status_id: targetStatusId,
+        p_notes: `Kitchen marked ticket as ${nextStatus}`,
+      });
+
+      if (error) {
+        console.warn('Failed to update kitchen ticket status:', error.message);
+        fetchLiveKitchenOrders();
+      }
     } catch (err) {
       console.warn('Failed to update kitchen ticket status in Supabase:', err);
+      fetchLiveKitchenOrders();
     }
   };
 

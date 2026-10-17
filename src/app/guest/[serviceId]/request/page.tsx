@@ -36,26 +36,35 @@ export default function RequestPage() {
     event.preventDefault();
     setStatus('sending');
     setError('');
-    const requestNotes = [`SERVICE REQUEST: ${service.name}`, `Amharic: ${service.amharic}`, `Requested date: ${date}`, `Requested time: ${time || 'Flexible'}`, `Guests: ${guests}`, `Room: ${roomNumber || 'Not provided'}`, `Details: ${notes || 'None'}`].join('\n');
 
-    const { error: insertError } = await supabase.from('orders').insert({
-      guest_name: name.trim(),
-      room_number: roomNumber.trim() || null,
-      items: [{ id: `service-${params.serviceId}`, name: service.name, quantity: Number(guests), price: service.price }],
-      total: service.price * Number(guests),
-      total_amount: service.price * Number(guests),
-      service_type: `resort_${params.serviceId}`,
-      special_instructions: requestNotes,
-      notes: requestNotes,
-      status: 'pending',
-    });
+    try {
+      const res = await fetch('/api/service-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceId: params.serviceId,
+          guestName: name.trim(),
+          phone: phone.trim(),
+          roomNumber: roomNumber.trim() || null,
+          requestedDate: date,
+          requestedTime: time || null,
+          partySize: Number(guests) || 1,
+          notes: notes.trim() || null,
+        }),
+      });
 
-    if (insertError) {
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setStatus('error');
+        setError(json.error || 'We could not submit your request. Please try again.');
+        return;
+      }
+
+      setStatus('success');
+    } catch {
       setStatus('error');
-      setError(insertError.message || 'We could not submit your request. Please try again.');
-      return;
+      setError('Network connection error. Please try again.');
     }
-    setStatus('success');
   }
 
   if (status === 'success') {

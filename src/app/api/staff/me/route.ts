@@ -1,32 +1,21 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/adminAuth';
+import { requireStaffOrAdmin } from '@/lib/staffAuth';
 import supabaseServer from '@/lib/supabaseServer';
 
 export async function GET(req: Request) {
-  const auth = await requireAdmin(req);
+  const auth = await requireStaffOrAdmin(req);
   if (!auth.ok) {
     return NextResponse.json({ authorized: false, error: auth.error }, { status: auth.status ?? 401 });
   }
 
-  // Fetch user profile, role name, and department
+  // Fetch full user profile
   const { data: user } = await supabaseServer
     .from('users')
     .select('id, email, full_name, role_id, primary_department_id')
     .eq('id', auth.userId)
     .single();
 
-  let roleName = 'manager';
-  let departmentName: string | null = null;
-
-  if (user?.role_id) {
-    const { data: role } = await supabaseServer.from('roles').select('name').eq('id', user.role_id).single();
-    if (role?.name) roleName = role.name;
-  }
-
-  if (user?.primary_department_id) {
-    const { data: dept } = await supabaseServer.from('departments').select('name').eq('id', user.primary_department_id).single();
-    if (dept?.name) departmentName = dept.name;
-  }
+  const primaryDeptName = auth.departmentNames && auth.departmentNames.length > 0 ? auth.departmentNames[0] : null;
 
   return NextResponse.json({
     authorized: true,
@@ -35,9 +24,12 @@ export async function GET(req: Request) {
       id: user?.id ?? auth.userId,
       email: user?.email ?? null,
       fullName: user?.full_name ?? null,
-      role: roleName,
-      departmentId: user?.primary_department_id ?? null,
-      departmentName: departmentName,
+      role: auth.role,
+      departmentId: auth.primary_department_id ?? null,
+      departmentIds: auth.departmentIds ?? [],
+      departmentName: primaryDeptName,
+      departmentNames: auth.departmentNames ?? [],
+      allowedModules: auth.allowedModules ?? [],
     },
   });
 }

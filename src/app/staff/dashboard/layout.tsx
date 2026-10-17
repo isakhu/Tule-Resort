@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2, LogOut } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import supabase from '@/lib/supabaseClient';
-
 import StaffShell from '@/components/staff/StaffShell';
+import { isRouteAllowed, DashboardModule } from '@/lib/permissions';
 
 export default function StaffDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [checking, setChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [allowedModules, setAllowedModules] = useState<DashboardModule[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -34,7 +36,18 @@ export default function StaffDashboardLayout({ children }: { children: React.Rea
         return;
       }
 
+      const json = await response.json();
+      const userAllowedModules = (json.profile?.allowedModules ?? []) as DashboardModule[];
+
       if (mounted) {
+        setAllowedModules(userAllowedModules);
+
+        // Server-verified client route gate
+        if (!isRouteAllowed(pathname, userAllowedModules)) {
+          router.replace('/staff/dashboard');
+          return;
+        }
+
         setAuthorized(true);
         setChecking(false);
       }
@@ -49,7 +62,16 @@ export default function StaffDashboardLayout({ children }: { children: React.Rea
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [router]);
+  }, [router, pathname]);
+
+  // Route change protection
+  useEffect(() => {
+    if (!checking && authorized && allowedModules.length > 0) {
+      if (!isRouteAllowed(pathname, allowedModules)) {
+        router.replace('/staff/dashboard');
+      }
+    }
+  }, [pathname, checking, authorized, allowedModules, router]);
 
   if (checking || !authorized) {
     return (

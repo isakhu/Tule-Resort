@@ -16,90 +16,67 @@ export interface DiningTable {
   occupied_since?: string | null;
 }
 
-export const DEFAULT_DINING_TABLES: DiningTable[] = [
-  // Floor 1 (Main Hall)
-  { id: 'dt-01', table_number: 'Table 01', qr_token: 'tule-tbl-01-lakeview', section: 'Floor 1', capacity: 2, status: 'available', is_active: true, pos_x: 18, pos_y: 20 },
-  { id: 'dt-02', table_number: 'Table 02', qr_token: 'tule-tbl-02-lakeview', section: 'Floor 1', capacity: 4, status: 'available', is_active: true, pos_x: 36, pos_y: 20 },
-  { id: 'dt-03', table_number: 'Table 03', qr_token: 'tule-tbl-03-lakeview', section: 'Floor 1', capacity: 4, status: 'available', is_active: true, pos_x: 54, pos_y: 20 },
-  { id: 'dt-04', table_number: 'Table 04', qr_token: 'tule-tbl-04-lakeview', section: 'Floor 1', capacity: 4, status: 'available', is_active: true, pos_x: 72, pos_y: 20 },
-  { id: 'dt-05', table_number: 'Table 05', qr_token: 'tule-tbl-05-lakeview', section: 'Floor 1', capacity: 6, status: 'available', is_active: true, pos_x: 88, pos_y: 35 },
-  { id: 'dt-06', table_number: 'Table 06', qr_token: 'tule-tbl-06-lakeview', section: 'Floor 1', capacity: 2, status: 'available', is_active: true, pos_x: 18, pos_y: 45 },
-  { id: 'dt-07', table_number: 'Table 07', qr_token: 'tule-tbl-07-lakeview', section: 'Floor 1', capacity: 4, status: 'available', is_active: true, pos_x: 36, pos_y: 45 },
-  { id: 'dt-08', table_number: 'Table 08', qr_token: 'tule-tbl-08-lakeview', section: 'Floor 1', capacity: 4, status: 'available', is_active: true, pos_x: 54, pos_y: 45 },
-  { id: 'dt-09', table_number: 'Table 09', qr_token: 'tule-tbl-09-lakeview', section: 'Floor 1', capacity: 4, status: 'available', is_active: true, pos_x: 72, pos_y: 45 },
-  { id: 'dt-10', table_number: 'Table 10', qr_token: 'tule-tbl-10-lakeview', section: 'Floor 1', capacity: 6, status: 'available', is_active: true, pos_x: 88, pos_y: 60 },
-  { id: 'dt-11', table_number: 'Table 11', qr_token: 'tule-tbl-11-lakeview', section: 'Floor 1', capacity: 2, status: 'available', is_active: true, pos_x: 18, pos_y: 72 },
-  { id: 'dt-12', table_number: 'Table 12', qr_token: 'tule-tbl-12-lakeview', section: 'Floor 1', capacity: 4, status: 'available', is_active: true, pos_x: 36, pos_y: 72 },
-  { id: 'dt-13', table_number: 'Table 13', qr_token: 'tule-tbl-13-lakeview', section: 'Floor 1', capacity: 4, status: 'available', is_active: true, pos_x: 54, pos_y: 72 },
-  { id: 'dt-14', table_number: 'Table 14', qr_token: 'tule-tbl-14-lakeview', section: 'Floor 1', capacity: 4, status: 'available', is_active: true, pos_x: 72, pos_y: 72 },
-  { id: 'dt-15', table_number: 'Table 15', qr_token: 'tule-tbl-15-lakeview', section: 'Floor 1', capacity: 8, status: 'available', is_active: true, pos_x: 50, pos_y: 90 },
 
-  // Lake Terrace
-  { id: 'dt-t01', table_number: 'Terrace 01', qr_token: 'tule-tbl-t01-sunset', section: 'Lake Terrace', capacity: 4, status: 'available', is_active: true, pos_x: 20, pos_y: 25 },
-  { id: 'dt-t02', table_number: 'Terrace 02', qr_token: 'tule-tbl-t02-sunset', section: 'Lake Terrace', capacity: 4, status: 'available', is_active: true, pos_x: 40, pos_y: 25 },
-  { id: 'dt-t03', table_number: 'Terrace 03', qr_token: 'tule-tbl-t03-sunset', section: 'Lake Terrace', capacity: 2, status: 'available', is_active: true, pos_x: 60, pos_y: 25 },
-  { id: 'dt-t04', table_number: 'Terrace 04', qr_token: 'tule-tbl-t04-sunset', section: 'Lake Terrace', capacity: 6, status: 'available', is_active: true, pos_x: 80, pos_y: 25 },
-  { id: 'dt-t05', table_number: 'Terrace 05', qr_token: 'tule-tbl-t05-sunset', section: 'Lake Terrace', capacity: 4, status: 'available', is_active: true, pos_x: 30, pos_y: 65 },
-  { id: 'dt-t06', table_number: 'Terrace 06', qr_token: 'tule-tbl-t06-sunset', section: 'Lake Terrace', capacity: 4, status: 'available', is_active: true, pos_x: 70, pos_y: 65 },
 
-  // Poolside
-  { id: 'dt-p01', table_number: 'Pool 01', qr_token: 'tule-tbl-p01-breeze', section: 'Poolside', capacity: 2, status: 'available', is_active: true, pos_x: 25, pos_y: 40 },
-  { id: 'dt-p02', table_number: 'Pool 02', qr_token: 'tule-tbl-p02-breeze', section: 'Poolside', capacity: 4, status: 'available', is_active: true, pos_x: 50, pos_y: 40 },
-  { id: 'dt-p03', table_number: 'Pool 03', qr_token: 'tule-tbl-p03-breeze', section: 'Poolside', capacity: 4, status: 'available', is_active: true, pos_x: 75, pos_y: 40 },
-];
+export interface TableSession {
+  id: string;
+  table_id: string;
+  session_token: string;
+  status: 'active' | 'closed';
+  guest_name?: string | null;
+  guest_phone?: string | null;
+  guest_stay_id?: string | null;
+  party_size?: number;
+  opened_at: string;
+  closed_at?: string | null;
+}
 
 export async function getDiningTables(): Promise<DiningTable[]> {
-  try {
-    const { data, error } = await supabase
-      .from('dining_tables')
-      .select('*')
-      .eq('is_active', true)
-      .order('table_number', { ascending: true });
+  const { data, error } = await supabase
+    .from('dining_tables')
+    .select('*')
+    .eq('is_active', true)
+    .order('table_number', { ascending: true });
 
-    if (error || !data || data.length === 0) {
-      return DEFAULT_DINING_TABLES;
-    }
-
-    return data as DiningTable[];
-  } catch {
-    return DEFAULT_DINING_TABLES;
+  if (error) {
+    console.error('Error fetching dining tables:', error.message);
+    throw new Error(`Unable to load dining tables: ${error.message}`);
   }
+
+  return (data ?? []) as DiningTable[];
 }
 
 export async function getDiningTableByToken(token: string): Promise<DiningTable | null> {
   const clean = token.trim();
-  try {
-    const { data, error } = await supabase
-      .from('dining_tables')
-      .select('*')
-      .eq('qr_token', clean)
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle();
+  const { data, error } = await supabase
+    .from('dining_tables')
+    .select('*')
+    .or(`qr_token.eq.${clean},id.eq.${clean}`)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
 
-    if (!error && data) {
-      return data as DiningTable;
-    }
-  } catch {
-    // fallback
+  if (error) {
+    console.error('Error fetching table by token:', error.message);
+    throw new Error(`Unable to query dining table: ${error.message}`);
   }
 
-  const match = DEFAULT_DINING_TABLES.find((t) => t.qr_token === clean);
-  return match ?? null;
+  return (data as DiningTable) ?? null;
 }
 
 export async function updateTableStatus(
   tableId: string,
   status: DiningTable['status']
 ): Promise<boolean> {
-  try {
-    const { error } = await supabase
-      .from('dining_tables')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', tableId);
+  const { error } = await supabase
+    .from('dining_tables')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', tableId);
 
-    return !error;
-  } catch {
+  if (error) {
+    console.error('Failed to update table status:', error.message);
     return false;
   }
+  return true;
 }
+

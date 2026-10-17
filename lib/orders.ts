@@ -65,28 +65,63 @@ export async function createOrder(orderData: CreateOrderInput) {
 
 export async function updateOrderStatus(
   orderId: string,
-  status: 'pending' | 'preparing' | 'completed' | 'cancelled',
+  status: 'pending' | 'accepted' | 'preparing' | 'in progress' | 'ready' | 'delivered' | 'completed' | 'cancelled' | string,
+  notes?: string
 ) {
-  const statusName = status.charAt(0).toUpperCase() + status.slice(1);
+  const cleanStatus = status.toLowerCase().trim();
 
-  try {
-    const { data: statusRow, error: statusError } = await supabase
+  // Map to status_id:
+  // 1: Pending, 2: Confirmed, 3: Preparing, 4: Ready, 5: Delivered, 6: Completed, 7: Accepted, 8: In Progress, 9: Cancelled
+  const STATUS_ID_MAP: Record<string, number> = {
+    pending: 1,
+    confirmed: 2,
+    preparing: 3,
+    ready: 4,
+    delivered: 5,
+    completed: 6,
+    accepted: 7,
+    'in progress': 8,
+    'in_progress': 8,
+    cancelled: 9,
+  };
+
+  let targetStatusId = STATUS_ID_MAP[cleanStatus];
+
+  if (!targetStatusId) {
+    // Resolve dynamically from database
+    const { data: statusRow } = await supabase
       .from('order_statuses')
-      .select('id,name')
-      .eq('name', statusName)
+      .select('id')
+      .ilike('name', cleanStatus)
       .maybeSingle();
 
-    if (statusError) return { success: false, error: statusError.message || 'Unable to resolve order status.' };
-    if (!statusRow) return { success: false, error: `Order status "${statusName}" is not configured.` };
+    if (statusRow) {
+      targetStatusId = statusRow.id;
+    } else {
+      return { success: false, error: `Order status "${status}" is not configured.` };
+    }
+  }
 
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ status_id: statusRow.id })
-      .eq('id', orderId)
-      .select('*, status:order_statuses(id,name)')
-      .single();
+  try {
+    const { data, error } = await supabase.rpc('update_entity_status', {
+      p_entity_type: 'order',
+      p_entity_id: orderId,
+      p_to_status_id: targetStatusId,
+      p_notes: notes ?? `Status updated to ${status}`,
+    });
 
-    if (error) return { success: false, error: error.message || 'Unable to update order status.' };
+    if (error) {
+      // Direct update fallback if RPC error
+      const { data: directData, error: directError } = await supabase
+        .from('orders')
+        .update({ status_id: targetStatusId, updated_at: new Date().toISOString() })
+        .eq('id', orderId)
+        .select('*, status:order_statuses(id,name)')
+        .single();
+
+      if (directError) return { success: false, error: directError.message };
+      return { success: true, data: directData };
+    }
 
     return { success: true, data };
   } catch (error) {

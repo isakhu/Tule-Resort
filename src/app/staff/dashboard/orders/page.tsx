@@ -67,14 +67,24 @@ export default function StaffOrdersPage() {
       }
 
       const mapped: OrderDisplay[] = data.map((row: any) => {
+        const createdMs = row.created_at ? new Date(row.created_at).getTime() : Date.now();
+        const elapsedMinutes = Math.max(0, Math.round((Date.now() - createdMs) / 60000));
+
         const stName = (row.status?.name || '').toLowerCase();
         let status: OrderDisplay['status'] = 'In Progress';
-        if (stName.includes('ready')) status = 'Ready';
-        else if (stName.includes('delay')) status = 'Delayed';
-        else if (stName.includes('complete')) status = 'Completed';
-        else status = 'In Progress';
+        if (stName.includes('complete')) {
+          status = 'Completed';
+        } else if (stName.includes('ready')) {
+          status = 'Ready';
+        } else if (elapsedMinutes > 35) {
+          status = 'Delayed';
+        } else {
+          status = 'In Progress';
+        }
 
-        const tableLabel = row.table_token
+        const tableLabel = row.dining_table?.table_number
+          ? row.dining_table.table_number
+          : row.table_token
           ? `Table ${row.table_token.replace('tule-tbl-', '').split('-')[0].toUpperCase()}`
           : row.room_number
           ? `Room ${row.room_number}`
@@ -88,9 +98,6 @@ export default function StaffOrdersPage() {
           price: it.price || 0,
           imageUrl: it.menu_item?.image_url,
         }));
-
-        const createdMs = row.created_at ? new Date(row.created_at).getTime() : Date.now();
-        const elapsedMinutes = Math.max(0, Math.round((Date.now() - createdMs) / 60000));
 
         return {
           id: row.id,
@@ -139,10 +146,18 @@ export default function StaffOrdersPage() {
     );
     setActionMenuOrderId(null);
 
-    // Persist to Supabase if orderId is UUID
+    // Persist to Supabase with true status mapping
     if (!orderId.startsWith('ord-')) {
-      const dbStatus = newStatus === 'In Progress' ? 'preparing' : newStatus === 'Ready' ? 'completed' : 'pending';
-      await updateOrderStatus(orderId, dbStatus as any);
+      const dbStatus =
+        newStatus === 'Ready'
+          ? 'ready'
+          : newStatus === 'Completed'
+          ? 'completed'
+          : newStatus === 'In Progress'
+          ? 'in progress'
+          : 'pending';
+
+      await updateOrderStatus(orderId, dbStatus);
     }
   };
 
