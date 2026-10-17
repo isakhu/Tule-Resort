@@ -53,9 +53,12 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
       const parsed: unknown = JSON.parse(saved);
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
 
+      const availableIds = new Set(
+        items.filter((item) => item.isAvailable !== false).map((item) => String(item.id)),
+      );
       const restored = Object.entries(parsed).reduce<Record<string, number>>((next, [id, value]) => {
         const quantity = Number(value);
-        if (Number.isInteger(quantity) && quantity > 0 && quantity <= 50) {
+        if (availableIds.has(id) && Number.isInteger(quantity) && quantity > 0 && quantity <= 50) {
           next[id] = quantity;
         }
         return next;
@@ -64,7 +67,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
     } catch {
       setCart({});
     }
-  }, []);
+  }, [items]);
 
   const changeQuantity = (id: string, delta: number) => {
     setCart((current) => {
