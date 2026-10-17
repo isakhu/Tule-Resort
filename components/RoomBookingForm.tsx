@@ -9,8 +9,6 @@ import {
   CheckCircle2,
   Users,
   BedDouble,
-  ChevronRight,
-  Sparkles,
   CreditCard,
   MapPin,
   Clock
@@ -35,6 +33,7 @@ type ReservationResponse = {
   bookingNumber?: string;
   totalPrice?: number;
   currency?: string;
+  status?: string;
   error?: string;
 };
 
@@ -155,8 +154,9 @@ export default function RoomBookingForm({
     }
   }
 
-  // ─── BOOKING SUCCESS SCREEN ───
+  // ─── RESERVATION RESULT SCREEN ───
   if (success) {
+    const isConfirmed = success.status?.toLowerCase() === 'confirmed';
     return (
       <div className="rounded-3xl bg-white p-8 text-center shadow-xl border border-teal-100 max-w-lg mx-auto space-y-5 animate-in zoom-in-95">
         <div className="h-16 w-16 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center shadow-inner">
@@ -165,10 +165,10 @@ export default function RoomBookingForm({
 
         <div className="space-y-1">
           <span className="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-black text-[#073B4C] uppercase tracking-wider">
-            Pending confirmation
+            {isConfirmed ? 'Booking confirmed' : 'Pending confirmation'}
           </span>
           <h2 className="text-2xl font-black text-gray-900 pt-1">
-            Reservation request received
+            {isConfirmed ? 'Reservation confirmed!' : 'Reservation request received'}
           </h2>
           <p className="text-xs text-gray-500">
             Booking Reference:{' '}
@@ -200,7 +200,7 @@ export default function RoomBookingForm({
           <div className="pt-2 border-t border-gray-200 flex justify-between font-black text-sm text-gray-900">
             <span>Total:</span>
             <span className="text-[#FF6B00]">
-              {(success.totalPrice || grandTotal).toLocaleString()} {currency}
+              {(success.totalPrice ?? grandTotal).toLocaleString()} {currency}
             </span>
           </div>
         </div>
