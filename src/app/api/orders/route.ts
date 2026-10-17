@@ -67,7 +67,8 @@ export async function POST(request: Request) {
       rpcError = res.error;
     }
 
-    if (!data && (!tableToken || rpcError)) {
+    // Never retry a table-bound order without its token: that would bypass table validation.
+    if (!data && !tableToken) {
       const fallbackRes = await supabase.rpc('create_guest_order', {
         p_user_id: body.user_id ?? null,
         p_department_id: department.id,
