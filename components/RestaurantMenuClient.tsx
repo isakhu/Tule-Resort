@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, ChevronDown, Minus, Phone, Plus, Search, ShoppingBag, Sparkles, UtensilsCrossed } from 'lucide-react';
 import type { MenuItem } from '@/lib/menu';
@@ -38,6 +38,30 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
   const [showAll, setShowAll] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
 
+  // Restore the customer's bag after a refresh without reading localStorage
+  // during the server render (which would cause a hydration mismatch).
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('tule-resort-cart')
+        ?? window.localStorage.getItem('haile-resort-cart');
+      if (!saved) return;
+
+      const parsed: unknown = JSON.parse(saved);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
+
+      const restored = Object.entries(parsed).reduce<Record<string, number>>((next, [id, value]) => {
+        const quantity = Number(value);
+        if (Number.isInteger(quantity) && quantity > 0 && quantity <= 50) {
+          next[id] = quantity;
+        }
+        return next;
+      }, {});
+      setCart(restored);
+    } catch {
+      setCart({});
+    }
+  }, []);
+
   const changeQuantity = (id: string, delta: number) => {
     setCart((current) => {
       const next = { ...current };
@@ -56,6 +80,8 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
+      // Keep sold-out/inactive menu entries out of the guest ordering path.
+      const matchesAvailability = item.isAvailable !== false;
       const matchesCategory =
         activeCategory === 'All' ||
         item.category.toLowerCase().includes(activeCategory.toLowerCase()) ||
@@ -70,7 +96,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
         item.description.toLowerCase().includes(query) ||
         item.category.toLowerCase().includes(query);
 
-      return matchesCategory && matchesSearch;
+      return matchesAvailability && matchesCategory && matchesSearch;
     });
   }, [items, activeCategory, searchQuery]);
 
@@ -263,7 +289,9 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                           className="h-32 w-32 rounded-full object-cover shadow-[0_14px_28px_rgba(0,0,0,0.18)] ring-4 ring-[#F4F7F8] transition-transform duration-500 group-hover:scale-105"
                           loading="lazy"
                           onError={(e) => {
-                            e.currentTarget.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80';
+                            // Never replace an unrelated dish with the same salad photo.
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/food-placeholder.svg';
                           }}
                         />
                       </div>
