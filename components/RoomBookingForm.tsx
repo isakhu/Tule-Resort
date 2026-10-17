@@ -144,7 +144,9 @@ export default function RoomBookingForm({
       });
 
       const result = (await response.json()) as ReservationResponse;
-      if (!response.ok) throw new Error(result.error || 'Unable to submit reservation.');
+      if (!response.ok || result.success === false) {
+        throw new Error(result.error || 'Unable to submit reservation.');
+      }
 
       setSuccess(result);
     } catch (err) {
