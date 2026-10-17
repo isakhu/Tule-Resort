@@ -171,15 +171,15 @@ export default function RoomBookingForm({
 
         <div className="space-y-1">
           <span className="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-black text-[#073B4C] uppercase tracking-wider">
-            Booking Confirmed
+            Pending confirmation
           </span>
           <h2 className="text-2xl font-black text-gray-900 pt-1">
-            Reservation Confirmed!
+            Reservation request received
           </h2>
           <p className="text-xs text-gray-500">
             Booking Reference:{' '}
             <strong className="text-[#FF6B00] font-mono text-sm">
-              {success.bookingNumber || 'TR-RESERVATION'}
+              {success.bookingNumber || 'Reference pending'}
             </strong>
           </p>
         </div>
@@ -200,7 +200,7 @@ export default function RoomBookingForm({
             <span className="font-bold text-gray-900">{form.guests} guests</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">Payment:</span>
+            <span className="text-gray-500">Payment preference:</span>
             <span className="font-bold text-gray-900 capitalize">{paymentMethod.replace('_', ' ')}</span>
           </div>
           <div className="pt-2 border-t border-gray-200 flex justify-between font-black text-sm text-gray-900">
@@ -211,8 +211,8 @@ export default function RoomBookingForm({
           </div>
         </div>
 
-        <p className="text-[11px] text-gray-500">
-          A confirmation SMS has been prepared for {form.phone}. Our lakeside reception concierge is ready to welcome you.
+        <p className="text-[11px] leading-5 text-gray-500">
+          This is a reservation request, not a confirmed booking. Please keep your phone available in case the resort needs to discuss availability. Online payment is not processed by this form yet.
         </p>
 
         <button
@@ -427,8 +427,11 @@ export default function RoomBookingForm({
       {/* ─── CARD 6: PAYMENT METHOD (Image 3 Payment Method) ─── */}
       <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100 space-y-3">
         <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">
-          Payment Method
+          Preferred Payment Method
         </h4>
+        <p className="text-[11px] leading-5 text-gray-500">
+          Choose a preferred method for later coordination. Online payment is not connected yet; your reservation remains pending until the resort confirms it.
+        </p>
 
         <div className="space-y-2">
           {/* Telebirr */}
@@ -540,12 +543,12 @@ export default function RoomBookingForm({
           className="w-full rounded-2xl bg-gradient-to-r from-[#073B4C] via-[#0B4F6C] to-[#073B4C] hover:from-[#FF6B00] hover:to-[#E85D04] py-4 text-xs font-black uppercase tracking-wider text-white shadow-xl shadow-teal-900/20 hover:shadow-orange-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <Lock className="h-4 w-4" />
-          {loading ? 'Confirming Reservation...' : `Pay & Confirm Booking (${grandTotal.toLocaleString()} ${currency})`}
+          {loading ? 'Confirming Reservation...' : `Submit Reservation Request (${grandTotal.toLocaleString()} ${currency})`}
         </button>
 
         <p className="mt-2 text-center text-[10px] text-gray-400 flex items-center justify-center gap-1">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-          Your booking and payment request are secure and encrypted
+          Your reservation request is sent securely. Payment is not collected online in this flow.
         </p>
       </div>
     </form>
