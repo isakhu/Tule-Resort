@@ -172,7 +172,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                 </div>
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#C9902F]/40 bg-[#C9902F]/15 px-3.5 py-1 text-[10px] font-black uppercase tracking-[.22em] text-[#F8D77A] backdrop-blur-md">
                   <Sparkles className="h-3.5 w-3.5 text-[#F8D77A]" />
-                  Tule Resort Lakeside Dining ({items.length} Specialties)
+                  Tule Resort Lakeside Dining
                 </span>
               </div>
               <h2 className="font-black text-3xl tracking-tight sm:text-4xl md:text-5xl uppercase leading-none font-serif">
@@ -257,7 +257,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
               {activeCategory === 'All' ? (searchQuery ? `Search Results` : `Featured Highlights & Catalog`) : activeCategory}
             </h3>
             <p className="text-xs font-bold text-[#0E7480]">
-              Page {safePage + 1} of {totalPages} · {filteredItems.length} available items · 10 per page
+              Page {String(safePage + 1).padStart(2, '0')} of {String(totalPages).padStart(2, '0')}
             </p>
           </div>
           <span className="hidden rounded-full border border-[#D8C7A3] bg-[#FFFEFA] px-4 py-2 text-[10px] font-black uppercase tracking-[.16em] text-[#655B46] sm:inline-flex">
@@ -424,7 +424,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                   Page {safePage + 1} of {totalPages}
                 </p>
                 <p className="mt-1 text-[9px] font-semibold text-[#7A705A]">
-                  {filteredItems.length === 0 ? '0 items' : `${safePage * ITEMS_PER_PAGE + 1}–${Math.min((safePage + 1) * ITEMS_PER_PAGE, filteredItems.length)} of ${filteredItems.length} items`}
+                  {displayItems.length === 0 ? 'No dishes on this page' : 'Turn the page to explore more'}
                 </p>
                 <p className="mt-1 hidden text-[9px] font-semibold text-[#7A705A] sm:block">Swipe left or right to turn pages</p>
               </div>
