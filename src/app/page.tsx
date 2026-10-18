@@ -173,10 +173,10 @@ export default function Home() {
             </p>
 
             <div className="tule-intro mt-8 flex flex-wrap items-center gap-3 sm:mt-9" style={{ animationDelay: '340ms' }}>
-              <Link href="/guest/rooms" className="group inline-flex items-center gap-3 rounded-full bg-[#D7B66A] px-6 py-3.5 text-[10px] font-black uppercase tracking-[.14em] text-[#07191E] transition duration-300 hover:-translate-y-1 hover:bg-[#F8D77A] hover:shadow-[0_12px_38px_rgba(215,182,106,.22)]">
+              <Link href="/guest/rooms" className="tule-btn-shimmer group inline-flex items-center gap-3 rounded-full bg-[#D7B66A] px-6 py-3.5 text-[10px] font-black uppercase tracking-[.14em] text-[#07191E] transition duration-300 hover:-translate-y-1 hover:bg-[#F8D77A] hover:shadow-[0_12px_38px_rgba(215,182,106,.28)] active:scale-95">
                 View rooms <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
-              <Link href="/guest/services" className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/[.06] px-5 py-3.5 text-[10px] font-bold uppercase tracking-[.13em] text-white/90 backdrop-blur-md transition hover:border-white/60 hover:bg-white/10">
+              <Link href="/guest/services" className="tule-btn-shimmer inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/[.06] px-5 py-3.5 text-[10px] font-bold uppercase tracking-[.13em] text-white/90 backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:border-white/60 hover:bg-white/10 active:scale-95">
                 <Compass className="h-3.5 w-3.5" /> Guest services
               </Link>
             </div>
@@ -254,7 +254,7 @@ export default function Home() {
             {experiences.map((experience, index) => {
               const Icon = experience.icon;
               return (
-                <article key={experience.number} data-reveal className="tule-reveal group relative min-h-[450px] overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0B252C]" style={{ transitionDelay: `${index * 100}ms` }}>
+                <article key={experience.number} data-reveal className="tule-reveal tule-card-interactive group relative min-h-[450px] overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0B252C]" style={{ transitionDelay: `${index * 100}ms` }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={experience.image} alt={experience.alt} loading="lazy" className="tule-experience-image absolute inset-0 h-full w-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#041115] via-[#041115]/45 to-[#041115]/5" />
@@ -287,8 +287,8 @@ export default function Home() {
             <p className="mt-3 max-w-xl text-sm leading-7 text-white/55">Open the room listings, browse the restaurant menu, or visit the table-ordering page.</p>
           </div>
           <div data-reveal className="tule-reveal flex flex-wrap gap-3">
-            <Link href="/guest/rooms" className="inline-flex items-center gap-2 rounded-full bg-[#D7B66A] px-5 py-3.5 text-[10px] font-black uppercase tracking-[.13em] text-[#07191E] transition hover:bg-[#F8D77A]">Plan your stay <ArrowUpRight className="h-4 w-4" /></Link>
-            <Link href="/guest/table/tule-tbl-01-lakeview" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-3.5 text-[10px] font-bold uppercase tracking-[.13em] text-white/80 transition hover:border-white/50 hover:bg-white/5"><QrCode className="h-4 w-4" /> Table QR order</Link>
+            <Link href="/guest/rooms" className="tule-btn-shimmer inline-flex items-center gap-2 rounded-full bg-[#D7B66A] px-5 py-3.5 text-[10px] font-black uppercase tracking-[.13em] text-[#07191E] transition duration-300 hover:-translate-y-0.5 hover:bg-[#F8D77A] active:scale-95">Plan your stay <ArrowUpRight className="h-4 w-4" /></Link>
+            <Link href="/guest/table/tule-tbl-01-lakeview" className="tule-btn-shimmer inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-3.5 text-[10px] font-bold uppercase tracking-[.13em] text-white/80 transition duration-300 hover:-translate-y-0.5 hover:border-white/50 hover:bg-white/5 active:scale-95"><QrCode className="h-4 w-4" /> Table QR order</Link>
           </div>
         </div>
       </section>

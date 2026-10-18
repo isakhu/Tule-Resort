@@ -560,16 +560,16 @@ export default function GuestTableOrderingPage({
             return (
               <div
                 key={item.id}
-                className="rounded-3xl bg-white p-4 shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-all group hover:border-[#0E7480]/30"
+                className="rounded-3xl bg-white p-4 shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group hover:border-[#0E7480]/40 hover:-translate-y-1"
               >
                 <div>
                   <div
-                    className="h-40 w-full rounded-2xl bg-gray-100 bg-cover bg-center mb-3 relative overflow-hidden"
+                    className="h-40 w-full rounded-2xl bg-gray-100 bg-cover bg-center mb-3 relative overflow-hidden transition-transform duration-500 group-hover:scale-[1.02]"
                     style={{
                       backgroundImage: `url(${item.imageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80'})`,
                     }}
                   >
-                    <div className="absolute top-2 right-2 rounded-full bg-[#0B252C]/90 backdrop-blur-md px-2.5 py-1 text-[11px] font-black text-[#F8D77A] border border-[#C9902F]/40 shadow-xs">
+                    <div className="absolute top-2 right-2 rounded-full bg-[#0B252C]/90 backdrop-blur-md px-2.5 py-1 text-[11px] font-black text-[#F8D77A] border border-[#C9902F]/40 shadow-xs transition-transform duration-300 group-hover:scale-105">
                       {item.price} ETB
                     </div>
                   </div>
@@ -594,14 +594,14 @@ export default function GuestTableOrderingPage({
                     <div className="flex items-center gap-2 bg-[#0E7480]/10 rounded-xl p-1 border border-[#0E7480]/30">
                       <button
                         onClick={() => updateCart(item.id, -1)}
-                        className="h-7 w-7 rounded-lg bg-white text-[#0E7480] font-black flex items-center justify-center shadow-xs hover:bg-gray-50"
+                        className="h-7 w-7 rounded-lg bg-white text-[#0E7480] font-black flex items-center justify-center shadow-xs hover:bg-gray-50 transition-all duration-150 active:scale-90"
                       >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
                       <span className="text-xs font-black text-gray-900 px-1">{qty}</span>
                       <button
                         onClick={() => updateCart(item.id, 1)}
-                        className="h-7 w-7 rounded-lg bg-[#0E7480] text-white font-black flex items-center justify-center shadow-xs hover:bg-[#0A5C66]"
+                        className="h-7 w-7 rounded-lg bg-[#0E7480] text-white font-black flex items-center justify-center shadow-xs hover:bg-[#0A5C66] transition-all duration-150 active:scale-90"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
@@ -609,7 +609,7 @@ export default function GuestTableOrderingPage({
                   ) : (
                     <button
                       onClick={() => updateCart(item.id, 1)}
-                      className="rounded-xl bg-[#0B252C] hover:bg-[#0E7480] text-[#F8D77A] hover:text-white px-3.5 py-1.5 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 border border-[#C9902F]/30"
+                      className="rounded-xl bg-[#0B252C] hover:bg-[#0E7480] text-[#F8D77A] hover:text-white px-3.5 py-1.5 text-xs font-bold transition-all duration-200 active:scale-95 shadow-xs flex items-center gap-1.5 border border-[#C9902F]/30"
                     >
                       <Plus className="h-3.5 w-3.5" /> Add
                     </button>

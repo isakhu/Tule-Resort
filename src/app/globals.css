@@ -253,6 +253,53 @@ h1, h2, h3, h4, h5, h6,
   filter: saturate(1) brightness(.95);
 }
 
+/* ── Interactive Luxury Motion Tokens ── */
+@keyframes tule-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes tule-pulse-subtle {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+@keyframes tule-badge-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.tule-btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.tule-btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+
+.tule-btn-shimmer:hover::after {
+  animation: tule-shimmer 1.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tule-card-interactive {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+}
+
+.tule-card-interactive:hover {
+  transform: translateY(-5px);
+  border-color: rgba(215, 182, 106, 0.45);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 25px -5px rgba(21, 154, 156, 0.25);
+}
+
 .tule-reveal {
   opacity: 0;
   transform: translate3d(0, 28px, 0);
