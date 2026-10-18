@@ -254,7 +254,7 @@ export default function StaffShell({
             <h1 className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
               Tule Resort
             </h1>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#C9902F]">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#F97316]">
               Staff & Operations
             </p>
           </div>
@@ -272,7 +272,7 @@ export default function StaffShell({
                 href={item.href}
                 className={`group flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200 active:scale-98 ${
                   isActive
-                    ? 'bg-gradient-to-r from-[#0E7480] to-[#14919B] text-white shadow-md shadow-[#0E7480]/25 border-l-4 border-[#C9902F] translate-x-0.5'
+                    ? 'bg-gradient-to-r from-[#0D828A] to-[#14B8A6] text-white shadow-md shadow-[#0D828A]/30 border-l-4 border-[#F97316] translate-x-0.5'
                     : 'text-[#94A3B8] hover:bg-white/5 hover:text-white hover:translate-x-1'
                 }`}
               >
@@ -284,8 +284,8 @@ export default function StaffShell({
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-bold transition-transform duration-200 group-hover:scale-105 animate-[tule-pulse-subtle_2.5s_ease-in-out_infinite] ${
                       isActive
-                        ? 'bg-white text-[#0E7480]'
-                        : 'bg-[#C9902F]/20 text-[#F8D77A]'
+                        ? 'bg-white text-[#0D828A]'
+                        : 'bg-[#F97316]/20 text-[#FB923C]'
                     }`}
                   >
                     {item.badge}

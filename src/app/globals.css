@@ -7,33 +7,37 @@
    ═══════════════════════════════════════════════════════════════ */
 
 @theme {
-  /* ── Core Surfaces ── */
-  --color-background: #07191E;           /* Deep abyssal lake petrol */
-  --color-surface: #0B252C;              /* Elevated petrol card & panel surface */
-  --color-surface-hover: #0E2F37;        /* Interactive hover state */
+  /* ── Core Surfaces (Rich Deep Teal) ── */
+  --color-background: #061A20;           /* Deep oceanic petrol-teal abyss */
+  --color-surface: #0A262F;              /* Elevated petrol card & panel surface */
+  --color-surface-hover: #0E3440;        /* Interactive hover state */
 
-  /* ── Brand Accents ── */
-  --color-primary: #F59E0B;              /* Vibrant sunset gold / amber CTA */
-  --color-primary-foreground: #040E12;   /* High-contrast dark text on primary */
-  --color-secondary: #159A9C;            /* Luminous lake teal / anime water glow */
+  /* ── Brand Accents (Warm Sunset Orange) ── */
+  --color-primary: #F97316;              /* Vibrant sunset orange CTA */
+  --color-primary-hover: #EA580C;        /* Rich burnt sunset orange */
+  --color-primary-foreground: #FFFFFF;   /* Crisp white text on orange */
+  --color-secondary: #0D828A;            /* Luminous deep lake teal */
 
   /* ── Typography ── */
-  --color-foreground: #F8F5EE;           /* Warm resort cream/ivory primary text */
-  --color-muted: #94B0B7;               /* Subdued mist-teal text */
+  --color-foreground: #FAF7F2;           /* Warm resort cream/ivory text */
+  --color-muted: #8EAAB2;               /* Subdued teal-mist text */
 
   /* ── Structural ── */
-  --color-border: #1A434E;               /* Cel-shaded crisp glass border */
+  --color-border: #14404C;               /* Crisp deep teal border */
 
   /* ── Status ── */
   --color-success: #10B981;
-  --color-warning: #F59E0B;
+  --color-warning: #F97316;
   --color-danger: #EF4444;
 
-  /* ── Extended Brand ── */
-  --color-gold: #C9902F;                 /* Tule crest gold */
-  --color-gold-light: #F8D77A;           /* Light gold / badge shimmer */
-  --color-sand: #D8C7A3;                 /* Warm desert sand accent */
-  --color-cream: #F8F5EE;               /* Resort ivory */
+  /* ── Extended Brand (Orange & Teal Harmony) ── */
+  --color-orange: #F97316;               /* Sunset orange */
+  --color-orange-light: #FDBA74;         /* Soft sunset orange glow */
+  --color-orange-dark: #C2410C;          /* Deep burnt sunset */
+  --color-teal-deep: #092B33;            /* Rich deep teal */
+  --color-teal-glow: #14B8A6;            /* Electric aqua/teal highlight */
+  --color-sand: #E6D8C3;                 /* Warm resort sand accent */
+  --color-cream: #FAF7F2;               /* Resort ivory */
 
   /* ── Font Families ── */
   --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
@@ -194,8 +198,8 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .tule-ambient-glow {
-  background: radial-gradient(circle, rgba(21,154,156,.22) 0%, rgba(21,154,156,.08) 38%, transparent 72%);
-  filter: blur(20px);
+  background: radial-gradient(circle, rgba(249,115,22,.20) 0%, rgba(13,130,138,.16) 42%, transparent 72%);
+  filter: blur(24px);
   animation: tule-glow-drift 12s ease-in-out infinite alternate;
 }
 
@@ -204,9 +208,9 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .tule-title-accent {
-  background: linear-gradient(110deg, #F8D77A 4%, #D7B66A 45%, #FFF1BE 70%, #D7B66A 100%);
+  background: linear-gradient(110deg, #FDBA74 4%, #F97316 45%, #FFEDD5 70%, #EA580C 100%);
   background-size: 220% auto;
-  color: #F8D77A;
+  color: #FB923C;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

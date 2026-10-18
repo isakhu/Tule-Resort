@@ -542,7 +542,7 @@ export default function GuestTableOrderingPage({
               onClick={() => setActiveCategory(cat)}
               className={`rounded-xl px-4 py-2 text-xs font-bold whitespace-nowrap transition-all ${
                 activeCategory === cat
-                  ? 'bg-[#0B252C] text-[#F8D77A] shadow-md shadow-[#0B252C]/20 border border-[#C9902F]/30'
+                  ? 'bg-[#F97316] text-white shadow-md shadow-[#F97316]/25 border border-[#EA580C]'
                   : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
@@ -560,7 +560,7 @@ export default function GuestTableOrderingPage({
             return (
               <div
                 key={item.id}
-                className="rounded-3xl bg-white p-4 shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group hover:border-[#0E7480]/40 hover:-translate-y-1"
+                className="rounded-3xl bg-white p-4 shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group hover:border-[#F97316]/40 hover:-translate-y-1"
               >
                 <div>
                   <div
@@ -569,17 +569,17 @@ export default function GuestTableOrderingPage({
                       backgroundImage: `url(${item.imageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80'})`,
                     }}
                   >
-                    <div className="absolute top-2 right-2 rounded-full bg-[#0B252C]/90 backdrop-blur-md px-2.5 py-1 text-[11px] font-black text-[#F8D77A] border border-[#C9902F]/40 shadow-xs transition-transform duration-300 group-hover:scale-105">
+                    <div className="absolute top-2 right-2 rounded-full bg-[#092B33]/90 backdrop-blur-md px-2.5 py-1 text-[11px] font-black text-[#FB923C] border border-[#F97316]/40 shadow-xs transition-transform duration-300 group-hover:scale-105">
                       {item.price} ETB
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-extrabold text-gray-900 group-hover:text-[#0E7480] transition-colors">
+                    <h3 className="text-sm font-extrabold text-gray-900 group-hover:text-[#F97316] transition-colors">
                       {item.name}
                     </h3>
                     {item.amharicName && (
-                      <p className="text-xs font-bold text-[#C9902F]">{item.amharicName}</p>
+                      <p className="text-xs font-bold text-[#EA580C]">{item.amharicName}</p>
                     )}
                     <p className="text-[11px] text-gray-500 line-clamp-2 mt-1">
                       {item.description}
@@ -591,17 +591,17 @@ export default function GuestTableOrderingPage({
                   <span className="text-xs font-black text-gray-900">{item.price} ETB</span>
 
                   {qty > 0 ? (
-                    <div className="flex items-center gap-2 bg-[#0E7480]/10 rounded-xl p-1 border border-[#0E7480]/30">
+                    <div className="flex items-center gap-2 bg-[#F97316]/10 rounded-xl p-1 border border-[#F97316]/30">
                       <button
                         onClick={() => updateCart(item.id, -1)}
-                        className="h-7 w-7 rounded-lg bg-white text-[#0E7480] font-black flex items-center justify-center shadow-xs hover:bg-gray-50 transition-all duration-150 active:scale-90"
+                        className="h-7 w-7 rounded-lg bg-white text-[#F97316] font-black flex items-center justify-center shadow-xs hover:bg-gray-50 transition-all duration-150 active:scale-90"
                       >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
                       <span className="text-xs font-black text-gray-900 px-1">{qty}</span>
                       <button
                         onClick={() => updateCart(item.id, 1)}
-                        className="h-7 w-7 rounded-lg bg-[#0E7480] text-white font-black flex items-center justify-center shadow-xs hover:bg-[#0A5C66] transition-all duration-150 active:scale-90"
+                        className="h-7 w-7 rounded-lg bg-[#F97316] text-white font-black flex items-center justify-center shadow-xs hover:bg-[#EA580C] transition-all duration-150 active:scale-90"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
@@ -609,7 +609,7 @@ export default function GuestTableOrderingPage({
                   ) : (
                     <button
                       onClick={() => updateCart(item.id, 1)}
-                      className="rounded-xl bg-[#0B252C] hover:bg-[#0E7480] text-[#F8D77A] hover:text-white px-3.5 py-1.5 text-xs font-bold transition-all duration-200 active:scale-95 shadow-xs flex items-center gap-1.5 border border-[#C9902F]/30"
+                      className="rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white px-3.5 py-1.5 text-xs font-bold transition-all duration-200 active:scale-95 shadow-xs flex items-center gap-1.5 border border-[#F97316]"
                     >
                       <Plus className="h-3.5 w-3.5" /> Add
                     </button>

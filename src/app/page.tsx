@@ -155,8 +155,8 @@ export default function Home() {
 
         <div className="mx-auto grid w-full max-w-[1440px] items-center gap-12 px-4 pb-20 pt-20 sm:px-7 sm:pb-24 sm:pt-24 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,.85fr)] lg:gap-8 lg:px-10 lg:py-20 xl:gap-16">
           <div className="relative z-10 max-w-3xl">
-            <div className="tule-intro inline-flex items-center gap-2 rounded-full border border-[#D7B66A]/35 bg-[#07191E]/45 px-3.5 py-2 text-[9px] font-extrabold uppercase tracking-[.2em] text-[#F8D77A] backdrop-blur-md sm:text-[10px]">
-              <Sparkles className="h-3.5 w-3.5" />
+            <div className="tule-intro inline-flex items-center gap-2 rounded-full border border-[#F97316]/40 bg-[#061A20]/60 px-3.5 py-2 text-[9px] font-extrabold uppercase tracking-[.2em] text-[#FB923C] backdrop-blur-md sm:text-[10px]">
+              <Sparkles className="h-3.5 w-3.5 text-[#F97316]" />
               Hawassa lakeside · Sidama, Ethiopia
             </div>
 
@@ -173,17 +173,17 @@ export default function Home() {
             </p>
 
             <div className="tule-intro mt-8 flex flex-wrap items-center gap-3 sm:mt-9" style={{ animationDelay: '340ms' }}>
-              <Link href="/guest/rooms" className="tule-btn-shimmer group inline-flex items-center gap-3 rounded-full bg-[#D7B66A] px-6 py-3.5 text-[10px] font-black uppercase tracking-[.14em] text-[#07191E] transition duration-300 hover:-translate-y-1 hover:bg-[#F8D77A] hover:shadow-[0_12px_38px_rgba(215,182,106,.28)] active:scale-95">
+              <Link href="/guest/rooms" className="tule-btn-shimmer group inline-flex items-center gap-3 rounded-full bg-[#F97316] px-6 py-3.5 text-[10px] font-black uppercase tracking-[.14em] text-white transition duration-300 hover:-translate-y-1 hover:bg-[#EA580C] hover:shadow-[0_12px_38px_rgba(249,115,22,.32)] active:scale-95">
                 View rooms <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
-              <Link href="/guest/services" className="tule-btn-shimmer inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/[.06] px-5 py-3.5 text-[10px] font-bold uppercase tracking-[.13em] text-white/90 backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:border-white/60 hover:bg-white/10 active:scale-95">
-                <Compass className="h-3.5 w-3.5" /> Guest services
+              <Link href="/guest/services" className="tule-btn-shimmer inline-flex items-center gap-2 rounded-full border border-[#0D828A]/40 bg-[#092B33]/60 px-5 py-3.5 text-[10px] font-bold uppercase tracking-[.13em] text-[#E6D8C3] backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:border-[#14B8A6]/60 hover:bg-[#0D828A]/25 active:scale-95">
+                <Compass className="h-3.5 w-3.5 text-[#14B8A6]" /> Guest services
               </Link>
             </div>
 
             <div className="tule-intro mt-10 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-white/20 pt-5 text-[9px] font-bold uppercase tracking-[.16em] text-white/55 sm:mt-12 sm:pt-6" style={{ animationDelay: '420ms' }}>
-              <span className="inline-flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-[#D7B66A]" /> Lake Hawassa, Ethiopia</span>
-              <span className="hidden h-1 w-1 rounded-full bg-[#D7B66A] sm:block" />
+              <span className="inline-flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-[#F97316]" /> Lake Hawassa, Ethiopia</span>
+              <span className="hidden h-1 w-1 rounded-full bg-[#F97316] sm:block" />
               <span>Rooms · Restaurant · Guest services</span>
             </div>
           </div>
@@ -195,39 +195,39 @@ export default function Home() {
                 transform: `rotateY(${tilt.x * 5}deg) rotateX(${tilt.y * -4}deg)`,
               }}
             >
-              <div className="tule-photo-panel absolute inset-[5%_8%_11%_8%] overflow-hidden rounded-[2rem] border border-white/20 bg-[#102D33] shadow-[0_35px_100px_rgba(0,0,0,.45)]">
+              <div className="tule-photo-panel absolute inset-[5%_8%_11%_8%] overflow-hidden rounded-[2rem] border border-[#0D828A]/35 bg-[#092B33] shadow-[0_35px_100px_rgba(0,0,0,.55)]">
                 <div className="tule-photo-panel-image absolute inset-0 opacity-25" />
                 <TuleResortDiorama />
-                <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#041115]/70 via-[#041115]/10 to-transparent" />
+                <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#041115]/80 via-[#041115]/20 to-transparent" />
                 <div className="absolute inset-x-5 top-5 z-20 flex items-start justify-between">
-                  <span className="rounded-full border border-white/20 bg-black/25 px-3 py-2 text-[9px] font-bold uppercase tracking-[.18em] text-white/85 backdrop-blur-lg">3D resort illustration</span>
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/25 text-[#F8D77A] backdrop-blur-lg"><Waves className="h-4 w-4" /></span>
+                  <span className="rounded-full border border-white/20 bg-black/35 px-3 py-2 text-[9px] font-bold uppercase tracking-[.18em] text-white/90 backdrop-blur-lg">3D resort illustration</span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#F97316]/40 bg-black/35 text-[#FB923C] backdrop-blur-lg"><Waves className="h-4 w-4" /></span>
                 </div>
                 <div className="absolute inset-x-6 bottom-7 z-20">
-                  <p className="text-[9px] font-bold uppercase tracking-[.3em] text-[#F8D77A]">Tule Resort · Hawassa</p>
-                  <p className="mt-2 font-display text-4xl leading-none text-white xl:text-5xl">Rooms.<br /><span className="italic">Dining.</span></p>
+                  <p className="text-[9px] font-bold uppercase tracking-[.3em] text-[#FB923C]">Tule Resort · Hawassa</p>
+                  <p className="mt-2 font-display text-4xl leading-none text-white xl:text-5xl">Rooms.<br /><span className="italic text-[#FB923C]">Dining.</span></p>
                   <div className="mt-5 h-px w-full bg-white/25" />
-                  <div className="mt-4 flex items-center justify-between text-[9px] font-bold uppercase tracking-[.14em] text-white/65">
-                    <span>Rooms · Restaurant · Services</span><ArrowUpRight className="h-4 w-4 text-[#F8D77A]" />
+                  <div className="mt-4 flex items-center justify-between text-[9px] font-bold uppercase tracking-[.14em] text-white/70">
+                    <span>Rooms · Restaurant · Services</span><ArrowUpRight className="h-4 w-4 text-[#F97316]" />
                   </div>
                 </div>
               </div>
 
-              <div className="tule-float-card absolute -left-1 top-[24%] z-10 rounded-2xl border border-white/20 bg-[#0B252C]/85 p-4 shadow-[0_18px_45px_rgba(0,0,0,.35)] backdrop-blur-xl xl:-left-4">
+              <div className="tule-float-card absolute -left-1 top-[24%] z-10 rounded-2xl border border-[#F97316]/30 bg-[#092B33]/90 p-4 shadow-[0_18px_45px_rgba(0,0,0,.45)] backdrop-blur-xl xl:-left-4">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D7B66A]/15 text-[#F8D77A]"><BedDouble className="h-4.5 w-4.5" /></span>
-                  <span><span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-white/45">01 / Rooms</span><span className="mt-1 block text-xs font-bold text-white">View room options</span></span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F97316]/20 text-[#FB923C]"><BedDouble className="h-4.5 w-4.5" /></span>
+                  <span><span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-white/50">01 / Rooms</span><span className="mt-1 block text-xs font-bold text-white">View room options</span></span>
                 </div>
               </div>
 
-              <div className="tule-float-card absolute -right-1 bottom-[22%] z-10 rounded-2xl border border-white/20 bg-[#0B252C]/85 p-4 shadow-[0_18px_45px_rgba(0,0,0,.35)] backdrop-blur-xl [animation-delay:-2.5s] xl:-right-5">
+              <div className="tule-float-card absolute -right-1 bottom-[22%] z-10 rounded-2xl border border-[#0D828A]/40 bg-[#092B33]/90 p-4 shadow-[0_18px_45px_rgba(0,0,0,.45)] backdrop-blur-xl [animation-delay:-2.5s] xl:-right-5">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#159A9C]/15 text-[#6DE0D2]"><UtensilsCrossed className="h-4.5 w-4.5" /></span>
-                  <span><span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-white/45">02 / Menu</span><span className="mt-1 block text-xs font-bold text-white">Browse the menu</span></span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0D828A]/25 text-[#14B8A6]"><UtensilsCrossed className="h-4.5 w-4.5" /></span>
+                  <span><span className="block text-[9px] font-extrabold uppercase tracking-[.16em] text-white/50">02 / Menu</span><span className="mt-1 block text-xs font-bold text-white">Browse the menu</span></span>
                 </div>
               </div>
-              <span aria-hidden="true" className="absolute -right-2 top-[12%] h-16 w-16 rounded-full border border-[#D7B66A]/30 [transform:translateZ(45px)]" />
-              <span aria-hidden="true" className="absolute bottom-[8%] left-[1%] h-2.5 w-2.5 rounded-full bg-[#F8D77A] shadow-[0_0_24px_8px_rgba(248,215,122,.2)]" />
+              <span aria-hidden="true" className="absolute -right-2 top-[12%] h-16 w-16 rounded-full border border-[#F97316]/30 [transform:translateZ(45px)]" />
+              <span aria-hidden="true" className="absolute bottom-[8%] left-[1%] h-2.5 w-2.5 rounded-full bg-[#F97316] shadow-[0_0_24px_8px_rgba(249,115,22,.3)]" />
             </div>
             <div className="mt-2 flex items-center justify-center gap-2 text-[9px] font-bold uppercase tracking-[.26em] text-white/35">
               <span className="h-px w-8 bg-white/25" /> Rooms · Restaurant · Guest services <span className="h-px w-8 bg-white/25" />
@@ -244,8 +244,8 @@ export default function Home() {
         <div className="mx-auto max-w-[1440px]">
           <div data-reveal className="tule-reveal mb-10 flex flex-col gap-5 md:mb-14 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
-              <p className="text-[9px] font-extrabold uppercase tracking-[.32em] text-[#D7B66A] sm:text-[10px]">Explore Tule Resort</p>
-              <h2 className="mt-4 font-display text-5xl font-medium leading-[.95] tracking-[-.035em] text-white sm:text-6xl lg:text-7xl">Rooms, dining and <span className="italic text-[#D7B66A]">guest services.</span></h2>
+              <p className="text-[9px] font-extrabold uppercase tracking-[.32em] text-[#F97316] sm:text-[10px]">Explore Tule Resort</p>
+              <h2 className="mt-4 font-display text-5xl font-medium leading-[.95] tracking-[-.035em] text-white sm:text-6xl lg:text-7xl">Rooms, dining and <span className="italic text-[#F97316]">guest services.</span></h2>
             </div>
             <p className="max-w-md text-sm leading-7 text-white/55">Compare room options, open the restaurant menu, or view the services listed for resort guests.</p>
           </div>
@@ -254,19 +254,19 @@ export default function Home() {
             {experiences.map((experience, index) => {
               const Icon = experience.icon;
               return (
-                <article key={experience.number} data-reveal className="tule-reveal tule-card-interactive group relative min-h-[450px] overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0B252C]" style={{ transitionDelay: `${index * 100}ms` }}>
+                <article key={experience.number} data-reveal className="tule-reveal tule-card-interactive group relative min-h-[450px] overflow-hidden rounded-[1.6rem] border border-[#14404C] bg-[#0A262F]" style={{ transitionDelay: `${index * 100}ms` }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={experience.image} alt={experience.alt} loading="lazy" className="tule-experience-image absolute inset-0 h-full w-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#041115] via-[#041115]/45 to-[#041115]/5" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#061A20] via-[#061A20]/55 to-[#061A20]/10" />
                   <div className="absolute left-5 right-5 top-5 flex items-center justify-between">
-                    <span className="rounded-full border border-white/20 bg-black/25 px-3 py-2 text-[8px] font-extrabold uppercase tracking-[.2em] text-white/80 backdrop-blur-md">{experience.eyebrow}</span>
-                    <span className="font-display text-2xl italic text-white/60">{experience.number}</span>
+                    <span className="rounded-full border border-white/20 bg-black/35 px-3 py-2 text-[8px] font-extrabold uppercase tracking-[.2em] text-white/90 backdrop-blur-md">{experience.eyebrow}</span>
+                    <span className="font-display text-2xl italic text-[#FB923C]">{experience.number}</span>
                   </div>
                   <div className="absolute inset-x-5 bottom-5 sm:inset-x-6 sm:bottom-6">
-                    <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-[#F8D77A] backdrop-blur-md"><Icon className="h-5 w-5" /></span>
+                    <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-[#F97316]/30 bg-[#F97316]/15 text-[#FB923C] backdrop-blur-md"><Icon className="h-5 w-5" /></span>
                     <h3 className="max-w-sm font-display text-3xl leading-[1.02] text-white sm:text-4xl">{experience.title}</h3>
                     <p className="mt-3 max-w-sm text-xs leading-6 text-white/70 sm:text-sm">{experience.description}</p>
-                    <Link href={experience.href} className="mt-5 inline-flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[#F8D77A] transition-colors hover:text-white">
+                    <Link href={experience.href} className="mt-5 inline-flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[#FB923C] transition-colors hover:text-[#F97316]">
                       {experience.action}<ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Link>
                   </div>
@@ -277,18 +277,18 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden border-y border-white/10 bg-[#0B252C] px-4 py-14 sm:px-7 sm:py-18 lg:px-10 lg:py-20">
-        <div aria-hidden="true" className="absolute -right-20 -top-32 h-96 w-96 rounded-full border border-[#D7B66A]/10" />
-        <div aria-hidden="true" className="absolute -right-8 -top-20 h-72 w-72 rounded-full border border-[#D7B66A]/10" />
+      <section className="relative overflow-hidden border-y border-[#14404C] bg-[#0A262F] px-4 py-14 sm:px-7 sm:py-18 lg:px-10 lg:py-20">
+        <div aria-hidden="true" className="absolute -right-20 -top-32 h-96 w-96 rounded-full border border-[#F97316]/15" />
+        <div aria-hidden="true" className="absolute -right-8 -top-20 h-72 w-72 rounded-full border border-[#0D828A]/20" />
         <div className="relative mx-auto flex max-w-[1440px] flex-col gap-7 md:flex-row md:items-center md:justify-between">
           <div data-reveal className="tule-reveal max-w-2xl">
-            <p className="text-[9px] font-extrabold uppercase tracking-[.32em] text-[#D7B66A]">Guest links</p>
-            <h2 className="mt-3 font-display text-4xl leading-tight text-white sm:text-5xl">Rooms, menu and <span className="italic text-[#D7B66A]">table orders.</span></h2>
+            <p className="text-[9px] font-extrabold uppercase tracking-[.32em] text-[#F97316]">Guest links</p>
+            <h2 className="mt-3 font-display text-4xl leading-tight text-white sm:text-5xl">Rooms, menu and <span className="italic text-[#F97316]">table orders.</span></h2>
             <p className="mt-3 max-w-xl text-sm leading-7 text-white/55">Open the room listings, browse the restaurant menu, or visit the table-ordering page.</p>
           </div>
           <div data-reveal className="tule-reveal flex flex-wrap gap-3">
-            <Link href="/guest/rooms" className="tule-btn-shimmer inline-flex items-center gap-2 rounded-full bg-[#D7B66A] px-5 py-3.5 text-[10px] font-black uppercase tracking-[.13em] text-[#07191E] transition duration-300 hover:-translate-y-0.5 hover:bg-[#F8D77A] active:scale-95">Plan your stay <ArrowUpRight className="h-4 w-4" /></Link>
-            <Link href="/guest/table/tule-tbl-01-lakeview" className="tule-btn-shimmer inline-flex items-center gap-2 rounded-full border border-white/20 px-5 py-3.5 text-[10px] font-bold uppercase tracking-[.13em] text-white/80 transition duration-300 hover:-translate-y-0.5 hover:border-white/50 hover:bg-white/5 active:scale-95"><QrCode className="h-4 w-4" /> Table QR order</Link>
+            <Link href="/guest/rooms" className="tule-btn-shimmer inline-flex items-center gap-2 rounded-full bg-[#F97316] px-5 py-3.5 text-[10px] font-black uppercase tracking-[.13em] text-white transition duration-300 hover:-translate-y-0.5 hover:bg-[#EA580C] hover:shadow-[0_8px_24px_rgba(249,115,22,.3)] active:scale-95">Plan your stay <ArrowUpRight className="h-4 w-4" /></Link>
+            <Link href="/guest/table/tule-tbl-01-lakeview" className="tule-btn-shimmer inline-flex items-center gap-2 rounded-full border border-[#0D828A]/50 bg-[#092B33]/70 px-5 py-3.5 text-[10px] font-bold uppercase tracking-[.13em] text-white transition duration-300 hover:-translate-y-0.5 hover:border-[#14B8A6] hover:bg-[#0D828A]/30 active:scale-95"><QrCode className="h-4 w-4 text-[#14B8A6]" /> Table QR order</Link>
           </div>
         </div>
       </section>
