@@ -11,6 +11,7 @@ import {
   Lock,
   MapPin,
   Phone,
+  Play,
   QrCode,
   Sparkles,
   UtensilsCrossed,
@@ -273,6 +274,57 @@ export default function Home() {
                 </article>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── RESORT CINEMATIC VIDEO SHOWCASE ─── */}
+      <section className="relative overflow-hidden bg-[#061A20] px-4 py-16 sm:px-7 sm:py-24 lg:px-10 lg:py-28">
+        <div aria-hidden="true" className="tule-ambient-glow pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[40rem] w-[40rem] -translate-x-1/2 -translate-y-1/2 rounded-full" />
+        
+        <div className="mx-auto max-w-[1440px]">
+          <div data-reveal className="tule-reveal mb-8 flex flex-col gap-4 text-center items-center md:mb-12">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#F97316]/40 bg-[#0A262F]/80 px-4 py-1.5 text-[9px] font-extrabold uppercase tracking-[.24em] text-[#FB923C] backdrop-blur-md">
+              <Play className="h-3 w-3 fill-current" /> Cinematic Lake Tour
+            </span>
+            <h2 className="font-display text-4xl font-medium tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Experience the atmosphere of <span className="italic text-[#F97316]">Tule Resort.</span>
+            </h2>
+            <p className="max-w-xl text-xs sm:text-sm leading-relaxed text-white/60">
+              Take an aerial and lakeside journey through our sunlit pools, private pier, sunset dining, and tranquil waters of Lake Hawassa.
+            </p>
+          </div>
+
+          <div data-reveal className="tule-reveal relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-[#14404C] bg-[#0A262F] shadow-[0_30px_90px_rgba(0,0,0,0.6)]">
+            <div className="relative aspect-video w-full overflow-hidden bg-black">
+              <video
+                src="/tule-resort-cinematic.mp4"
+                poster="https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=2000&q=85"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="h-full w-full object-cover"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#061A20]/80 via-transparent to-black/20" />
+              
+              <div className="absolute bottom-5 left-5 right-5 sm:bottom-7 sm:left-7 sm:right-7 flex items-end justify-between pointer-events-none">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#061A20]/80 px-3 py-1 text-[9px] font-bold uppercase tracking-wider text-[#FB923C] backdrop-blur-md border border-[#F97316]/30">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#F97316] animate-pulse" /> Live Footage
+                  </span>
+                  <p className="mt-2 font-display text-2xl sm:text-3xl text-white">Hawassa Lake Shoreline</p>
+                  <p className="text-[10px] uppercase tracking-widest text-white/60">Poolside · Private Pier · Sunset Terrace</p>
+                </div>
+                
+                <Link
+                  href="/guest/booking"
+                  className="pointer-events-auto tule-btn-shimmer hidden sm:inline-flex items-center gap-2 rounded-full bg-[#F97316] px-5 py-3 text-[10px] font-black uppercase tracking-[.14em] text-white shadow-lg shadow-[#F97316]/30 transition duration-300 hover:bg-[#EA580C] hover:scale-105 active:scale-95"
+                >
+                  Book Stay <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
