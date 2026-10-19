@@ -21,6 +21,7 @@ interface KitchenTicket {
   station: 'Grill' | 'Hot Wot' | 'Salad & Cold' | 'Bakery' | 'General Kitchen';
   items: { name: string; quantity: number; notes?: string }[];
   status: 'pending' | 'preparing' | 'ready';
+  statusId?: number;
   elapsedMinutes: number;
   serverName: string;
 }
@@ -29,10 +30,11 @@ export default function KitchenStationPage() {
   const [stationFilter, setStationFilter] = useState<string>('All Stations');
   const [tickets, setTickets] = useState<KitchenTicket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<'live' | 'reconnecting'>('live');
 
-  const fetchLiveKitchenOrders = useCallback(async () => {
+  const fetchLiveKitchenOrders = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -95,6 +97,7 @@ export default function KitchenStationPage() {
           station: 'General Kitchen',
           items,
           status,
+          statusId: o.status_id,
           elapsedMinutes,
           serverName: 'Tule Waitstaff',
         };
@@ -103,32 +106,70 @@ export default function KitchenStationPage() {
       setTickets(formatted);
     } catch (err) {
       console.warn('Error loading kitchen orders:', err);
-      setTickets([]);
+      if (!isSilent) setTickets([]);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchLiveKitchenOrders();
 
-    // Subscribe to live order updates
+    // 1. Live subscription with status monitoring
     const channel = supabase
       .channel('kitchen:orders-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchLiveKitchenOrders();
+        fetchLiveKitchenOrders(true);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('live');
+        } else if (status === 'TIMED_OUT' || status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          setConnectionStatus('reconnecting');
+        }
+      });
+
+    // 2. Resilience: 15-second background catch-up polling
+    const pollInterval = setInterval(() => {
+      fetchLiveKitchenOrders(true);
+    }, 15000);
+
+    // 3. Fast reconnect upon tablet wake or online event
+    const handleOnline = () => {
+      setConnectionStatus('live');
+      fetchLiveKitchenOrders(true);
+    };
+
+    const handleOffline = () => {
+      setConnectionStatus('reconnecting');
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLiveKitchenOrders(true);
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [fetchLiveKitchenOrders]);
 
   const handleUpdateStatus = async (ticketId: string, nextStatus: KitchenTicket['status']) => {
+    const currentTicket = tickets.find((t) => t.id === ticketId);
+    const expectedStatusId = currentTicket?.statusId;
+
     // Optimistic UI update
     setTickets((prev) =>
-      prev.map((t) => (t.id === ticketId ? { ...t, status: nextStatus } : t))
+      prev.map((t) => (t.id === ticketId ? { ...t, status: nextStatus, statusId: nextStatus === 'preparing' ? 3 : nextStatus === 'ready' ? 4 : 1 } : t))
     );
 
     // Target status ID: 3 = Preparing, 4 = Ready
@@ -140,10 +181,12 @@ export default function KitchenStationPage() {
         p_entity_id: ticketId,
         p_to_status_id: targetStatusId,
         p_notes: `Kitchen marked ticket as ${nextStatus}`,
+        p_expected_status_id: expectedStatusId ?? null,
       });
 
       if (error) {
         console.warn('Failed to update kitchen ticket status:', error.message);
+        // Refresh immediately on state conflict or other error
         fetchLiveKitchenOrders();
       }
     } catch (err) {
@@ -178,8 +221,29 @@ export default function KitchenStationPage() {
           </div>
         </div>
 
-        {/* Station Tabs & Refresh */}
-        <div className="flex items-center gap-2">
+        {/* Station Tabs, Connection Status & Refresh */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Connection Resilience Indicator */}
+          <div
+            className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-bold border transition-colors shadow-2xs ${
+              connectionStatus === 'live'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-amber-50 text-amber-700 border-amber-300 animate-pulse'
+            }`}
+            title={
+              connectionStatus === 'live'
+                ? 'Realtime WebSocket active'
+                : 'Realtime disconnected or reconnecting. 15-second background polling active.'
+            }
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                connectionStatus === 'live' ? 'bg-emerald-500' : 'bg-amber-500'
+              }`}
+            />
+            <span>{connectionStatus === 'live' ? 'Live KDS' : 'Reconnecting (Polling Active)'}</span>
+          </div>
+
           <button
             onClick={() => fetchLiveKitchenOrders()}
             className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-2xs"

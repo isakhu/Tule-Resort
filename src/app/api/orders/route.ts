@@ -14,6 +14,8 @@ type OrderRequest = {
   items?: OrderItem[];
   table_token?: string;
   tableToken?: string;
+  idempotency_key?: string;
+  idempotencyKey?: string;
 };
 
 function getAdminClient() {
@@ -94,9 +96,10 @@ export async function POST(request: Request) {
     }
 
     const tableToken = body.table_token || body.tableToken;
+    const effectiveIdempotencyKey = (body.idempotency_key || body.idempotencyKey || '').trim() || null;
 
     // 3. Create the order via verified RPC
-    const { data, error: rpcError } = await supabase.rpc('create_guest_order', {
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_guest_order', {
       p_user_id: body.user_id ?? null,
       p_department_id: resolvedDepartmentId,
       p_room_number: body.room_number?.trim() || null,
@@ -104,12 +107,27 @@ export async function POST(request: Request) {
       p_notes: body.notes?.trim() || null,
       p_items: normalizedItems,
       p_table_token: tableToken ? tableToken.trim() : null,
+      p_session_token: null,
+      p_guest_stay_id: null,
+      p_idempotency_key: effectiveIdempotencyKey,
     });
 
     if (rpcError) {
       return NextResponse.json({ success: false, error: rpcError.message || 'Unable to submit the order.' }, { status: 400 });
     }
-    return NextResponse.json({ success: true, data }, { status: 200 });
+
+    const firstRow = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
+    const orderId = firstRow?.order_id || (typeof rpcResult === 'string' ? rpcResult : null);
+    const totalAmount = firstRow?.total_amount != null ? Number(firstRow.total_amount) : undefined;
+    const isDuplicate = Boolean(firstRow?.is_duplicate);
+
+    return NextResponse.json({
+      success: true,
+      data: orderId,
+      orderId,
+      totalAmount,
+      isDuplicate,
+    }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to submit the order.';
     return NextResponse.json({ success: false, error: message }, { status: 500 });

@@ -50,6 +50,7 @@ export default function DepartmentQueuePage() {
   const [userDepts, setUserDepts] = useState<{ id: number; name: string }[]>([]);
   const [userRole, setUserRole] = useState<string>('staff');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'live' | 'reconnecting'>('live');
 
   // 1. Fetch user permissions and departments
   const loadUserContext = useCallback(async () => {
@@ -79,9 +80,11 @@ export default function DepartmentQueuePage() {
   }, []);
 
   // 2. Fetch live queue items (both orders and service_requests)
-  const fetchQueue = useCallback(async () => {
-    setLoading(true);
-    setErrorMsg(null);
+  const fetchQueue = useCallback(async (isSilent: boolean = false) => {
+    if (!isSilent) {
+      setLoading(true);
+      setErrorMsg(null);
+    }
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
@@ -229,9 +232,13 @@ export default function DepartmentQueuePage() {
       queueList.sort((a, b) => b.elapsedMinutes - a.elapsedMinutes);
       setItems(queueList);
     } catch (err: any) {
-      setErrorMsg('Failed to load department queue items.');
+      if (!isSilent) {
+        setErrorMsg('Failed to load department queue items.');
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -239,28 +246,67 @@ export default function DepartmentQueuePage() {
     loadUserContext();
     fetchQueue();
 
+    // 15-second background polling resilience interval for tablet wakeups & missed websockets
+    const pollInterval = setInterval(() => {
+      fetchQueue(true);
+    }, 15000);
+
+    // Immediate sync on reconnection or tab visibility change
+    const handleOnline = () => {
+      setConnectionStatus('live');
+      fetchQueue(true);
+    };
+    const handleOffline = () => {
+      setConnectionStatus('reconnecting');
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchQueue(true);
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Realtime subscriptions
     const orderChannel = supabase
       .channel('queue:orders')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchQueue();
+        fetchQueue(true);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('live');
+        } else if (status === 'TIMED_OUT' || status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          setConnectionStatus('reconnecting');
+        }
+      });
 
     const reqChannel = supabase
       .channel('queue:service_requests')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'service_requests' }, () => {
-        fetchQueue();
+        fetchQueue(true);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('live');
+        } else if (status === 'TIMED_OUT' || status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          setConnectionStatus('reconnecting');
+        }
+      });
 
     return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       supabase.removeChannel(orderChannel);
       supabase.removeChannel(reqChannel);
     };
   }, [loadUserContext, fetchQueue]);
 
-  // Transition handler using shared update_entity_status RPC
+  // Transition handler using shared update_entity_status RPC with optimistic locking
   const handleTransition = async (item: QueueItem, nextStatusId: number, nextStepName: string) => {
     setUpdatingId(item.id);
     setErrorMsg(null);
@@ -271,10 +317,15 @@ export default function DepartmentQueuePage() {
         p_entity_id: item.id,
         p_to_status_id: nextStatusId,
         p_notes: `Transitioned to ${nextStepName} via Department Queue`,
+        p_expected_status_id: item.statusId,
       });
 
       if (error) {
-        setErrorMsg(error.message || `Could not transition item to ${nextStepName}.`);
+        if (error.message && error.message.includes('STATE_CONFLICT')) {
+          setErrorMsg('Conflict: Item status was modified by another staff member or guest. Queue refreshed.');
+        } else {
+          setErrorMsg(error.message || `Could not transition item to ${nextStepName}.`);
+        }
         fetchQueue();
       } else {
         // Optimistic local state update
@@ -329,9 +380,25 @@ export default function DepartmentQueuePage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-black text-gray-900 tracking-tight">Department Queue</h1>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#0E7480]/10 text-[#0E7480]">
-              Realtime Active
-            </span>
+            <div
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border transition-colors ${
+                connectionStatus === 'live'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-300 animate-pulse'
+              }`}
+              title={
+                connectionStatus === 'live'
+                  ? 'Realtime WebSocket active'
+                  : 'Realtime disconnected or reconnecting. 15-second background polling active.'
+              }
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  connectionStatus === 'live' ? 'bg-emerald-500' : 'bg-amber-500'
+                }`}
+              />
+              <span>{connectionStatus === 'live' ? 'Live Queue' : 'Reconnecting (Polling Active)'}</span>
+            </div>
           </div>
           <p className="text-xs text-gray-500 mt-1">
             Accept, track, and complete live food orders and wellness service requests across all resort stations.
@@ -358,7 +425,7 @@ export default function DepartmentQueuePage() {
           )}
 
           <button
-            onClick={fetchQueue}
+            onClick={() => fetchQueue()}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded-xl shadow-xs hover:bg-gray-50 transition-colors"
           >
             <RefreshCw className={`h-3.5 w-3.5 text-[#0E7480] ${loading ? 'animate-spin' : ''}`} /> Refresh

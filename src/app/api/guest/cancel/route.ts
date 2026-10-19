@@ -7,7 +7,7 @@ const COOKIE_NAME = 'tule_guest_stay';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { entityType, entityId, reason } = body ?? {};
+    const { entityType, entityId, reason, sessionToken } = body ?? {};
 
     if (!entityType || !['order', 'service_request'].includes(entityType)) {
       return NextResponse.json({ success: false, error: 'Valid entityType (order or service_request) is required.' }, { status: 400 });
@@ -38,6 +38,7 @@ export async function POST(req: Request) {
       p_guest_stay_id: stayId,
       p_room_number: roomName,
       p_reason: reason || 'Cancelled by guest online',
+      p_session_token: sessionToken && typeof sessionToken === 'string' ? sessionToken.trim() : null,
     });
 
     if (error) {

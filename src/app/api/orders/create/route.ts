@@ -4,15 +4,28 @@ import supabaseServer from '@/lib/supabaseServer';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { items, departmentId, roomNumber, guestName, notes, tableToken, sessionToken, guestStayId } = body ?? {};
+    const {
+      items,
+      departmentId,
+      roomNumber,
+      guestName,
+      notes,
+      tableToken,
+      sessionToken,
+      guestStayId,
+      idempotencyKey,
+      idempotency_key,
+    } = body ?? {};
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'At least one item is required.' }, { status: 400 });
     }
 
+    // Strip client prices or totals entirely. Accept strictly menu_item_id, quantity, notes.
     const normalizedItems = items.map((item: any) => ({
       menu_item_id: typeof item?.menuItemId === 'string' ? item.menuItemId.trim() : String(item?.menu_item_id ?? '').trim(),
       quantity: Number(item?.quantity),
+      notes: typeof item?.notes === 'string' ? item.notes.trim() : undefined,
     }));
 
     if (normalizedItems.some((item) => !item.menu_item_id || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 50)) {
@@ -70,23 +83,41 @@ export async function POST(req: Request) {
       }
     }
 
-    const { data: orderId, error: rpcError } = await supabaseServer.rpc('create_guest_order', {
+    const effectiveIdempotencyKey = typeof idempotencyKey === 'string' && idempotencyKey.trim()
+      ? idempotencyKey.trim()
+      : typeof idempotency_key === 'string' && idempotency_key.trim()
+      ? idempotency_key.trim()
+      : null;
+
+    const { data: rpcResult, error: rpcError } = await supabaseServer.rpc('create_guest_order', {
       p_user_id: userId,
       p_department_id: department,
-      p_room_number: typeof roomNumber === 'string' ? roomNumber : null,
-      p_guest_name: typeof guestName === 'string' ? guestName : null,
-      p_notes: typeof notes === 'string' ? notes : null,
+      p_room_number: typeof roomNumber === 'string' ? roomNumber.trim() : null,
+      p_guest_name: typeof guestName === 'string' ? guestName.trim() : null,
+      p_notes: typeof notes === 'string' ? notes.trim() : null,
       p_items: normalizedItems,
       p_table_token: tableToken && typeof tableToken === 'string' ? tableToken.trim() : null,
       p_session_token: sessionToken && typeof sessionToken === 'string' ? sessionToken.trim() : null,
       p_guest_stay_id: effectiveStayId,
+      p_idempotency_key: effectiveIdempotencyKey,
     });
 
     if (rpcError) {
       return NextResponse.json({ error: rpcError.message || 'Unable to submit the order.' }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, orderId });
+    // Handle TABLE return from upgraded RPC or fallback UUID
+    const firstRow = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
+    const orderId = firstRow?.order_id || (typeof rpcResult === 'string' ? rpcResult : null);
+    const totalAmount = firstRow?.total_amount != null ? Number(firstRow.total_amount) : undefined;
+    const isDuplicate = Boolean(firstRow?.is_duplicate);
+
+    return NextResponse.json({
+      success: true,
+      orderId,
+      totalAmount,
+      isDuplicate,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to submit the order.';
     return NextResponse.json({ error: message }, { status: 500 });

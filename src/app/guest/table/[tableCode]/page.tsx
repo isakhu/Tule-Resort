@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, use, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, use, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -60,6 +60,11 @@ export default function GuestTableOrderingPage({
   const [guestName, setGuestName] = useState('');
   const [specialNotes, setSpecialNotes] = useState('');
   const [orderError, setOrderError] = useState<string | null>(null);
+
+  // Stable idempotency key across retries and double taps
+  const checkoutIdempotencyKey = useRef<string>(
+    typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `table_${Date.now()}`
+  );
 
   // Live order tracker state
   const [activeOrder, setActiveOrder] = useState<ActiveOrderInfo | null>(null);
@@ -146,6 +151,7 @@ export default function GuestTableOrderingPage({
 
   // Cart controls
   const updateCart = (itemId: string, delta: number) => {
+    checkoutIdempotencyKey.current = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `table_${Date.now()}`;
     setCart((prev) => {
       const next = { ...prev };
       const currentQty = next[itemId] || 0;
@@ -218,11 +224,14 @@ export default function GuestTableOrderingPage({
           sessionToken: storedSessionToken || undefined,
           guestName: guestName.trim() || `Guest at ${table.table_number}`,
           notes: specialNotes.trim() || undefined,
+          idempotencyKey: checkoutIdempotencyKey.current,
         }),
       });
 
       const json = await res.json();
       if (res.ok && json.success) {
+        // Regenerate for the next order
+        checkoutIdempotencyKey.current = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `table_${Date.now()}`;
         setCart({});
         // Re-load table session to pick up the newly linked order and active session token
         await loadTableAndSession();
@@ -244,7 +253,8 @@ export default function GuestTableOrderingPage({
     setCancellingOrder(true);
     setCancelFeedback(null);
 
-    const result = await cancelGuestItem('order', activeOrder.id);
+    const storedSessionToken = session?.session_token || (typeof window !== 'undefined' ? localStorage.getItem(`tule_session_${tableCode}`) : null);
+    const result = await cancelGuestItem('order', activeOrder.id, storedSessionToken || undefined);
     if (result.success) {
       setCancelFeedback('Order cancelled successfully.');
       setActiveOrder((prev) => (prev ? { ...prev, status_id: 9 } : null));

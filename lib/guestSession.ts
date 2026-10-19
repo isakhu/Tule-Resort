@@ -122,12 +122,16 @@ export async function fetchGuestActivity(stayId?: string): Promise<{
   }
 }
 
-export async function cancelGuestItem(entityType: 'order' | 'service_request', entityId: string): Promise<{ success: boolean; message?: string; error?: string }> {
+export async function cancelGuestItem(
+  entityType: 'order' | 'service_request',
+  entityId: string,
+  sessionToken?: string
+): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
     const res = await fetch('/api/guest/cancel', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entityType, entityId }),
+      body: JSON.stringify({ entityType, entityId, sessionToken }),
     });
     const json = await res.json();
     if (res.ok && json.success) {

@@ -14,6 +14,7 @@ type ReservationRequest = {
   currency?: string;
   payment_method?: string;
   payment_status?: string;
+  payment_reference?: string;
   status?: string;
   special_requests?: string | null;
   user_id?: string | null;
@@ -46,6 +47,25 @@ export async function POST(request: Request) {
 
     const supabase = adminClient();
     const bookingNumber = String(body.booking_number ?? '').trim() || `TULE-${Date.now().toString(36).toUpperCase()}`;
+    const normalizedPaymentRef = body.payment_reference && typeof body.payment_reference === 'string'
+      ? body.payment_reference.trim().toUpperCase()
+      : null;
+
+    if (normalizedPaymentRef) {
+      const { data: existingRef } = await supabase
+        .from('used_payment_references')
+        .select('id, entity_type')
+        .eq('normalized_reference', normalizedPaymentRef)
+        .maybeSingle();
+
+      if (existingRef) {
+        return NextResponse.json({
+          success: false,
+          error: `DUPLICATE_PAYMENT_REFERENCE: Transaction reference "${normalizedPaymentRef}" has already been verified and cannot be reused.`,
+        }, { status: 409 });
+      }
+    }
+
     const payload = {
       booking_number: bookingNumber,
       room_id: roomId,
@@ -58,7 +78,8 @@ export async function POST(request: Request) {
       total_price: totalPrice,
       currency: body.currency || 'ETB',
       payment_method: body.payment_method || 'pay_at_resort',
-      payment_status: body.payment_status || 'pending',
+      payment_status: body.payment_status || (normalizedPaymentRef ? 'paid' : 'pending'),
+      payment_reference: normalizedPaymentRef,
       status: 'pending',
       special_requests: body.special_requests?.trim() || null,
       user_id: body.user_id ?? null,
@@ -83,7 +104,23 @@ export async function POST(request: Request) {
     if ((conflicts ?? []).length > 0) return NextResponse.json({ success: false, error: 'This room is already booked for those dates. Please choose different dates.' }, { status: 409 });
 
     const { data, error } = await supabase.from('room_reservations').insert(payload).select('id,booking_number').single();
-    if (error) return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    if (error) {
+      if (error.code === '23505' || /payment_reference|unique/i.test(error.message)) {
+        return NextResponse.json({ success: false, error: 'DUPLICATE_PAYMENT_REFERENCE: This transaction reference has already been used.' }, { status: 409 });
+      }
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    }
+
+    // Register into used_payment_references
+    if (normalizedPaymentRef && data?.id) {
+      await supabase.rpc('register_payment_reference', {
+        p_reference: normalizedPaymentRef,
+        p_entity_type: 'reservation',
+        p_entity_id: data.id,
+        p_amount: totalPrice,
+        p_currency: body.currency || 'ETB',
+      });
+    }
 
     return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (error) {

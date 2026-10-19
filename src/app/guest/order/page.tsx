@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Minus, Plus, ShoppingBag, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { menuItems } from '@/data/menu-items';
@@ -18,6 +18,11 @@ export default function GuestOrderPage() {
   const [phone, setPhone] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Stable idempotency key across retries and double taps
+  const checkoutIdempotencyKey = useRef<string>(
+    typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `order_${Date.now()}`
+  );
 
   useEffect(() => {
     try {
@@ -41,6 +46,7 @@ export default function GuestOrderPage() {
   const totalPrice = selected.reduce((sum, item) => sum + item.price * (cart[item.id] ?? 0), 0);
 
   const changeQuantity = (id: string, delta: number) => {
+    checkoutIdempotencyKey.current = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `order_${Date.now()}`;
     setCart((current) => {
       const next = { ...current };
       const quantity = Math.max(0, (next[id] ?? 0) + delta);
@@ -50,7 +56,10 @@ export default function GuestOrderPage() {
     });
   };
 
-  const clearCart = () => setCart({});
+  const clearCart = () => {
+    checkoutIdempotencyKey.current = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `order_${Date.now()}`;
+    setCart({});
+  };
 
   const submitOrder = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -67,12 +76,11 @@ export default function GuestOrderPage() {
         menu_item_id: item.id,
         name: item.name,
         quantity: cart[item.id] ?? 0,
-        price: item.price,
       })),
-      total_amount: totalPrice,
       service_type: 'restaurant',
       special_instructions: `Guest phone: ${phone}`,
       status: 'pending',
+      idempotency_key: checkoutIdempotencyKey.current,
     });
 
     setIsSubmitting(false);
@@ -82,6 +90,8 @@ export default function GuestOrderPage() {
       return;
     }
 
+    // Regenerate for future orders
+    checkoutIdempotencyKey.current = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `order_${Date.now()}`;
     setSubmitted(true);
     setCart({});
     if (typeof window !== 'undefined') {
