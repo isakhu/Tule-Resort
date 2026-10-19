@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, ChevronDown, Minus, Phone, Plus, Search, ShoppingBag, Sparkles, UtensilsCrossed } from 'lucide-react';
 import type { MenuItem } from '@/lib/menu';
@@ -37,6 +37,10 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
+  const isClickScrolling = useRef(false);
+
+  // Helper to generate section id
+  const getCatId = (cat: string) => `cat-${cat.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
   const changeQuantity = (id: string, delta: number) => {
     setCart((current) => {
@@ -56,12 +60,6 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      const matchesCategory =
-        activeCategory === 'All' ||
-        item.category.toLowerCase().includes(activeCategory.toLowerCase()) ||
-        (activeCategory === 'Fast Food & Bowls' && (item.category.includes('Fast') || item.category.includes('Bowls') || Number(item.id) >= 101 && Number(item.id) <= 120)) ||
-        (activeCategory === 'Modern & Intercontinental' && (item.category.includes('Modern') || item.category.includes('Pizza') || item.category.includes('Pasta')));
-
       const query = searchQuery.trim().toLowerCase();
       const matchesSearch =
         !query ||
@@ -70,17 +68,99 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
         item.description.toLowerCase().includes(query) ||
         item.category.toLowerCase().includes(query);
 
-      return matchesCategory && matchesSearch;
+      return matchesSearch;
     });
-  }, [items, activeCategory, searchQuery]);
+  }, [items, searchQuery]);
 
-  // If viewing All and not searching, show featured first unless expanded
-  const displayItems = useMemo(() => {
-    if (searchQuery.trim() || activeCategory !== 'All' || showAll) {
-      return filteredItems;
+  // Group items by category for smooth jumping & section view
+  const categorySections = useMemo(() => {
+    const map = new Map<string, MenuItem[]>();
+    CATEGORY_TABS.filter((t) => t !== 'All').forEach((tab) => map.set(tab, []));
+
+    filteredItems.forEach((item) => {
+      // Find matching category tab
+      let matchedTab = CATEGORY_TABS.find(
+        (tab) =>
+          tab !== 'All' &&
+          (item.category.toLowerCase().includes(tab.toLowerCase()) ||
+            (tab === 'Fast Food & Bowls' &&
+              (item.category.includes('Fast') ||
+                item.category.includes('Bowls') ||
+                (Number(item.id) >= 101 && Number(item.id) <= 120))) ||
+            (tab === 'Modern & Intercontinental' &&
+              (item.category.includes('Modern') ||
+                item.category.includes('Pizza') ||
+                item.category.includes('Pasta'))))
+      );
+
+      if (!matchedTab) {
+        matchedTab = 'Modern & Intercontinental';
+      }
+
+      const list = map.get(matchedTab) || [];
+      list.push(item);
+      map.set(matchedTab, list);
+    });
+
+    return Array.from(map.entries())
+      .filter(([_, list]) => list.length > 0)
+      .map(([category, list]) => ({
+        category,
+        id: getCatId(category),
+        items: list,
+      }));
+  }, [filteredItems]);
+
+  // Smooth scroll handler
+  const handleScrollToCategory = (cat: string) => {
+    setActiveCategory(cat);
+    if (cat === 'All') {
+      const allEl = document.getElementById('menu-content-top');
+      if (allEl) {
+        allEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
     }
-    return filteredItems.slice(0, 18);
-  }, [filteredItems, searchQuery, activeCategory, showAll]);
+
+    const catId = getCatId(cat);
+    const target = document.getElementById(catId);
+    if (target) {
+      isClickScrolling.current = true;
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => {
+        isClickScrolling.current = false;
+      }, 800);
+    }
+  };
+
+  // IntersectionObserver for active category highlight on scroll
+  useEffect(() => {
+    if (searchQuery.trim()) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (isClickScrolling.current) return;
+        const visible = entries.find((e) => e.isIntersecting);
+        if (visible && visible.target.id) {
+          const matchedSection = categorySections.find((s) => s.id === visible.target.id);
+          if (matchedSection) {
+            setActiveCategory(matchedSection.category);
+          }
+        }
+      },
+      {
+        rootMargin: '-20% 0px -65% 0px',
+        threshold: 0.05,
+      }
+    );
+
+    categorySections.forEach((section) => {
+      const el = document.getElementById(section.id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [categorySections, searchQuery, isClickScrolling]);
 
   const totalItems = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
   const totalAmount = useMemo(() => {
@@ -162,23 +242,23 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
         </div>
       </section>
 
-      {/* Category Pills Navigation */}
-      <section className="sticky top-0 z-30 mx-auto mt-6 max-w-7xl px-4 backdrop-blur-md sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2 overflow-x-auto py-3 scrollbar-none">
+      {/* Sticky Horizontal Category Pill Navigation Bar */}
+      <nav
+        aria-label="Menu Categories"
+        className="sticky top-0 z-30 mx-auto mt-6 max-w-7xl px-4 sm:px-6 lg:px-8 py-2.5 backdrop-blur-md bg-[#F4F7F8]/85 border-y border-stone-200/60 shadow-xs"
+      >
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1">
           {CATEGORY_TABS.map((tab) => {
             const isActive = activeCategory === tab;
             return (
               <button
                 key={tab}
                 type="button"
-                onClick={() => {
-                  setActiveCategory(tab);
-                  setShowAll(true);
-                }}
-                className={`shrink-0 rounded-full px-5 py-2.5 text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                onClick={() => handleScrollToCategory(tab)}
+                className={`shrink-0 rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
                   isActive
                     ? 'bg-gradient-to-r from-[#0E7480] to-[#14919B] text-white shadow-md shadow-[#0E7480]/25 ring-2 ring-[#C9902F] scale-[1.03]'
-                    : 'bg-white text-gray-700 hover:bg-teal-50 hover:text-[#0E7480] border border-gray-200 shadow-xs'
+                    : 'bg-white text-gray-700 hover:bg-teal-50 hover:text-[#0E7480] border border-gray-200 shadow-2xs'
                 }`}
               >
                 {tab}
@@ -186,35 +266,27 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
             );
           })}
         </div>
-      </section>
+      </nav>
+
+      <div id="menu-content-top" />
 
       {/* Results Header */}
       <section className="mx-auto mt-6 max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between border-b border-gray-200 pb-4">
           <div>
             <h3 className="text-xl font-black uppercase tracking-tight text-[#0B252C]">
-              {activeCategory === 'All' ? (searchQuery ? `Search Results` : `Featured Highlights & Catalog`) : activeCategory}
+              {searchQuery ? `Search Results for "${searchQuery}"` : `Resort Dining Menu (${filteredItems.length} Specialties)`}
             </h3>
             <p className="text-xs font-bold text-[#0E7480]">
-              Showing {filteredItems.length} available dishes & beverages
+              Showing {filteredItems.length} available dishes & beverages across {categorySections.length} categories
             </p>
           </div>
-          {activeCategory === 'All' && !searchQuery && (
-            <button
-              type="button"
-              onClick={() => setShowAll((prev) => !prev)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#0E7480]/30 bg-[#EAF2F4] px-4 py-2 text-xs font-black uppercase tracking-wider text-[#0E7480] hover:bg-[#D4E8EC] transition cursor-pointer"
-            >
-              {showAll ? 'Show top highlights' : `View all ${items.length} items`}
-              <ChevronDown className={`h-4 w-4 transition-transform ${showAll ? 'rotate-180' : ''}`} />
-            </button>
-          )}
         </div>
       </section>
 
-      {/* The Styled Menu Cards */}
-      <section className="mx-auto mt-8 max-w-7xl px-4 sm:px-6 lg:px-8">
-        {displayItems.length === 0 ? (
+      {/* The Styled Menu Cards by Category */}
+      <section className="mx-auto mt-8 max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
+        {filteredItems.length === 0 ? (
           <div className="rounded-[2.5rem] border-2 border-dashed border-[#0E7480]/20 bg-white p-12 text-center">
             <UtensilsCrossed className="mx-auto h-12 w-12 text-[#0E7480]/40" />
             <h4 className="mt-4 text-xl font-black text-[#0B252C]">No items match "{searchQuery}"</h4>
@@ -230,125 +302,129 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
             </button>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {displayItems.map((item, index) => {
-              const quantity = cart[item.id] ?? 0;
-              const isEven = index % 2 === 0;
+          categorySections.map((section) => (
+            <div key={section.id} id={section.id} className="scroll-mt-28 space-y-6">
+              {/* Category Section Header */}
+              <div className="flex items-center justify-between border-b border-gray-200/80 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="h-3 w-3 rounded-full bg-[#C9902F]" />
+                  <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-[#0B252C]">
+                    {section.category}
+                  </h3>
+                  <span className="rounded-full bg-[#EAF2F4] px-2.5 py-0.5 text-[11px] font-black text-[#0E7480]">
+                    {section.items.length}
+                  </span>
+                </div>
+              </div>
 
-              return (
-                <article
-                  key={item.id}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border-2 border-[#14919B]/15 bg-white p-5 shadow-[0_12px_32px_rgba(7,59,76,0.06)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_45px_rgba(7,59,76,0.12)] hover:border-[#14919B]"
-                >
-                  {/* Pod Header: Title & Badges */}
-                  <div>
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="rounded-full bg-[#EAF2F4] px-3 py-1 text-[9px] font-black uppercase tracking-[.18em] text-[#0A5C67]">
-                        {item.category}
-                      </span>
-                      {item.amharicName && (
-                        <span className="rounded-full bg-[#FDF6E2] px-2.5 py-0.5 text-[11px] font-bold text-[#A6751C]">
-                          {item.amharicName}
-                        </span>
-                      )}
-                    </div>
+              {/* Items Grid */}
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {section.items.map((item, index) => {
+                  const quantity = cart[item.id] ?? 0;
+                  const isEven = index % 2 === 0;
 
-                    {/* Staggered Alternating Layout matching the poster */}
-                    <div className={`mt-4 flex items-center gap-4 ${isEven ? 'flex-row' : 'flex-row-reverse'}`}>
-                      {/* Circular Food Plate Image with Floating Shadow */}
-                      <div className="relative shrink-0">
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="h-32 w-32 rounded-full object-cover shadow-[0_14px_28px_rgba(0,0,0,0.18)] ring-4 ring-[#F4F7F8] transition-transform duration-500 group-hover:scale-105"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80';
-                          }}
-                        />
-                      </div>
-
-                      {/* Title & Scalloped Flower Price Badge */}
-                      <div className="flex flex-1 flex-col justify-center">
-                        <h4 className="font-black text-lg tracking-tight text-[#0B252C] uppercase leading-tight line-clamp-2">
-                          {item.name}
-                        </h4>
-
-                        <div className="mt-3 flex items-center gap-2">
-                          <FlowerPriceBadge price={item.price} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Description */}
-                    <p className="mt-4 text-xs leading-relaxed text-gray-600 line-clamp-2">
-                      {item.description}
-                    </p>
-                  </div>
-
-                  {/* ORDER NOW Action Bar */}
-                  <div className="mt-5 border-t border-gray-100 pt-4">
-                    {quantity === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => changeQuantity(item.id, 1)}
-                        className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0E7480] to-[#14919B] py-3 text-xs font-black uppercase tracking-[.16em] text-white shadow-lg shadow-[#0E7480]/20 transition hover:brightness-110 active:scale-95 cursor-pointer"
-                      >
-                        ORDER NOW
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center rounded-full border-2 border-[#0E7480] bg-white p-1 shadow-sm">
-                          <button
-                            type="button"
-                            onClick={() => changeQuantity(item.id, -1)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EAF2F4] text-[#0A5C67] transition hover:bg-[#D4E8EC] active:scale-90"
-                            aria-label="Decrease quantity"
-                          >
-                            <Minus className="h-3.5 w-3.5" />
-                          </button>
-                          <span className="min-w-8 text-center text-xs font-black text-[#0A5C67]">
-                            {quantity}
+                  return (
+                    <article
+                      key={item.id}
+                      className="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border-2 border-[#14919B]/15 bg-white p-5 shadow-[0_12px_32px_rgba(7,59,76,0.06)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_45px_rgba(7,59,76,0.12)] hover:border-[#14919B]"
+                    >
+                      {/* Pod Header: Title & Badges */}
+                      <div>
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="rounded-full bg-[#EAF2F4] px-3 py-1 text-[9px] font-black uppercase tracking-[.18em] text-[#0A5C67]">
+                            {item.category}
                           </span>
+                          {item.amharicName && (
+                            <span className="rounded-full bg-[#FDF6E2] px-2.5 py-0.5 text-[11px] font-bold text-[#A6751C]">
+                              {item.amharicName}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Staggered Alternating Layout matching the poster */}
+                        <div className={`mt-4 flex items-center gap-4 ${isEven ? 'flex-row' : 'flex-row-reverse'}`}>
+                          {/* Circular Food Plate Image with Floating Shadow */}
+                          <div className="relative shrink-0">
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="h-32 w-32 rounded-full object-cover shadow-[0_14px_28px_rgba(0,0,0,0.18)] ring-4 ring-[#F4F7F8] transition-transform duration-500 group-hover:scale-105"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.currentTarget.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80';
+                              }}
+                            />
+                          </div>
+
+                          {/* Title & Scalloped Flower Price Badge */}
+                          <div className="flex flex-1 flex-col justify-center">
+                            <h4 className="font-black text-lg tracking-tight text-[#0B252C] uppercase leading-tight line-clamp-2">
+                              {item.name}
+                            </h4>
+
+                            <div className="mt-3 flex items-center gap-2">
+                              <FlowerPriceBadge price={item.price} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <p className="mt-4 text-xs leading-relaxed text-gray-600 line-clamp-2">
+                          {item.description}
+                        </p>
+                      </div>
+
+                      {/* ORDER NOW Action Bar */}
+                      <div className="mt-5 border-t border-gray-100 pt-4">
+                        {quantity === 0 ? (
                           <button
                             type="button"
                             onClick={() => changeQuantity(item.id, 1)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0E7480] text-white transition hover:bg-[#0A5C67] active:scale-90"
-                            aria-label="Increase quantity"
+                            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#0E7480] to-[#14919B] py-3 text-xs font-black uppercase tracking-[.16em] text-white shadow-lg shadow-[#0E7480]/20 transition hover:brightness-110 active:scale-95 cursor-pointer"
                           >
-                            <Plus className="h-3.5 w-3.5" />
+                            ORDER NOW
+                            <ArrowRight className="h-4 w-4" />
                           </button>
-                        </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center rounded-full border-2 border-[#0E7480] bg-white p-1 shadow-sm">
+                              <button
+                                type="button"
+                                onClick={() => changeQuantity(item.id, -1)}
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EAF2F4] text-[#0A5C67] transition hover:bg-[#D4E8EC] active:scale-90"
+                                aria-label="Decrease quantity"
+                              >
+                                <Minus className="h-3.5 w-3.5" />
+                              </button>
+                              <span className="min-w-8 text-center text-xs font-black text-[#0A5C67]">
+                                {quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => changeQuantity(item.id, 1)}
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0E7480] text-white transition hover:bg-[#0A5C67] active:scale-90"
+                                aria-label="Increase quantity"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
 
-                        <Link
-                          href="/guest/order"
-                          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white shadow-md transition hover:bg-emerald-700"
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                          In Bag ({quantity})
-                        </Link>
+                            <Link
+                              href="/guest/order"
+                              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white shadow-md transition hover:bg-emerald-700"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                              In Bag ({quantity})
+                            </Link>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Show More Button if limited */}
-        {!showAll && activeCategory === 'All' && !searchQuery && displayItems.length < filteredItems.length && (
-          <div className="mt-10 text-center">
-            <button
-              type="button"
-              onClick={() => setShowAll(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#0E7480] to-[#14919B] px-8 py-4 text-xs font-black uppercase tracking-[.18em] text-white shadow-xl shadow-[#0E7480]/20 transition hover:brightness-110 hover:scale-105 active:scale-95 cursor-pointer"
-            >
-              Load All Menu Items
-              <ChevronDown className="h-4 w-4" />
-            </button>
-          </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          ))
         )}
       </section>
 

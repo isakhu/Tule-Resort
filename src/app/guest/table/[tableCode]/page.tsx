@@ -162,6 +162,11 @@ export default function GuestTableOrderingPage({
     });
   };
 
+  const isClickScrolling = useRef(false);
+
+  // Helper to generate consistent section id
+  const getCatId = (cat: string) => `cat-${cat.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
   const categories = useMemo(() => {
     const set = new Set<string>();
     menuItems.forEach((i) => {
@@ -171,17 +176,89 @@ export default function GuestTableOrderingPage({
   }, [menuItems]);
 
   const filteredItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return menuItems.filter((item) => {
-      const matchesCat = activeCategory === 'All' || item.category === activeCategory;
-      const q = searchQuery.trim().toLowerCase();
       const matchesSearch =
         !q ||
         item.name.toLowerCase().includes(q) ||
         (item.amharicName && item.amharicName.includes(q)) ||
-        (item.description && item.description.toLowerCase().includes(q));
-      return matchesCat && matchesSearch;
+        (item.description && item.description.toLowerCase().includes(q)) ||
+        (item.category && item.category.toLowerCase().includes(q));
+      return matchesSearch;
     });
-  }, [menuItems, activeCategory, searchQuery]);
+  }, [menuItems, searchQuery]);
+
+  // Group filtered items by category for sectioned view & smooth jumping
+  const categorySections = useMemo(() => {
+    const map = new Map<string, MenuItem[]>();
+    categories.filter((c) => c !== 'All').forEach((cat) => map.set(cat, []));
+
+    filteredItems.forEach((item) => {
+      const cat = item.category || 'Other';
+      const list = map.get(cat) || [];
+      list.push(item);
+      map.set(cat, list);
+    });
+
+    return Array.from(map.entries())
+      .filter(([_, list]) => list.length > 0)
+      .map(([category, list]) => ({
+        category,
+        id: getCatId(category),
+        items: list,
+      }));
+  }, [filteredItems, categories]);
+
+  // Smooth category jumping
+  const handleScrollToCategory = (cat: string) => {
+    setActiveCategory(cat);
+    if (cat === 'All') {
+      const topEl = document.getElementById('table-menu-top');
+      if (topEl) {
+        topEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
+
+    const catId = getCatId(cat);
+    const target = document.getElementById(catId);
+    if (target) {
+      isClickScrolling.current = true;
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => {
+        isClickScrolling.current = false;
+      }, 800);
+    }
+  };
+
+  // IntersectionObserver for active pill highlighting as guest scrolls
+  useEffect(() => {
+    if (searchQuery.trim()) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (isClickScrolling.current) return;
+        const visible = entries.find((e) => e.isIntersecting);
+        if (visible && visible.target.id) {
+          const matched = categorySections.find((s) => s.id === visible.target.id);
+          if (matched) {
+            setActiveCategory(matched.category);
+          }
+        }
+      },
+      {
+        rootMargin: '-20% 0px -65% 0px',
+        threshold: 0.05,
+      }
+    );
+
+    categorySections.forEach((section) => {
+      const el = document.getElementById(section.id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [categorySections, searchQuery]);
 
   const totalCartCount = Object.values(cart).reduce((a, b) => a + b, 0);
   const subtotal = useMemo(() => {
@@ -532,8 +609,8 @@ export default function GuestTableOrderingPage({
         </div>
       </section>
 
-      {/* ─── SEARCH & CATEGORY FILTER ─── */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-4">
+      {/* ─── SEARCH BAR ─── */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -544,91 +621,132 @@ export default function GuestTableOrderingPage({
             className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-xs font-semibold text-gray-800 placeholder-gray-400 focus:border-[#0E7480] focus:outline-none focus:ring-2 focus:ring-[#0E7480]/20 shadow-xs"
           />
         </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`rounded-xl px-4 py-2 text-xs font-bold whitespace-nowrap transition-all ${
-                activeCategory === cat
-                  ? 'bg-[#F97316] text-white shadow-md shadow-[#F97316]/25 border border-[#EA580C]'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
       </section>
 
-      {/* ─── MENU ITEMS GRID ─── */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredItems.map((item) => {
-            const qty = cart[item.id] || 0;
+      {/* ─── STICKY HORIZONTAL CATEGORY PILL-BAR ─── */}
+      <nav
+        aria-label="Menu Categories"
+        className="sticky top-16 z-20 backdrop-blur-md bg-white/80 py-2 px-4 sm:px-6 border-b border-gray-200/60 shadow-2xs mt-4"
+      >
+        <div className="max-w-5xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1">
+          {categories.map((cat) => {
+            const isActive = activeCategory === cat;
             return (
-              <div
-                key={item.id}
-                className="rounded-3xl bg-white p-4 shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group hover:border-[#F97316]/40 hover:-translate-y-1"
+              <button
+                key={cat}
+                type="button"
+                onClick={() => handleScrollToCategory(cat)}
+                className={`rounded-full px-4 py-2 text-xs font-bold whitespace-nowrap transition-all duration-200 shrink-0 cursor-pointer ${
+                  isActive
+                    ? 'bg-[#F97316] text-white shadow-md shadow-[#F97316]/25 ring-2 ring-[#EA580C] scale-[1.02]'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-2xs'
+                }`}
               >
-                <div>
-                  <div
-                    className="h-40 w-full rounded-2xl bg-gray-100 bg-cover bg-center mb-3 relative overflow-hidden transition-transform duration-500 group-hover:scale-[1.02]"
-                    style={{
-                      backgroundImage: `url(${item.imageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80'})`,
-                    }}
-                  >
-                    <div className="absolute top-2 right-2 rounded-full bg-[#092B33]/90 backdrop-blur-md px-2.5 py-1 text-[11px] font-black text-[#FB923C] border border-[#F97316]/40 shadow-xs transition-transform duration-300 group-hover:scale-105">
-                      {item.price} ETB
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-extrabold text-gray-900 group-hover:text-[#F97316] transition-colors">
-                      {item.name}
-                    </h3>
-                    {item.amharicName && (
-                      <p className="text-xs font-bold text-[#EA580C]">{item.amharicName}</p>
-                    )}
-                    <p className="text-[11px] text-gray-500 line-clamp-2 mt-1">
-                      {item.description}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-xs font-black text-gray-900">{item.price} ETB</span>
-
-                  {qty > 0 ? (
-                    <div className="flex items-center gap-2 bg-[#F97316]/10 rounded-xl p-1 border border-[#F97316]/30">
-                      <button
-                        onClick={() => updateCart(item.id, -1)}
-                        className="h-7 w-7 rounded-lg bg-white text-[#F97316] font-black flex items-center justify-center shadow-xs hover:bg-gray-50 transition-all duration-150 active:scale-90"
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="text-xs font-black text-gray-900 px-1">{qty}</span>
-                      <button
-                        onClick={() => updateCart(item.id, 1)}
-                        className="h-7 w-7 rounded-lg bg-[#F97316] text-white font-black flex items-center justify-center shadow-xs hover:bg-[#EA580C] transition-all duration-150 active:scale-90"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => updateCart(item.id, 1)}
-                      className="rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white px-3.5 py-1.5 text-xs font-bold transition-all duration-200 active:scale-95 shadow-xs flex items-center gap-1.5 border border-[#F97316]"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Add
-                    </button>
-                  )}
-                </div>
-              </div>
+                {cat}
+              </button>
             );
           })}
         </div>
+      </nav>
+
+      <div id="table-menu-top" />
+
+      {/* ─── CATEGORY SECTIONED MENU ITEMS GRID ─── */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-10">
+        {filteredItems.length === 0 ? (
+          <div className="rounded-3xl border border-dashed border-gray-200 bg-white p-12 text-center text-gray-500">
+            <UtensilsCrossed className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+            <p className="text-sm font-bold text-gray-700">No dishes found matching "{searchQuery}"</p>
+            <p className="text-xs text-gray-400 mt-1">Try another search term or choose a category above.</p>
+          </div>
+        ) : (
+          categorySections.map((section) => (
+            <div key={section.id} id={section.id} className="scroll-mt-28 space-y-4">
+              {/* Category Header */}
+              <div className="flex items-center justify-between border-b border-gray-200/80 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#F97316]" />
+                  <h2 className="text-lg sm:text-xl font-black text-[#0B252C] tracking-tight uppercase">
+                    {section.category}
+                  </h2>
+                  <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-black text-[#EA580C] border border-orange-200/60">
+                    {section.items.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Items Grid for this category */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {section.items.map((item) => {
+                  const qty = cart[item.id] || 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-3xl bg-white p-4 shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group hover:border-[#F97316]/40 hover:-translate-y-1"
+                    >
+                      <div>
+                        <div
+                          className="h-40 w-full rounded-2xl bg-gray-100 bg-cover bg-center mb-3 relative overflow-hidden transition-transform duration-500 group-hover:scale-[1.02]"
+                          style={{
+                            backgroundImage: `url(${item.imageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80'})`,
+                          }}
+                        >
+                          <div className="absolute top-2 right-2 rounded-full bg-[#092B33]/90 backdrop-blur-md px-2.5 py-1 text-[11px] font-black text-[#FB923C] border border-[#F97316]/40 shadow-xs transition-transform duration-300 group-hover:scale-105">
+                            {item.price} ETB
+                          </div>
+                        </div>
+
+                        <div>
+                          <h3 className="text-sm font-extrabold text-gray-900 group-hover:text-[#F97316] transition-colors">
+                            {item.name}
+                          </h3>
+                          {item.amharicName && (
+                            <p className="text-xs font-bold text-[#EA580C]">{item.amharicName}</p>
+                          )}
+                          <p className="text-[11px] text-gray-500 line-clamp-2 mt-1">
+                            {item.description}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span className="text-xs font-black text-gray-900">{item.price} ETB</span>
+
+                        {qty > 0 ? (
+                          <div className="flex items-center gap-2 bg-[#F97316]/10 rounded-xl p-1 border border-[#F97316]/30">
+                            <button
+                              type="button"
+                              onClick={() => updateCart(item.id, -1)}
+                              className="h-7 w-7 rounded-lg bg-white text-[#F97316] font-black flex items-center justify-center shadow-xs hover:bg-gray-50 transition-all duration-150 active:scale-90"
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <span className="text-xs font-black text-gray-900 px-1">{qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateCart(item.id, 1)}
+                              className="h-7 w-7 rounded-lg bg-[#F97316] text-white font-black flex items-center justify-center shadow-xs hover:bg-[#EA580C] transition-all duration-150 active:scale-90"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => updateCart(item.id, 1)}
+                            className="rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white px-3.5 py-1.5 text-xs font-bold transition-all duration-200 active:scale-95 shadow-xs flex items-center gap-1.5 border border-[#F97316]"
+                          >
+                            <Plus className="h-3.5 w-3.5" /> Add
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
       </section>
 
       {/* ─── CART & CHECKOUT DRAWER (Bottom Bar) ─── */}
