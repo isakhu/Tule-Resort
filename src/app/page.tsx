@@ -8,9 +8,11 @@ import {
   ArrowUpRight,
   BedDouble,
   Calendar,
+  Check,
   Compass,
   Lock,
   MapPin,
+  Maximize2,
   Phone,
   Play,
   QrCode,
@@ -355,9 +357,230 @@ export default function Home() {
           </div>
         </div>
 
-        <Link href="#experiences" className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2 text-[8px] font-bold uppercase tracking-[.25em] text-[#F4EBD9]/60 transition hover:text-white sm:bottom-7">
-          See rooms and services <ArrowDown className="h-4 w-4 animate-bounce text-[#C9A24B]" />
+        <Link href="#accommodations" className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2 text-[8px] font-bold uppercase tracking-[.25em] text-[#F4EBD9]/60 transition hover:text-white sm:bottom-7">
+          Explore suites and rooms <ArrowDown className="h-4 w-4 animate-bounce text-[#C9A24B]" />
         </Link>
+      </section>
+
+      {/* ─── SECTION 2: EDITORIAL FEATURED ROOMS & SUITES ─── */}
+      <section id="accommodations" className="relative z-10 bg-[#07191E] px-4 py-20 sm:px-7 sm:py-28 lg:px-10 lg:py-32">
+        <div className="mx-auto max-w-[1440px]">
+          {/* Section Header */}
+          <div data-reveal className="tule-reveal mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#C9A24B]/30 bg-[#1F4D3A]/60 px-3.5 py-1 text-[9px] font-extrabold uppercase tracking-[.26em] text-[#C9A24B] backdrop-blur-md">
+                <BedDouble className="h-3 w-3" /> Accommodations · Hawassa
+              </div>
+              <h2 className="mt-4 font-display text-4xl font-light leading-[1.02] tracking-tight text-[#F4EBD9] sm:text-6xl lg:text-7xl">
+                Wake Up to <span className="italic font-normal text-[#C9A24B]">Lake Hawassa</span>
+              </h2>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[#F4EBD9]/70 sm:text-base">
+                8 lakefront suites and garden bungalows crafted with natural timber, stone, and private sunset balconies.
+              </p>
+            </div>
+
+            <Link
+              href="/guest/rooms"
+              className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-[#C9A24B] hover:text-[#F4EBD9] transition group shrink-0"
+            >
+              Explore All 8 Suites &amp; Rates <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1.5" />
+            </Link>
+          </div>
+
+          {/* Editorial Grid: 1 Expansive Left Spotlight + 2 Right Companions */}
+          <div className="grid gap-6 lg:grid-cols-12 lg:gap-8 items-stretch">
+            {/* Left Expansive Spotlight Suite (7 cols) */}
+            <article
+              data-reveal
+              className="tule-reveal group relative flex flex-col justify-end overflow-hidden rounded-[2.2rem] border border-[#1F4D3A] bg-[#132E26] shadow-[0_24px_60px_rgba(0,0,0,0.6)] lg:col-span-7 min-h-[580px] lg:min-h-[640px]"
+            >
+              {/* Background Suite Photo with Smooth Zoom */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1400&q=85"
+                alt="Deluxe One-Bedroom Suite at Tule Resort"
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0B1E19] via-[#0B1E19]/65 to-black/20" />
+
+              {/* Top Floating Badges */}
+              <div className="absolute left-6 right-6 top-6 flex items-center justify-between z-10">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#C9A24B]/40 bg-[#0B1E19]/80 px-3.5 py-1.5 text-[9px] font-black uppercase tracking-[.22em] text-[#C9A24B] backdrop-blur-md shadow-md">
+                  <Sparkles className="h-3 w-3" /> Featured Spotlight
+                </span>
+
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/80 px-3.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300 backdrop-blur-md shadow-md">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Available Today
+                </span>
+              </div>
+
+              {/* Bottom Editorial Content Card */}
+              <div className="relative z-10 p-6 sm:p-8 lg:p-10">
+                <div className="flex flex-wrap items-center gap-2 text-[9px] font-bold uppercase tracking-[.2em] text-[#C9A24B]">
+                  <span>Lake Hawassa View</span>
+                  <span>•</span>
+                  <span>Private Jacuzzi</span>
+                  <span>•</span>
+                  <span>VIP Lounge Access</span>
+                </div>
+
+                <h3 className="mt-2 font-display text-3xl font-medium text-[#F4EBD9] sm:text-4xl lg:text-5xl">
+                  Deluxe One-Bedroom Suite
+                </h3>
+
+                <p className="mt-3 max-w-xl text-xs sm:text-sm leading-relaxed text-[#F4EBD9]/80">
+                  Separated master bedroom, stylish living salon, private lakefront sunset terrace, and en-suite jacuzzi bath designed for unhurried luxury.
+                </p>
+
+                {/* Key Amenities Chips */}
+                <div className="mt-5 flex flex-wrap gap-2 text-[10px] font-semibold text-[#F4EBD9]/85">
+                  <span className="rounded-lg bg-[#0B1E19]/80 border border-white/10 px-2.5 py-1">60 m²</span>
+                  <span className="rounded-lg bg-[#0B1E19]/80 border border-white/10 px-2.5 py-1">1 King Bed + Lounge</span>
+                  <span className="rounded-lg bg-[#0B1E19]/80 border border-white/10 px-2.5 py-1">Up to 4 Guests</span>
+                  <span className="rounded-lg bg-[#0B1E19]/80 border border-white/10 px-2.5 py-1">Buffet Breakfast Included</span>
+                </div>
+
+                {/* Pricing & Booking Action */}
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-[#C9A24B]/20 pt-5">
+                  <div>
+                    <span className="block text-[8px] font-extrabold uppercase tracking-widest text-[#C9A24B]">Nightly Rate</span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-display text-2xl sm:text-3xl font-bold text-[#F4EBD9]">26,000 ETB</span>
+                      <span className="text-xs text-[#F4EBD9]/60">/ night</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <Link
+                      href="/guest/rooms/deluxe-one-bedroom-suite-lake-view"
+                      className="rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#F4EBD9] transition hover:bg-white/10"
+                    >
+                      View Details
+                    </Link>
+                    <Link
+                      href="/guest/rooms/deluxe-one-bedroom-suite-lake-view/book"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#C8643B] px-5 py-2.5 text-[10px] font-black uppercase tracking-[.14em] text-white shadow-lg shadow-[#C8643B]/30 hover:bg-[#B7532C] transition active:scale-95"
+                    >
+                      Book Suite <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            {/* Right Column: 2 Companion Suites (5 cols) */}
+            <div className="flex flex-col gap-6 lg:col-span-5">
+              {/* Companion Suite 1: Deluxe Double Room (Lake View) */}
+              <article
+                data-reveal
+                className="tule-reveal group relative flex flex-col justify-end overflow-hidden rounded-[2.2rem] border border-[#1F4D3A] bg-[#132E26] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex-1 min-h-[300px]"
+                style={{ transitionDelay: '100ms' }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80"
+                  alt="Deluxe Double Room Lake View"
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B1E19] via-[#0B1E19]/70 to-black/20" />
+
+                <div className="absolute left-5 right-5 top-5 flex items-center justify-between z-10">
+                  <span className="rounded-full border border-[#C9A24B]/30 bg-[#0B1E19]/80 px-3 py-1 text-[8px] font-bold uppercase tracking-wider text-[#C9A24B] backdrop-blur-md">
+                    Lake Panorama
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 text-[8px] font-bold uppercase text-emerald-300 backdrop-blur-md">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Available
+                  </span>
+                </div>
+
+                <div className="relative z-10 p-5 sm:p-6">
+                  <span className="text-[8px] font-extrabold uppercase tracking-widest text-[#C9A24B]">Lake Hawassa Shoreline</span>
+                  <h3 className="mt-1 font-display text-2xl font-medium text-[#F4EBD9] sm:text-3xl">
+                    Deluxe Double Room
+                  </h3>
+                  <p className="mt-1.5 text-xs text-[#F4EBD9]/75 line-clamp-2">
+                    Panoramic sunrise vistas, private furnished balcony, king-sized bed, and modern walk-in shower.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5 text-[9px] font-semibold text-[#F4EBD9]/80">
+                    <span className="rounded bg-[#0B1E19]/80 border border-white/10 px-2 py-0.5">38 m²</span>
+                    <span className="rounded bg-[#0B1E19]/80 border border-white/10 px-2 py-0.5">1 King Bed</span>
+                    <span className="rounded bg-[#0B1E19]/80 border border-white/10 px-2 py-0.5">Breakfast</span>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between border-t border-[#C9A24B]/20 pt-3">
+                    <div>
+                      <span className="font-display text-xl font-bold text-[#F4EBD9]">15,000 ETB</span>
+                      <span className="text-[10px] text-[#F4EBD9]/60"> / night</span>
+                    </div>
+                    <Link
+                      href="/guest/rooms/deluxe-double-lake-view/book"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#C8643B] px-3.5 py-2 text-[9px] font-black uppercase tracking-wider text-white transition hover:bg-[#B7532C] active:scale-95"
+                    >
+                      Book Room <ArrowUpRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </div>
+              </article>
+
+              {/* Companion Suite 2: Classic Queen Room (Garden View) */}
+              <article
+                data-reveal
+                className="tule-reveal group relative flex flex-col justify-end overflow-hidden rounded-[2.2rem] border border-[#1F4D3A] bg-[#132E26] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex-1 min-h-[300px]"
+                style={{ transitionDelay: '200ms' }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=800&q=80"
+                  alt="Classic Queen Room Garden View"
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B1E19] via-[#0B1E19]/70 to-black/20" />
+
+                <div className="absolute left-5 right-5 top-5 flex items-center justify-between z-10">
+                  <span className="rounded-full border border-[#C9A24B]/30 bg-[#0B1E19]/80 px-3 py-1 text-[8px] font-bold uppercase tracking-wider text-[#C9A24B] backdrop-blur-md">
+                    Garden Oasis
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 text-[8px] font-bold uppercase text-emerald-300 backdrop-blur-md">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Available
+                  </span>
+                </div>
+
+                <div className="relative z-10 p-5 sm:p-6">
+                  <span className="text-[8px] font-extrabold uppercase tracking-widest text-[#C9A24B]">Tropical Courtyard</span>
+                  <h3 className="mt-1 font-display text-2xl font-medium text-[#F4EBD9] sm:text-3xl">
+                    Classic Queen Room
+                  </h3>
+                  <p className="mt-1.5 text-xs text-[#F4EBD9]/75 line-clamp-2">
+                    Peaceful retreat facing tropical flora with private terrace seating, queen bed, and walk-in rain shower.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5 text-[9px] font-semibold text-[#F4EBD9]/80">
+                    <span className="rounded bg-[#0B1E19]/80 border border-white/10 px-2 py-0.5">32 m²</span>
+                    <span className="rounded bg-[#0B1E19]/80 border border-white/10 px-2 py-0.5">1 Queen Bed</span>
+                    <span className="rounded bg-[#0B1E19]/80 border border-white/10 px-2 py-0.5">Free Wi-Fi</span>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between border-t border-[#C9A24B]/20 pt-3">
+                    <div>
+                      <span className="font-display text-xl font-bold text-[#F4EBD9]">11,500 ETB</span>
+                      <span className="text-[10px] text-[#F4EBD9]/60"> / night</span>
+                    </div>
+                    <Link
+                      href="/guest/rooms/classic-queen-room/book"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#C8643B] px-3.5 py-2 text-[9px] font-black uppercase tracking-wider text-white transition hover:bg-[#B7532C] active:scale-95"
+                    >
+                      Book Room <ArrowUpRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section id="experiences" className="relative z-10 bg-[#07191E] px-4 py-20 sm:px-7 sm:py-28 lg:px-10 lg:py-32">
