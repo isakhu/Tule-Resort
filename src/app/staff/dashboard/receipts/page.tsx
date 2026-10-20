@@ -14,7 +14,14 @@ import {
   LogOut,
   ChevronRight,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  Loader2,
+  CheckCircle,
+  AlertTriangle,
+  Search,
+  Building,
+  Smartphone,
+  Sparkles,
 } from 'lucide-react';
 import supabase from '@/lib/supabaseClient';
 
@@ -32,6 +39,7 @@ interface Receipt {
   total: number;
   currency: string;
   payment_method: string;
+  payment_reference?: string | null;
   processed_by: string | null;
   created_at: string;
 }
@@ -77,7 +85,7 @@ interface FolioData {
 }
 
 export default function ReceiptsAndFolioPage() {
-  const [activeTab, setActiveTab] = useState<'folio' | 'receipts'>('folio');
+  const [activeTab, setActiveTab] = useState<'folio' | 'receipts' | 'verify'>('folio');
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [checkedInStays, setCheckedInStays] = useState<CheckedInStay[]>([]);
   const [selectedStayId, setSelectedStayId] = useState<string | null>(null);
@@ -93,8 +101,26 @@ export default function ReceiptsAndFolioPage() {
 
   // Checkout form
   const [paymentMethod, setPaymentMethod] = useState('pay_at_resort');
+  const [checkoutPaymentRef, setCheckoutPaymentRef] = useState('');
+  const [verifyingCheckout, setVerifyingCheckout] = useState(false);
+  const [checkoutVerification, setCheckoutVerification] = useState<{
+    verified: boolean;
+    message: string;
+    bankName?: string;
+    payerName?: string;
+    amount?: number;
+    currency?: string;
+    alreadyRecorded?: boolean;
+  } | null>(null);
   const [processingCheckout, setProcessingCheckout] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Standalone Verify.ET tester state
+  const [testRef, setTestRef] = useState('');
+  const [testBank, setTestBank] = useState('');
+  const [testAmount, setTestAmount] = useState('');
+  const [testingPayment, setTestingPayment] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
 
   // Load receipts and checked-in reservations
   const loadData = useCallback(async () => {
@@ -194,6 +220,82 @@ export default function ReceiptsAndFolioPage() {
     }
   };
 
+  // Verify checkout payment reference via Verify.ET
+  const handleVerifyCheckoutPayment = async () => {
+    const cleanRef = checkoutPaymentRef.trim();
+    if (!cleanRef) {
+      setFeedback({ type: 'error', text: 'Please enter a transaction reference or receipt code to verify.' });
+      return;
+    }
+    setVerifyingCheckout(true);
+    setCheckoutVerification(null);
+    setFeedback(null);
+    try {
+      const res = await fetch('/api/payments/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reference: cleanRef,
+          bank: paymentMethod,
+          expectedAmount: folio?.total,
+          currency: folio?.currency || 'ETB',
+        }),
+      });
+      const data = await res.json();
+      setCheckoutVerification({
+        verified: Boolean(data.verified),
+        message: data.message || (data.verified ? 'Verified on bank network.' : 'Payment not found on bank records.'),
+        bankName: data.bankName,
+        payerName: data.payerName,
+        amount: data.amount,
+        currency: data.currency || 'ETB',
+        alreadyRecorded: data.alreadyRecorded,
+      });
+      if (data.verified) {
+        setFeedback({ type: 'success', text: `Verified by Verify.ET: ${data.bankName || 'Bank'} (${data.amount ? data.amount.toLocaleString() : ''} ETB)` });
+      } else {
+        setFeedback({ type: 'error', text: data.message || 'Payment not verified on bank records.' });
+      }
+    } catch {
+      setCheckoutVerification({
+        verified: false,
+        message: 'Network error contacting Verify.ET service.',
+      });
+      setFeedback({ type: 'error', text: 'Network error contacting Verify.ET service.' });
+    } finally {
+      setVerifyingCheckout(false);
+    }
+  };
+
+  // Run standalone verification in tester tab
+  const handleRunStandaloneVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testRef.trim()) return;
+    setTestingPayment(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/payments/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reference: testRef.trim(),
+          bank: testBank || undefined,
+          expectedAmount: testAmount ? Number(testAmount) : undefined,
+        }),
+      });
+      const data = await res.json();
+      setTestResult(data);
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        verified: false,
+        message: err.message || 'Network error verifying payment.',
+      });
+    } finally {
+      setTestingPayment(false);
+    }
+  };
+
   // Handle Checkout & Generate Receipt from Folio
   const handleCheckout = async () => {
     if (!selectedStayId || !folio) return;
@@ -209,6 +311,7 @@ export default function ReceiptsAndFolioPage() {
         body: JSON.stringify({
           paymentMethod,
           processedBy: 'Front Desk Cashier',
+          paymentReference: checkoutPaymentRef.trim() || undefined,
         }),
       });
 
@@ -220,6 +323,8 @@ export default function ReceiptsAndFolioPage() {
         });
         setSelectedStayId(null);
         setFolio(null);
+        setCheckoutPaymentRef('');
+        setCheckoutVerification(null);
         await loadData();
         setActiveTab('receipts');
       } else {
@@ -271,6 +376,17 @@ export default function ReceiptsAndFolioPage() {
               }`}
             >
               Receipts Archive ({receipts.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('verify')}
+              className={`rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 ${
+                activeTab === 'verify'
+                  ? 'bg-[#007042] text-white shadow-md'
+                  : 'bg-white text-[#007042] hover:bg-emerald-50 border border-[#007042]/30'
+              }`}
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+              Verify.ET Bank Verifier
             </button>
           </div>
         </header>
@@ -486,7 +602,7 @@ export default function ReceiptsAndFolioPage() {
                   </div>
 
                   {/* Checkout Action Console */}
-                  <div className="rounded-2xl border border-gray-200 p-5 space-y-4">
+                  <div className="rounded-2xl border border-gray-200 p-5 space-y-4 bg-gray-50/50">
                     <p className="text-xs font-black uppercase tracking-wider text-[#0B3D4A]">
                       Complete Guest Checkout
                     </p>
@@ -495,25 +611,107 @@ export default function ReceiptsAndFolioPage() {
                         <label className="text-xs font-bold text-gray-700">Payment Method:</label>
                         <select
                           value={paymentMethod}
-                          onChange={(e) => setPaymentMethod(e.target.value)}
+                          onChange={(e) => {
+                            setPaymentMethod(e.target.value);
+                            setCheckoutVerification(null);
+                          }}
                           className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-800 outline-none focus:border-[#159A9C]"
                         >
-                          <option value="pay_at_resort">Cash / Card at Resort</option>
-                          <option value="telebirr">Telebirr</option>
+                          <option value="pay_at_resort">Cash / POS Card at Resort</option>
+                          <option value="telebirr">Telebirr Mobile Money</option>
                           <option value="cbe_birr">CBE Birr</option>
-                          <option value="bank_transfer">Bank Transfer</option>
+                          <option value="bank_transfer">Direct Bank Transfer</option>
                         </select>
                       </div>
 
                       <button
                         disabled={processingCheckout || folio.total <= 0}
                         onClick={handleCheckout}
-                        className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 px-6 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-emerald-700/20 hover:brightness-110 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 px-6 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-emerald-700/20 hover:brightness-110 transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <CreditCard className="w-4 h-4" />
                         {processingCheckout ? 'Generating Receipt...' : `Mark Paid & Check Out (${folio.total.toLocaleString()} ETB)`}
                       </button>
                     </div>
+
+                    {/* Verify.ET Transaction Verification Console for Digital Payments */}
+                    {paymentMethod !== 'pay_at_resort' && (
+                      <div className="pt-3 border-t border-gray-200 space-y-2.5">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                          <div className="flex-1 w-full">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                              Payment Transaction Reference (CBE FT Code / Telebirr Txn ID):
+                            </label>
+                            <input
+                              type="text"
+                              placeholder={paymentMethod === 'telebirr' ? 'e.g. 5HB892JKS1' : 'e.g. FT26144SG2ST'}
+                              value={checkoutPaymentRef}
+                              onChange={(e) => {
+                                setCheckoutPaymentRef(e.target.value);
+                                if (checkoutVerification) setCheckoutVerification(null);
+                              }}
+                              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-mono font-bold text-gray-900 placeholder:font-sans placeholder:font-normal placeholder:text-gray-400 focus:border-[#007042] focus:outline-none"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleVerifyCheckoutPayment}
+                            disabled={verifyingCheckout || !checkoutPaymentRef.trim()}
+                            className="mt-4 sm:mt-5 rounded-xl bg-[#007042] hover:bg-[#005a35] px-4 py-2.5 text-xs font-bold text-white transition disabled:opacity-50 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                          >
+                            {verifyingCheckout ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Verifying...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-3.5 w-3.5" />
+                                Verify with Verify.ET
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {checkoutVerification && (
+                          <div
+                            className={`rounded-xl p-3 text-xs border ${
+                              checkoutVerification.verified
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                                : 'bg-rose-50 border-rose-200 text-rose-900'
+                            }`}
+                          >
+                            <div className="flex items-start gap-2">
+                              {checkoutVerification.verified ? (
+                                <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                              ) : (
+                                <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                              )}
+                              <div className="space-y-1 flex-1">
+                                <p className="font-bold">
+                                  {checkoutVerification.verified
+                                    ? `✓ Genuine Payment Verified (${checkoutVerification.bankName})`
+                                    : 'Verification Notice'}
+                                </p>
+                                <p className="text-[11px] opacity-90">{checkoutVerification.message}</p>
+                                {checkoutVerification.verified && (
+                                  <div className="mt-1 pt-1 border-t border-emerald-200/50 flex flex-wrap gap-4 text-[11px]">
+                                    {checkoutVerification.payerName && (
+                                      <span>Payer: <strong>{checkoutVerification.payerName}</strong></span>
+                                    )}
+                                    {checkoutVerification.amount && (
+                                      <span>Amount: <strong>{checkoutVerification.amount.toLocaleString()} {checkoutVerification.currency}</strong></span>
+                                    )}
+                                    <span className="text-emerald-700">Replay Protection: <strong>Passed</strong></span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -570,9 +768,14 @@ export default function ReceiptsAndFolioPage() {
                           {Number(r.total).toLocaleString()} {r.currency}
                         </td>
                         <td className="p-4 capitalize">
-                          <span className="rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-xs font-bold">
+                          <span className="rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-xs font-bold block w-fit">
                             {r.payment_method.replaceAll('_', ' ')}
                           </span>
+                          {r.payment_reference && (
+                            <span className="mt-1 block text-[10px] font-mono text-gray-500 font-bold">
+                              Ref: {r.payment_reference}
+                            </span>
+                          )}
                         </td>
                         <td className="p-4 text-xs text-gray-500">
                           {new Date(r.created_at).toLocaleDateString()}
@@ -591,6 +794,208 @@ export default function ReceiptsAndFolioPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* ─── TAB 3: STANDALONE ETHIOPIAN BANK PAYMENT VERIFIER ─── */}
+        {activeTab === 'verify' && (
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-[#007042]/20 bg-white p-6 shadow-sm space-y-5">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#007042] text-white shadow-md">
+                    <ShieldCheck className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-xl font-black text-[#0B3D4A]">
+                      Verify.ET Automated Bank Payment Verifier
+                    </h2>
+                    <p className="text-xs text-gray-500">
+                      Instantly verify customer bank transfers, Telebirr mobile money, and CBE receipts without fake screenshots.
+                    </p>
+                  </div>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-black text-[#007042] border border-emerald-200">
+                  Live API Connected
+                </span>
+              </div>
+
+              {/* Official Accounts Quick Reference for Staff */}
+              <div className="rounded-2xl bg-gray-50 p-4 border border-gray-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                    Official Resort Settlement Accounts • Beneficiary: <strong className="text-[#0B3D4A]">Yishak Tule Karesso</strong>
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-bold">Auto-Linked to Verify.ET</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[11px] font-mono">
+                  <div className="bg-white p-2 rounded-xl border border-gray-200">
+                    <span className="text-[9px] text-gray-400 font-sans block font-bold">Telebirr</span>
+                    <span className="font-bold text-[#FF6B00]">0995781422</span>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-gray-200">
+                    <span className="text-[9px] text-gray-400 font-sans block font-bold">CBE Birr</span>
+                    <span className="font-bold text-purple-700">0995781422</span>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-gray-200">
+                    <span className="text-[9px] text-gray-400 font-sans block font-bold">CBE Account</span>
+                    <span className="font-bold text-gray-900">1000575458711</span>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-gray-200">
+                    <span className="text-[9px] text-gray-400 font-sans block font-bold">Bank of Abyssinia</span>
+                    <span className="font-bold text-gray-900">138186512</span>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-gray-200">
+                    <span className="text-[9px] text-gray-400 font-sans block font-bold">Awash Bank</span>
+                    <span className="font-bold text-gray-900">01320687351800</span>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-gray-200">
+                    <span className="text-[9px] text-gray-400 font-sans block font-bold">M-Pesa</span>
+                    <span className="font-bold text-emerald-700">0710028022</span>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleRunStandaloneVerification} className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div className="md:col-span-5">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Transaction Reference / Receipt Code *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. FT26144SG2ST or Telebirr Txn Number"
+                    value={testRef}
+                    onChange={(e) => setTestRef(e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs font-mono font-bold text-gray-900 focus:border-[#007042] focus:outline-none"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Supports FT numbers, Telebirr SMS codes, or CBE receipt URLs.
+                  </p>
+                </div>
+
+                <div className="md:col-span-3">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Bank / Wallet Provider
+                  </label>
+                  <select
+                    value={testBank}
+                    onChange={(e) => setTestBank(e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-xs font-semibold text-gray-800 focus:border-[#007042] focus:outline-none"
+                  >
+                    <option value="">Universal Auto-Detect</option>
+                    <option value="telebirr">Telebirr (Ethio Telecom)</option>
+                    <option value="cbe">Commercial Bank of Ethiopia (CBE)</option>
+                    <option value="cbebirr">CBE Birr</option>
+                    <option value="boa">Bank of Abyssinia</option>
+                    <option value="dashen">Dashen Bank</option>
+                    <option value="awash">Awash Bank</option>
+                    <option value="mpesa">Safaricom M-Pesa</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Expected Amount (ETB)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="e.g. 1500"
+                    value={testAmount}
+                    onChange={(e) => setTestAmount(e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs text-gray-900 focus:border-[#007042] focus:outline-none"
+                  />
+                </div>
+
+                <div className="md:col-span-2 flex items-end">
+                  <button
+                    type="submit"
+                    disabled={testingPayment || !testRef.trim()}
+                    className="w-full rounded-xl bg-[#007042] hover:bg-[#005a35] py-2.5 text-xs font-black uppercase tracking-wider text-white transition disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                  >
+                    {testingPayment ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Checking...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4" />
+                        Verify
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              {/* Standalone Verification Result Display */}
+              {testResult && (
+                <div
+                  className={`rounded-2xl p-5 border animate-in fade-in-50 duration-200 ${
+                    testResult.verified
+                      ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950'
+                      : 'bg-rose-50/70 border-rose-200 text-rose-950'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white font-black ${
+                        testResult.verified ? 'bg-emerald-600' : 'bg-rose-600'
+                      }`}
+                    >
+                      {testResult.verified ? '✓' : '✕'}
+                    </div>
+
+                    <div className="space-y-2 flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-base font-black">
+                          {testResult.verified
+                            ? `Payment Confirmed & Verified: ${testResult.bankName}`
+                            : 'Transaction Verification Failed'}
+                        </h3>
+                        <span
+                          className={`rounded-full px-3 py-0.5 text-xs font-black uppercase tracking-wider ${
+                            testResult.verified
+                              ? 'bg-emerald-200 text-emerald-900'
+                              : 'bg-rose-200 text-rose-900'
+                          }`}
+                        >
+                          {testResult.verified ? 'Verified Active' : 'Not Found'}
+                        </span>
+                      </div>
+
+                      <p className="text-xs leading-relaxed">{testResult.message}</p>
+
+                      {testResult.verified && (
+                        <div className="mt-4 rounded-xl bg-white p-4 border border-emerald-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Transaction Reference</span>
+                            <span className="font-mono font-black text-gray-900">{testResult.transactionNumber}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Verified Amount</span>
+                            <span className="font-black text-[#007042] text-sm">
+                              {testResult.amount ? Number(testResult.amount).toLocaleString() : '—'} {testResult.currency || 'ETB'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Payer / Account Holder</span>
+                            <span className="font-bold text-gray-900">{testResult.payerName || 'Verified Customer'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Replay / Duplicate</span>
+                            <span className="font-bold text-emerald-700">
+                              {testResult.alreadyRecorded ? '⚠️ Already Recorded in Resort Folio' : '✓ Unique (Not Reused)'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

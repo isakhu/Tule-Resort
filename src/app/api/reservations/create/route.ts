@@ -84,12 +84,71 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Reservation was not created.' }, { status: 500 });
     }
 
+    const paymentMethod = typeof body.paymentMethod === 'string' ? body.paymentMethod.trim() : 'pay_at_resort';
+    const rawRef = typeof body.paymentReference === 'string' ? body.paymentReference.trim() : '';
+    const normalizedRef = rawRef ? rawRef.toUpperCase() : null;
+
+    let finalPaymentStatus = 'pending';
+    let isVerified = false;
+    let verificationNote: string | undefined = undefined;
+
+    if (normalizedRef) {
+      const { verifyBankPayment } = await import('@/lib/verifyEt');
+      const verifyRes = await verifyBankPayment({
+        reference: normalizedRef,
+        bank: paymentMethod,
+        expectedAmount: Number(reservation.total_price ?? 0),
+        checkDuplicate: true,
+      });
+
+      if (verifyRes.alreadyRecorded) {
+        return NextResponse.json({
+          error: `DUPLICATE_PAYMENT_REFERENCE: ${verifyRes.message}`,
+        }, { status: 409 });
+      }
+
+      if (verifyRes.verified) {
+        finalPaymentStatus = 'paid';
+        isVerified = true;
+        verificationNote = verifyRes.message;
+      }
+    }
+
+    // Persist payment information and auto-confirm if verified
+    if (reservation.id && (paymentMethod !== 'pay_at_resort' || normalizedRef)) {
+      await supabaseServer
+        .from('room_reservations')
+        .update({
+          payment_method: paymentMethod,
+          payment_reference: normalizedRef,
+          payment_status: finalPaymentStatus,
+          status: finalPaymentStatus === 'paid' ? 'confirmed' : 'pending',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reservation.id);
+
+      if (normalizedRef) {
+        await supabaseServer.rpc('register_payment_reference', {
+          p_reference: normalizedRef,
+          p_entity_type: 'reservation',
+          p_entity_id: reservation.id,
+          p_amount: Number(reservation.total_price ?? 0),
+          p_currency: reservation.currency || 'ETB',
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       bookingNumber: reservation.booking_number,
       totalPrice: Number(reservation.total_price ?? 0),
       currency: reservation.currency || 'ETB',
-      status: reservation.status || 'pending',
+      status: finalPaymentStatus === 'paid' ? 'confirmed' : (reservation.status || 'pending'),
+      paymentStatus: finalPaymentStatus,
+      paymentMethod,
+      paymentReference: normalizedRef,
+      isVerified,
+      verificationNote,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to create reservation.';

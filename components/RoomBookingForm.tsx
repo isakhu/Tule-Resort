@@ -17,7 +17,11 @@ import {
   MapPin,
   Star,
   Check,
-  Clock
+  Clock,
+  Loader2,
+  AlertTriangle,
+  CheckCircle,
+  Copy,
 } from 'lucide-react';
 
 interface RoomBookingFormProps {
@@ -77,9 +81,30 @@ export default function RoomBookingForm({
   });
 
   const [paymentMethod, setPaymentMethod] = useState<'telebirr' | 'cbe_birr' | 'bank_transfer' | 'pay_at_resort'>('telebirr');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [verificationResult, setVerificationResult] = useState<{
+    verified: boolean;
+    message: string;
+    bankName?: string;
+    payerName?: string;
+    amount?: number;
+    currency?: string;
+    alreadyRecorded?: boolean;
+  } | null>(null);
+
+  function copyToClipboard(text: string, key: string) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    }
+  }
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState<ReservationResponse | null>(null);
+  const [success, setSuccess] = useState<ReservationResponse & { paymentStatus?: string; paymentReference?: string | null; isVerified?: boolean } | null>(null);
 
   // Nights calculation
   const nights = useMemo(() => {
@@ -111,6 +136,58 @@ export default function RoomBookingForm({
     return d.toLocaleDateString('en-US', { weekday: 'long' });
   };
 
+  // Verify payment reference with Verify.ET API
+  async function handleVerifyPayment() {
+    const cleanRef = paymentReference.trim();
+    if (!cleanRef) {
+      setError('Please enter your transaction reference or receipt number before verifying.');
+      return;
+    }
+
+    setVerifyingPayment(true);
+    setError('');
+    setVerificationResult(null);
+
+    try {
+      const res = await fetch('/api/payments/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reference: cleanRef,
+          bank: paymentMethod,
+          expectedAmount: grandTotal,
+          currency,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok && data.error) {
+        setVerificationResult({
+          verified: false,
+          message: data.error,
+        });
+        return;
+      }
+
+      setVerificationResult({
+        verified: Boolean(data.verified),
+        message: data.message || (data.verified ? 'Payment verified successfully.' : 'Payment could not be verified on the network.'),
+        bankName: data.bankName,
+        payerName: data.payerName,
+        amount: data.amount,
+        currency: data.currency || currency,
+        alreadyRecorded: data.alreadyRecorded,
+      });
+    } catch {
+      setVerificationResult({
+        verified: false,
+        message: 'Network error contacting Verify.ET payment verification service.',
+      });
+    } finally {
+      setVerifyingPayment(false);
+    }
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError('');
@@ -132,6 +209,12 @@ export default function RoomBookingForm({
       return;
     }
 
+    // If digital payment selected and reference entered, make sure it was not rejected as duplicate
+    if (paymentMethod !== 'pay_at_resort' && verificationResult?.alreadyRecorded) {
+      setError('This transaction reference has already been used. Please provide a new transaction code or choose Pay at Resort.');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch('/api/reservations/create', {
@@ -147,10 +230,12 @@ export default function RoomBookingForm({
           guestEmail: form.email.trim() || null,
           specialRequests: form.special.trim() || null,
           paymentMethod,
+          paymentReference: paymentReference.trim() || undefined,
+          paymentStatus: verificationResult?.verified ? 'paid' : 'pending',
         }),
       });
 
-      const result = (await response.json()) as ReservationResponse;
+      const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Unable to submit reservation.');
 
       setSuccess(result);
@@ -203,6 +288,22 @@ export default function RoomBookingForm({
             <span className="text-gray-500">Payment:</span>
             <span className="font-bold text-gray-900 capitalize">{paymentMethod.replace('_', ' ')}</span>
           </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Payment Status:</span>
+            <span className={`font-bold uppercase tracking-wider text-[11px] px-2 py-0.5 rounded-md ${
+              success.paymentStatus === 'paid'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-amber-50 text-amber-700 border border-amber-200'
+            }`}>
+              {success.paymentStatus === 'paid' ? '✓ Paid & Verified via Verify.ET' : 'Pending (Pay at Check-in)'}
+            </span>
+          </div>
+          {success.paymentReference && (
+            <div className="flex justify-between">
+              <span className="text-gray-500">Transaction Ref:</span>
+              <span className="font-mono font-bold text-gray-900">{success.paymentReference}</span>
+            </div>
+          )}
           <div className="pt-2 border-t border-gray-200 flex justify-between font-black text-sm text-gray-900">
             <span>Total:</span>
             <span className="text-[#FF6B00]">
@@ -523,6 +624,230 @@ export default function RoomBookingForm({
             </div>
           </label>
         </div>
+
+        {/* ─── VERIFY.ET REAL-TIME DIGITAL PAYMENT VERIFICATION PANEL ─── */}
+        {paymentMethod !== 'pay_at_resort' && (
+          <div className="mt-4 rounded-2xl border border-teal-100 bg-[#F4F9FA] p-4 space-y-3.5">
+            <div className="flex items-center justify-between border-b border-teal-200/60 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#007042] text-[10px] font-black text-white">
+                  ✓
+                </span>
+                <span className="text-xs font-black text-[#0B3D4A]">
+                  Verify.ET Automated Bank Check
+                </span>
+              </div>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                Non-Custodial
+              </span>
+            </div>
+
+            {/* Official Resort Settlement Account Info */}
+            <div className="rounded-xl bg-white p-3.5 text-xs border border-gray-100 space-y-2.5">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                  Account Holder / Beneficiary:
+                </span>
+                <span className="font-extrabold text-[#0B3D4A] bg-[#EAF4F7] px-2.5 py-0.5 rounded-md text-[11px]">
+                  Yishak Tule Karesso
+                </span>
+              </div>
+
+              {paymentMethod === 'telebirr' && (
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-orange-50/60 border border-orange-100 font-mono">
+                  <div>
+                    <span className="text-[10px] text-gray-500 block font-sans font-bold">Telebirr Account Number</span>
+                    <span className="font-black text-sm text-[#FF6B00]">0995781422</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard('0995781422', 'telebirr')}
+                    className="flex items-center gap-1 text-[11px] font-bold text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer shadow-xs"
+                  >
+                    {copiedKey === 'telebirr' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-gray-500" />}
+                    {copiedKey === 'telebirr' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              )}
+
+              {paymentMethod === 'cbe_birr' && (
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-purple-50/60 border border-purple-100 font-mono">
+                  <div>
+                    <span className="text-[10px] text-gray-500 block font-sans font-bold">CBE Birr Account Number</span>
+                    <span className="font-black text-sm text-purple-700">0995781422</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard('0995781422', 'cbe_birr')}
+                    className="flex items-center gap-1 text-[11px] font-bold text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer shadow-xs"
+                  >
+                    {copiedKey === 'cbe_birr' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-gray-500" />}
+                    {copiedKey === 'cbe_birr' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              )}
+
+              {paymentMethod === 'bank_transfer' && (
+                <div className="space-y-2 pt-0.5">
+                  {/* Commercial Bank of Ethiopia */}
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 font-mono">
+                    <div>
+                      <span className="text-[10px] text-gray-500 block font-sans font-bold">Commercial Bank of Ethiopia (CBE)</span>
+                      <span className="font-black text-xs text-gray-900">1000575458711</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('1000575458711', 'cbe')}
+                      className="flex items-center gap-1 text-[10px] font-bold text-gray-700 bg-white border border-gray-200 px-2.5 py-1 rounded-md hover:bg-gray-50 cursor-pointer shadow-xs"
+                    >
+                      {copiedKey === 'cbe' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-gray-500" />}
+                      {copiedKey === 'cbe' ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+
+                  {/* Bank of Abyssinia */}
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 font-mono">
+                    <div>
+                      <span className="text-[10px] text-gray-500 block font-sans font-bold">Bank of Abyssinia (BOA)</span>
+                      <span className="font-black text-xs text-gray-900">138186512</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('138186512', 'boa')}
+                      className="flex items-center gap-1 text-[10px] font-bold text-gray-700 bg-white border border-gray-200 px-2.5 py-1 rounded-md hover:bg-gray-50 cursor-pointer shadow-xs"
+                    >
+                      {copiedKey === 'boa' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-gray-500" />}
+                      {copiedKey === 'boa' ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+
+                  {/* Awash Bank */}
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 font-mono">
+                    <div>
+                      <span className="text-[10px] text-gray-500 block font-sans font-bold">Awash Bank</span>
+                      <span className="font-black text-xs text-gray-900">01320687351800</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('01320687351800', 'awash')}
+                      className="flex items-center gap-1 text-[10px] font-bold text-gray-700 bg-white border border-gray-200 px-2.5 py-1 rounded-md hover:bg-gray-50 cursor-pointer shadow-xs"
+                    >
+                      {copiedKey === 'awash' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-gray-500" />}
+                      {copiedKey === 'awash' ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+
+                  {/* Safaricom M-Pesa */}
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 font-mono">
+                    <div>
+                      <span className="text-[10px] text-gray-500 block font-sans font-bold">Safaricom M-Pesa</span>
+                      <span className="font-black text-xs text-emerald-700">0710028022</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('0710028022', 'mpesa')}
+                      className="flex items-center gap-1 text-[10px] font-bold text-gray-700 bg-white border border-gray-200 px-2.5 py-1 rounded-md hover:bg-gray-50 cursor-pointer shadow-xs"
+                    >
+                      {copiedKey === 'mpesa' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-gray-500" />}
+                      {copiedKey === 'mpesa' ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[10px] text-gray-400 pt-1">
+                Please transfer exactly <strong className="text-gray-700">{grandTotal.toLocaleString()} {currency}</strong> to any of the above accounts under <strong className="text-[#0B3D4A]">Yishak Tule Karesso</strong>, then enter your transaction number below.
+              </p>
+            </div>
+
+            {/* Reference Input & Verify Button */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold text-gray-700">
+                Transaction Reference / FT Number / SMS Code:
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  placeholder={paymentMethod === 'telebirr' ? 'e.g. 5HB892JKS1 or Telebirr code' : 'e.g. FT26144SG2ST'}
+                  value={paymentReference}
+                  onChange={(e) => {
+                    setPaymentReference(e.target.value);
+                    if (verificationResult) setVerificationResult(null);
+                  }}
+                  className="flex-1 rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs font-mono font-bold text-gray-900 placeholder:font-sans placeholder:font-normal placeholder:text-gray-400 focus:border-[#007042] focus:outline-none focus:ring-1 focus:ring-[#007042]"
+                />
+                <button
+                  type="button"
+                  onClick={handleVerifyPayment}
+                  disabled={verifyingPayment || !paymentReference.trim()}
+                  className="rounded-xl bg-[#007042] hover:bg-[#005a35] px-4 py-2.5 text-xs font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
+                >
+                  {verifyingPayment ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Checking with Bank...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      Verify Payment
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Verification Live Feedback Card */}
+            {verificationResult && (
+              <div
+                className={`rounded-xl p-3 text-xs border animate-in fade-in-50 duration-200 ${
+                  verificationResult.verified
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                    : 'bg-amber-50 border-amber-200 text-amber-900'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  {verificationResult.verified ? (
+                    <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-1 flex-1">
+                    <p className="font-bold">
+                      {verificationResult.verified
+                        ? 'Payment Authenticated via Verify.ET'
+                        : 'Verification Pending or Not Found'}
+                    </p>
+                    <p className="text-[11px] leading-relaxed opacity-90">
+                      {verificationResult.message}
+                    </p>
+
+                    {verificationResult.verified && (
+                      <div className="mt-2 pt-2 border-t border-emerald-200/60 grid grid-cols-2 gap-2 text-[10px]">
+                        <div>
+                          <span className="text-emerald-700/80 block">Bank Provider:</span>
+                          <span className="font-bold">{verificationResult.bankName}</span>
+                        </div>
+                        <div>
+                          <span className="text-emerald-700/80 block">Verified Amount:</span>
+                          <span className="font-bold">
+                            {verificationResult.amount?.toLocaleString()} {verificationResult.currency}
+                          </span>
+                        </div>
+                        {verificationResult.payerName && (
+                          <div className="col-span-2">
+                            <span className="text-emerald-700/80 block">Account Holder / Payer:</span>
+                            <span className="font-bold">{verificationResult.payerName}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Error display */}
