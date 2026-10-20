@@ -109,9 +109,9 @@ export default function Home() {
       <header className="relative z-40 border-b border-white/10 bg-[#07191E]/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-4 py-3.5 sm:px-7 lg:px-10">
           <Link href="/" aria-label="Tule Resort home" className="group flex shrink-0 items-center gap-2.5 sm:gap-3">
-            <span className="flex h-11 w-12 items-center justify-center transition-transform duration-500 group-hover:scale-105 sm:h-12 sm:w-14">
+            <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/40 transition-transform duration-500 group-hover:scale-105 sm:h-12 sm:w-12">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/tule-resort-mark.svg" alt="" className="h-full w-full object-contain drop-shadow-[0_4px_18px_rgba(248,215,122,.16)]" />
+              <img src="/tule-resort-logo.png" alt="Tule Resort" className="h-full w-full object-contain drop-shadow-[0_4px_18px_rgba(248,215,122,.16)]" />
             </span>
             <span>
               <span className="block font-display text-xl font-semibold leading-none tracking-wide sm:text-2xl">Tule Resort</span>
@@ -349,7 +349,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-[1440px] flex-col gap-7 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/tule-resort-mark.svg" alt="Tule Resort" className="h-10 w-12 object-contain" />
+            <img src="/tule-resort-logo.png" alt="Tule Resort" className="h-11 w-11 rounded-xl object-contain bg-black/50 border border-white/10" />
             <span><span className="block font-display text-xl text-white">Tule Resort</span><span className="mt-1 block text-[8px] font-bold uppercase tracking-[.26em] text-white/40">Hawassa · Ethiopia</span></span>
           </Link>
           <div className="flex flex-wrap gap-x-6 gap-y-3 text-[10px] font-bold uppercase tracking-[.13em] text-white/50">

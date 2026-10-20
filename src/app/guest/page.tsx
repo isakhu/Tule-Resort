@@ -14,8 +14,8 @@ export default async function GuestServicesPage() {
         <div className="relative mx-auto max-w-7xl px-4 md:px-6 py-4">
           <nav className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
             <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-white/60 hover:text-white transition"><ArrowLeft className="h-4 w-4" />Home</Link>
-            <Link href="/guest" className="flex items-center gap-3 rounded-full border border-white/10 bg-black/20 px-3 py-2 backdrop-blur-md">
-              <img src="/tule-resort-mark.svg" alt="Tule Resort logo" className="h-10 w-14 rounded-lg object-cover" />
+            <Link href="/guest" className="flex items-center gap-3 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 backdrop-blur-md">
+              <img src="/tule-resort-logo.png" alt="Tule Resort logo" className="h-9 w-9 rounded-lg object-contain" />
               <span className="hidden sm:block"><span className="block text-sm font-black uppercase tracking-[.16em] text-[#F2C866]">Tule Resort</span><span className="block text-[8px] font-bold uppercase tracking-[.28em] text-white/45">Hawassa</span></span>
             </Link>
           </nav>
@@ -31,9 +31,9 @@ export default async function GuestServicesPage() {
                 <Link href="/guest/rooms" className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[.13em] text-white/70 hover:bg-white/10">Browse rooms</Link>
               </div>
             </div>
-            <div className="hidden lg:block justify-self-end w-full max-w-md overflow-hidden rounded-[2rem] border border-[#F2B84B]/20 bg-black/30 shadow-2xl shadow-black/40">
-              <img src="/tule-resort-mark.svg" alt="Tule Resort palm, pavilion and water mark" className="h-[330px] w-full object-cover" />
-              <div className="border-t border-white/10 px-6 py-4"><p className="text-[9px] font-black uppercase tracking-[.28em] text-[#F2B84B]">TULE-RESORT • HAWASSA</p><p className="mt-1 text-sm text-white/55">Relax. Enjoy. Remember.</p></div>
+            <div className="hidden lg:block justify-self-end w-full max-w-md overflow-hidden rounded-[2rem] border border-[#F2B84B]/20 bg-black/60 shadow-2xl shadow-black/40 p-4">
+              <img src="/tule-resort-logo.png" alt="Tule Resort emblem" className="h-[300px] w-full object-contain" />
+              <div className="border-t border-white/10 px-6 py-4 text-center"><p className="text-[10px] font-black uppercase tracking-[.28em] text-[#F2B84B]">TULE RESORT • HAWASSA</p><p className="mt-1 text-sm text-white/55">Relax. Enjoy. Remember.</p></div>
             </div>
           </div>
         </div>
@@ -47,7 +47,7 @@ export default async function GuestServicesPage() {
 
       <footer className="border-t border-white/10 bg-black/30">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 md:flex-row md:items-center md:justify-between md:px-6">
-          <div className="flex items-center gap-4"><img src="/tule-resort-mark.svg" alt="Tule Resort logo" className="h-16 w-20 rounded-xl object-cover" /><div><p className="text-sm font-black uppercase tracking-[.18em] text-[#F2C866]">Tule Resort</p><p className="mt-1 text-[9px] font-bold uppercase tracking-[.25em] text-white/35">Hawassa • Ethiopia</p></div></div>
+          <div className="flex items-center gap-4"><img src="/tule-resort-logo.png" alt="Tule Resort logo" className="h-14 w-14 rounded-xl object-contain bg-black/40 border border-white/10" /><div><p className="text-sm font-black uppercase tracking-[.18em] text-[#F2C866]">Tule Resort</p><p className="mt-1 text-[9px] font-bold uppercase tracking-[.25em] text-white/35">Hawassa • Ethiopia</p></div></div>
           <p className="text-xs text-white/35">Relax. Enjoy. Remember.</p>
         </div>
       </footer>

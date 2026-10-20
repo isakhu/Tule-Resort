@@ -67,7 +67,7 @@ export default function ResortExperienceMenu({ items }: { items: ExperienceItem[
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0C0B09]/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-6">
           <Link href="/guest" className="inline-flex items-center gap-2 text-sm font-bold text-white/70 hover:text-white"><ArrowLeft className="h-4 w-4" />Guest services</Link>
-          <Link href="/guest" className="hidden md:flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><img src="/tule-resort-mark.svg" alt="Tule Resort logo" className="h-9 w-12 rounded-lg object-cover" /><span className="text-xs font-black uppercase tracking-[.16em]">Tule Resort • Hawassa</span></Link>
+          <Link href="/guest" className="hidden md:flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><img src="/tule-resort-logo.png" alt="Tule Resort logo" className="h-8 w-8 rounded-lg object-contain" /><span className="text-xs font-black uppercase tracking-[.16em]">Tule Resort • Hawassa</span></Link>
           <Link href="/guest/rooms" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[.12em] text-white/70 hover:bg-white/10">Room details</Link>
         </div>
       </header>
@@ -99,7 +99,7 @@ export default function ResortExperienceMenu({ items }: { items: ExperienceItem[
         </section>
       </main>
 
-      <footer className="border-t border-white/10 bg-black/25"><div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-6 md:px-6"><div className="flex items-center gap-3"><img src="/tule-resort-mark.svg" alt="Tule Resort logo" className="h-12 w-16 rounded-lg object-cover" /><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#F2C866]">Tule Resort</p><p className="text-[8px] uppercase tracking-[.24em] text-white/35">Hawassa • Ethiopia</p></div></div><p className="text-[10px] uppercase tracking-[.18em] text-white/35">Relax. Enjoy. Remember.</p></div></footer>
+      <footer className="border-t border-white/10 bg-black/25"><div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-6 md:px-6"><div className="flex items-center gap-3"><img src="/tule-resort-logo.png" alt="Tule Resort logo" className="h-11 w-11 rounded-lg object-contain bg-black/40 border border-white/10" /><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#F2C866]">Tule Resort</p><p className="text-[8px] uppercase tracking-[.24em] text-white/35">Hawassa • Ethiopia</p></div></div><p className="text-[10px] uppercase tracking-[.18em] text-white/35">Relax. Enjoy. Remember.</p></div></footer>
     </div>
   );
 }

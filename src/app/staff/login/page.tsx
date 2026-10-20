@@ -53,10 +53,10 @@ export default function StaffLoginPage() {
       <form onSubmit={handleSubmit} className="w-full max-w-md rounded-[2.5rem] bg-[#0E2F37]/90 backdrop-blur-xl p-8 sm:p-10 shadow-2xl border border-white/10 space-y-6">
         <div className="text-center space-y-3">
           {/* Official Tule Resort Logo */}
-          <div className="mx-auto w-24 h-20 flex items-center justify-center">
+          <div className="mx-auto w-24 h-24 rounded-2xl bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center p-2 shadow-xl">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/tule-resort-mark.svg"
+              src="/tule-resort-logo.png"
               alt="Tule Resort Logo"
               className="w-full h-full object-contain drop-shadow-md"
             />

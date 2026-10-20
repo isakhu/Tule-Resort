@@ -104,7 +104,10 @@ export default function GuestOrderPage() {
     return (
       <main className="min-h-screen bg-[#0C0B09] text-white flex items-center justify-center p-5">
         <div className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-white/[.05] p-7 md:p-10 text-center shadow-2xl">
-          <div className="mx-auto mb-6 h-16 w-16 rounded-full bg-[#7DBA62] text-stone-950 flex items-center justify-center"><ShoppingBag className="h-7 w-7" /></div>
+          <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-black/60 border border-white/10 overflow-hidden flex items-center justify-center p-1.5 shadow-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/tule-resort-logo.png" alt="Tule Resort" className="h-full w-full object-contain" />
+          </div>
           <p className="text-xs font-black uppercase tracking-[.25em] text-[#F2B84B]">Tule Resort</p>
           <h1 className="mt-2 text-4xl font-black tracking-tight">ORDER RECEIVED</h1>
           <p className="mt-4 text-sm leading-relaxed text-white/65">Thank you, {guestName}. Your request for {totalItems} item{totalItems === 1 ? '' : 's'} worth {totalPrice.toLocaleString()} ETB is ready for the next staff workflow.</p>

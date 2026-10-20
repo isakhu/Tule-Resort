@@ -181,10 +181,10 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
           <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl space-y-3">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-14 shrink-0 flex items-center justify-center">
+                <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-black/40 border border-white/10 overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/tule-resort-mark.svg"
+                    src="/tule-resort-logo.png"
                     alt="Tule Resort Logo"
                     className="h-full w-full object-contain"
                   />

@@ -13,6 +13,11 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     icons: [
       {
+        src: '/tule-resort-logo.png',
+        sizes: 'any',
+        type: 'image/png',
+      },
+      {
         src: '/tule-resort-mark.svg',
         sizes: 'any',
         type: 'image/svg+xml',

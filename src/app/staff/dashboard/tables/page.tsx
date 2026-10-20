@@ -477,10 +477,10 @@ export default function StaffTablesPage() {
             >
               {/* Resort Official Branding */}
               <div className="space-y-1">
-                <div className="mx-auto w-16 h-12 flex items-center justify-center">
+                <div className="mx-auto w-14 h-14 rounded-xl bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center p-1">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/tule-resort-mark.svg"
+                    src="/tule-resort-logo.png"
                     alt="Tule Resort Logo"
                     className="w-full h-full object-contain"
                   />

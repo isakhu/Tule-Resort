@@ -557,10 +557,10 @@ export default function GuestTableOrderingPage({
           <div className="flex items-center gap-3">
             <div className="h-11 w-11 rounded-2xl bg-[#0B252C] border border-[#C9902F]/30 p-1 flex items-center justify-center shadow-md">
               <Image
-                src="/tule-resort-mark.svg"
+                src="/tule-resort-logo.png"
                 alt="Tule Resort Logo"
-                width={34}
-                height={34}
+                width={36}
+                height={36}
                 className="object-contain"
               />
             </div>

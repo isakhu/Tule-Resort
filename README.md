@@ -27,4 +27,4 @@ Open `http://localhost:3001` in your browser.
 
 The primary brand is **Tule Resort — Hawassa** with the tagline **“Relax. Enjoy. Remember.”**
 
-The brand mark is stored at `public/tule-resort-mark.svg`.
+The official emblem and brand mark are stored at `public/tule-resort-logo.png` and `public/tule-resort-mark.svg`.

@@ -242,10 +242,10 @@ export default function StaffShell({
       <aside className="hidden lg:flex w-64 flex-col bg-[#0B252C] text-[#94A3B8] border-r border-[#153E47] shrink-0 select-none">
         {/* Official Logo & Tagline */}
         <Link href="/staff/dashboard" className="p-5 pb-4 flex items-center gap-3 border-b border-[#153E47]/70 hover:opacity-95 transition-opacity">
-          <div className="h-11 w-14 shrink-0 flex items-center justify-center">
+          <div className="h-11 w-11 shrink-0 flex items-center justify-center rounded-xl bg-black/40 border border-white/10 overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/tule-resort-mark.svg"
+              src="/tule-resort-logo.png"
               alt="Tule Resort Logo"
               className="h-full w-full object-contain drop-shadow"
             />
@@ -335,10 +335,10 @@ export default function StaffShell({
           <div className="relative w-72 max-w-[80vw] bg-[#0B252C] text-[#94A3B8] h-full flex flex-col z-10 shadow-2xl border-r border-[#153E47]">
             <div className="p-5 flex items-center justify-between border-b border-[#153E47]">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-12 shrink-0 flex items-center justify-center">
+                <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-black/40 border border-white/10 overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/tule-resort-mark.svg"
+                    src="/tule-resort-logo.png"
                     alt="Tule Resort Logo"
                     className="h-full w-full object-contain"
                   />

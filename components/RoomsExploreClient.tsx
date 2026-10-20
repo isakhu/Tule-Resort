@@ -135,9 +135,10 @@ export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientP
           {/* Top Brand & Navigation */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              {/* Geometric Monogram */}
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#C5A059]/40 bg-[#16202E]/70 shadow-inner">
-                <span className="font-serif text-lg font-black tracking-wider text-[#F5E2B3]">TL</span>
+              {/* Official Resort Logo */}
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-black/50 overflow-hidden shadow-inner">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/tule-resort-logo.png" alt="Tule Resort" className="h-full w-full object-contain" />
               </div>
               <div>
                 <span className="block text-xs font-black uppercase tracking-[.28em] text-[#DFB76C]">
