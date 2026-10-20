@@ -7,37 +7,40 @@
    ═══════════════════════════════════════════════════════════════ */
 
 @theme {
-  /* ── Core Surfaces (Rich Deep Teal) ── */
-  --color-background: #061A20;           /* Deep oceanic petrol-teal abyss */
-  --color-surface: #0A262F;              /* Elevated petrol card & panel surface */
-  --color-surface-hover: #0E3440;        /* Interactive hover state */
+  /* ── Core Surfaces (Deep Rift Valley Forest Green) ── */
+  --color-background: #0B1E19;           /* Deep Rift Valley forest-teal abyss */
+  --color-surface: #132E26;              /* Elevated forest card & panel surface */
+  --color-surface-hover: #1F4D3A;        /* Deep forest green hover state */
 
-  /* ── Brand Accents (Warm Sunset Orange) ── */
-  --color-primary: #F97316;              /* Vibrant sunset orange CTA */
-  --color-primary-hover: #EA580C;        /* Rich burnt sunset orange */
-  --color-primary-foreground: #FFFFFF;   /* Crisp white text on orange */
-  --color-secondary: #0D828A;            /* Luminous deep lake teal */
+  /* ── Brand Accents (Sunset Terracotta & Warm Gold) ── */
+  --color-primary: #C8643B;              /* Restrained sunset terracotta CTA */
+  --color-primary-hover: #B7532C;        /* Rich burnt terracotta */
+  --color-primary-foreground: #FFFFFF;   /* Crisp white text on terracotta */
+  --color-secondary: #C9A24B;            /* Warm brushed Rift Valley gold */
 
   /* ── Typography ── */
-  --color-foreground: #FAF7F2;           /* Warm resort cream/ivory text */
-  --color-muted: #8EAAB2;               /* Subdued teal-mist text */
+  --color-foreground: #F4EBD9;           /* Warm sand cream text */
+  --color-muted: #A3B8B0;               /* Subdued forest mist text */
 
   /* ── Structural ── */
-  --color-border: #14404C;               /* Crisp deep teal border */
+  --color-border: #1F4D3A;               /* Deep forest green border */
 
   /* ── Status ── */
   --color-success: #10B981;
-  --color-warning: #F97316;
+  --color-warning: #C9A24B;
   --color-danger: #EF4444;
 
-  /* ── Extended Brand (Orange & Teal Harmony) ── */
-  --color-orange: #F97316;               /* Sunset orange */
-  --color-orange-light: #FDBA74;         /* Soft sunset orange glow */
-  --color-orange-dark: #C2410C;          /* Deep burnt sunset */
-  --color-teal-deep: #092B33;            /* Rich deep teal */
-  --color-teal-glow: #14B8A6;            /* Electric aqua/teal highlight */
-  --color-sand: #E6D8C3;                 /* Warm resort sand accent */
-  --color-cream: #FAF7F2;               /* Resort ivory */
+  /* ── Extended Brand (Four Harmonious Pillars) ── */
+  --color-forest: #1F4D3A;               /* Deep forest green */
+  --color-gold: #C9A24B;                 /* Warm gold */
+  --color-sand: #F4EBD9;                 /* Sand cream */
+  --color-terracotta: #C8643B;           /* Sunset terracotta */
+  --color-orange: #C8643B;               /* Primary terracotta accent */
+  --color-orange-light: #F4EBD9;         /* Sand cream highlight */
+  --color-orange-dark: #B7532C;          /* Deep terracotta */
+  --color-teal-deep: #132E26;            /* Rich forest surface */
+  --color-teal-glow: #C9A24B;            /* Gold accent highlight */
+  --color-cream: #F4EBD9;               /* Sand cream */
 
   /* ── Font Families ── */
   --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
@@ -190,16 +193,16 @@ h1, h2, h3, h4, h5, h6,
 
 /* ── Cinematic resort landing page ────────────────────────────── */
 .tule-hero-image {
-  background-image: url("https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=2200&q=90");
-  background-position: center;
+  background-image: url("/tule-hero-visual.jpg");
+  background-position: center right;
   background-size: cover;
   will-change: transform;
   animation: tule-hero-arrive 1.4s cubic-bezier(.2,.7,.2,1) both, tule-hero-drift 24s ease-in-out 1.4s infinite alternate;
 }
 
 .tule-ambient-glow {
-  background: radial-gradient(circle, rgba(249,115,22,.20) 0%, rgba(13,130,138,.16) 42%, transparent 72%);
-  filter: blur(24px);
+  background: radial-gradient(circle, rgba(200,100,59,.18) 0%, rgba(201,162,75,.14) 42%, rgba(31,77,58,.12) 72%, transparent 100%);
+  filter: blur(28px);
   animation: tule-glow-drift 12s ease-in-out infinite alternate;
 }
 
@@ -208,9 +211,9 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .tule-title-accent {
-  background: linear-gradient(110deg, #FDBA74 4%, #F97316 45%, #FFEDD5 70%, #EA580C 100%);
+  background: linear-gradient(110deg, #F4EBD9 0%, #C9A24B 42%, #F4EBD9 68%, #C8643B 100%);
   background-size: 220% auto;
-  color: #FB923C;
+  color: #C9A24B;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -231,8 +234,8 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .tule-photo-panel-image {
-  background-image: url("https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=88");
-  background-position: center;
+  background-image: url("/tule-hero-visual.jpg");
+  background-position: center right;
   background-size: cover;
   transform: scale(1.04);
   transition: transform 1.2s cubic-bezier(.2,.7,.2,1);
