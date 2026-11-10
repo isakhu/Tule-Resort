@@ -492,26 +492,33 @@ export default function LuxuryHomeClient({
                 <span className="hidden sm:inline text-[#F5F0E6]/80">Lakefront Sanctuary</span>
               </div>
 
-              {/* MAIN HERO BANNER TITLE: TULE RESORT */}
-              <h1 className="mt-4 font-display text-[clamp(4.2rem,9.5vw,8.5rem)] font-light leading-[.86] tracking-[-.025em] text-[#F5F0E6] drop-shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
-                TULE RESORT
-              </h1>
+              {/* MAIN HERO BANNER — TULE RESORT */}
+              <div className="mt-5 mb-5 max-w-xl overflow-hidden rounded-[2.2rem] border-2 border-[#C5A46D]/60 shadow-[0_24px_70px_rgba(0,0,0,0.55)] backdrop-blur-md group relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/tule-resort-main-banner.jpg"
+                  alt="Tule Resort — Hawassa, Ethiopia Main Banner"
+                  className="w-full h-auto object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#163D32]/35 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute inset-0 ring-1 ring-inset ring-white/20 pointer-events-none rounded-[2.2rem]" />
+              </div>
 
               {/* Sub-headline & Geographical Anchor */}
-              <div className="mt-3 flex items-center gap-3">
+              <div className="mt-2 flex items-center gap-3">
                 <span className="h-px w-10 bg-[#C5A46D]/70" />
                 <p className="text-xs sm:text-sm font-bold uppercase tracking-[.36em] text-[#C5A46D]">
                   HAWASSA · ETHIOPIA
                 </p>
               </div>
 
-              {/* Editorial Tagline */}
-              <p className="mt-3 font-display text-2xl sm:text-3xl italic tracking-wide text-[#F5F0E6]/95">
-                A Lakeside Escape. A World of Its Own.
-              </p>
+              {/* Editorial Headline */}
+              <h1 className="mt-3 font-display text-3xl sm:text-4xl lg:text-5xl font-light text-[#F5F0E6] leading-tight">
+                A Lakeside Escape. <span className="italic font-normal text-[#C5A46D]">A World of Its Own.</span>
+              </h1>
 
               {/* Short Emotional Description */}
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[#F5F0E6]/85 sm:text-base font-sans">
+              <p className="mt-3.5 max-w-2xl text-sm leading-relaxed text-[#F5F0E6]/85 sm:text-base font-sans">
                 Discover the beauty of Lake Hawassa through exceptional hospitality, peaceful surroundings, and memorable experiences at Tule Resort.
               </p>
 

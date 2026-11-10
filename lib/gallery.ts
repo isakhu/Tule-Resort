@@ -12,6 +12,15 @@ export interface GalleryItem {
 
 export const FALLBACK_GALLERY_ITEMS: GalleryItem[] = [
   {
+    id: 'gal-00',
+    title: 'Tule Resort Iconic 3D Island Banner',
+    caption: 'Artistic 3D emblem embodying Lake Hawassa nature, acacia groves, serene waters, and warm Ethiopian hospitality.',
+    category: 'Lakeside',
+    image_url: '/tule-resort-main-banner.jpg',
+    is_featured: true,
+    display_order: 0,
+  },
+  {
     id: 'gal-01',
     title: 'Lake Hawassa Shoreline at Dawn',
     caption: 'Serene sunrise over the tranquil waters of Lake Hawassa from Tule Resort pier.',
