@@ -476,136 +476,190 @@ export default function LuxuryHomeClient({
           </text>
         </svg>
 
-        {/* Hero Narrative Content */}
-        <div className="relative z-10 mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12 my-auto">
-          <div className="max-w-3xl">
-            {/* Small uppercase introductory label */}
-            <div className="inline-flex items-center gap-2.5 rounded-full border border-[#C5A46D]/40 bg-[#163D32]/85 px-4 py-2 text-[10px] font-extrabold uppercase tracking-[.24em] text-[#F5F0E6] shadow-lg backdrop-blur-md">
-              <span className="flex h-2 w-2 rounded-full bg-[#C5A46D] shadow-[0_0_8px_#C5A46D] animate-pulse" />
-              <span>DISCOVER TULE RESORT</span>
-              <span className="h-3 w-px bg-[#C5A46D]/30" />
-              <span className="text-[#C5A46D]">Hawassa · Ethiopia</span>
-            </div>
-
-            {/* Strong Editorial Headline */}
-            <h1 className="mt-6 font-display text-[clamp(2.8rem,7.5vw,6.4rem)] font-light leading-[1.0] tracking-[-.025em] text-[#F5F0E6]">
-              A LAKESIDE ESCAPE.<br />
-              <span className="italic font-normal text-[#C5A46D]">A WORLD OF ITS OWN.</span>
-            </h1>
-
-            {/* Short Emotional Description */}
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#F5F0E6]/85 sm:text-lg lg:text-xl font-sans">
-              Discover the beauty of Lake Hawassa through exceptional hospitality, peaceful
-              surroundings, and memorable experiences at Tule Resort.
-            </p>
-
-            {/* Elegant CTA Buttons */}
-            <div className="mt-8 flex flex-wrap items-center gap-4 sm:mt-10">
-              <a
-                href="#accommodations"
-                className="group inline-flex items-center gap-3 rounded-full bg-[#C5A46D] px-8 py-4 text-[11px] font-black uppercase tracking-[.16em] text-[#163D32] shadow-[0_10px_35px_rgba(197,164,109,.3)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#B8955E] hover:shadow-[0_15px_45px_rgba(197,164,109,.4)] active:scale-95"
-              >
-                DISCOVER OUR ROOMS
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </a>
-
-              <Link
-                href="/guest/booking"
-                className="inline-flex items-center gap-2.5 rounded-full border border-[#C5A46D]/50 bg-[#163D32]/70 px-7 py-4 text-[11px] font-bold uppercase tracking-[.15em] text-[#F5F0E6] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C5A46D] hover:bg-[#163D32] active:scale-95"
-              >
-                BOOK YOUR STAY
-              </Link>
-
-              <Link
-                href="/guest/restaurant"
-                className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-5 py-4 text-[11px] font-bold uppercase tracking-[.14em] text-[#F5F0E6]/80 backdrop-blur-md transition hover:text-white hover:border-white/40"
-              >
-                <UtensilsCrossed className="h-4 w-4 text-[#C5A46D]" /> Dining Menu
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── Integrated Quick-Reservation Bar (Kempinski Style) ─── */}
-        <div className="relative z-20 mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12 mt-10">
-          <div className="rounded-[2rem] border border-[#C5A46D]/35 bg-[#163D32]/92 p-5 sm:p-6 shadow-[0_24px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 items-end">
-              {/* Check-In */}
-              <div>
-                <label className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[.2em] text-[#C5A46D]">
-                  <Calendar className="h-3 w-3" /> Check-in Date
-                </label>
-                <input
-                  type="date"
-                  value={checkIn}
-                  onChange={(e) => setCheckIn(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-white/15 bg-[#0F2D24]/80 px-3.5 py-2.5 text-xs font-semibold text-[#F5F0E6] outline-none focus:border-[#C5A46D]"
-                />
+        {/* Hero Narrative & Reservation Grid */}
+        <div className="relative z-10 mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12 my-auto py-6 sm:py-10">
+          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(380px,.85fr)] xl:gap-16">
+            {/* Left Column: Grand Tule Resort Banner */}
+            <div className="max-w-3xl">
+              {/* Eyebrow Label with Coordinates */}
+              <div className="inline-flex flex-wrap items-center gap-2.5 rounded-full border border-[#C5A46D]/40 bg-[#163D32]/85 px-4 py-2 text-[10px] font-extrabold uppercase tracking-[.24em] text-[#F5F0E6] shadow-lg backdrop-blur-md">
+                <span className="flex h-2 w-2 rounded-full bg-[#C5A46D] shadow-[0_0_8px_#C5A46D] animate-pulse" />
+                <MapPin className="h-3 w-3 text-[#C5A46D]" />
+                <span className="text-[#C5A46D]">Hawassa · Ethiopia</span>
+                <span className="h-3 w-px bg-[#C5A46D]/30" />
+                <span>7°03′N 38°28′E</span>
+                <span className="hidden sm:inline h-3 w-px bg-[#C5A46D]/30" />
+                <span className="hidden sm:inline text-[#F5F0E6]/80">Lakefront Sanctuary</span>
               </div>
 
-              {/* Check-Out */}
-              <div>
-                <label className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[.2em] text-[#C5A46D]">
-                  <Calendar className="h-3 w-3" /> Check-out Date
-                </label>
-                <input
-                  type="date"
-                  value={checkOut}
-                  onChange={(e) => setCheckOut(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-white/15 bg-[#0F2D24]/80 px-3.5 py-2.5 text-xs font-semibold text-[#F5F0E6] outline-none focus:border-[#C5A46D]"
-                />
+              {/* MAIN HERO BANNER TITLE: TULE RESORT */}
+              <h1 className="mt-4 font-display text-[clamp(4.2rem,9.5vw,8.5rem)] font-light leading-[.86] tracking-[-.025em] text-[#F5F0E6] drop-shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
+                TULE RESORT
+              </h1>
+
+              {/* Sub-headline & Geographical Anchor */}
+              <div className="mt-3 flex items-center gap-3">
+                <span className="h-px w-10 bg-[#C5A46D]/70" />
+                <p className="text-xs sm:text-sm font-bold uppercase tracking-[.36em] text-[#C5A46D]">
+                  HAWASSA · ETHIOPIA
+                </p>
               </div>
 
-              {/* Guests */}
-              <div>
-                <label className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[.2em] text-[#C5A46D]">
-                  <Users className="h-3 w-3" /> Guests
-                </label>
-                <select
-                  value={guests}
-                  onChange={(e) => setGuests(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-white/15 bg-[#0F2D24]/80 px-3.5 py-2.5 text-xs font-semibold text-[#F5F0E6] outline-none focus:border-[#C5A46D]"
+              {/* Editorial Tagline */}
+              <p className="mt-3 font-display text-2xl sm:text-3xl italic tracking-wide text-[#F5F0E6]/95">
+                A Lakeside Escape. A World of Its Own.
+              </p>
+
+              {/* Short Emotional Description */}
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[#F5F0E6]/85 sm:text-base font-sans">
+                Discover the beauty of Lake Hawassa through exceptional hospitality, peaceful surroundings, and memorable experiences at Tule Resort.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="mt-8 flex flex-wrap items-center gap-3.5 sm:mt-9">
+                <a
+                  href="#accommodations"
+                  className="group inline-flex items-center gap-3 rounded-full bg-[#C5A46D] px-7 py-4 text-[11px] font-black uppercase tracking-[.15em] text-[#163D32] shadow-[0_10px_35px_rgba(197,164,109,.3)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#B8955E] hover:shadow-[0_15px_45px_rgba(197,164,109,.4)] active:scale-95"
                 >
-                  <option value="1" className="bg-[#163D32]">1 Guest</option>
-                  <option value="2" className="bg-[#163D32]">2 Guests</option>
-                  <option value="3" className="bg-[#163D32]">3 Guests</option>
-                  <option value="4" className="bg-[#163D32]">4+ Family / Group</option>
-                </select>
-              </div>
+                  DISCOVER OUR ROOMS
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </a>
 
-              {/* Suite Selection */}
-              <div>
-                <label className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[.2em] text-[#C5A46D]">
-                  <BedDouble className="h-3 w-3" /> Suite Category
-                </label>
-                <select
-                  value={roomType}
-                  onChange={(e) => setRoomType(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-white/15 bg-[#0F2D24]/80 px-3.5 py-2.5 text-xs font-semibold text-[#F5F0E6] outline-none focus:border-[#C5A46D]"
-                >
-                  <option value="all" className="bg-[#163D32]">All Suites &amp; Rooms</option>
-                  <option value="lake" className="bg-[#163D32]">Lake Hawassa View</option>
-                  <option value="garden" className="bg-[#163D32]">Garden Oasis View</option>
-                  <option value="suites" className="bg-[#163D32]">Luxury Deluxe Suites</option>
-                </select>
-              </div>
-
-              {/* Search Availability Button */}
-              <div>
                 <Link
-                  href={`/guest/rooms?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}${roomType !== 'all' ? `&type=${roomType}` : ''
-                    }`}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#C5A46D] py-3 text-xs font-black uppercase tracking-[.15em] text-[#163D32] shadow-lg shadow-[#C5A46D]/20 hover:bg-[#B8955E] transition duration-200 active:scale-95"
+                  href="/guest/booking"
+                  className="inline-flex items-center gap-2.5 rounded-full border border-[#C5A46D]/50 bg-[#163D32]/70 px-7 py-4 text-[11px] font-bold uppercase tracking-[.15em] text-[#F5F0E6] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C5A46D] hover:bg-[#163D32] active:scale-95"
                 >
-                  <span>Check Availability</span>
-                  <ArrowRight className="h-4 w-4" />
+                  BOOK YOUR STAY
                 </Link>
+
+                <Link
+                  href="/guest/restaurant"
+                  className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-5 py-4 text-[11px] font-bold uppercase tracking-[.14em] text-[#F5F0E6]/80 backdrop-blur-md transition hover:text-white hover:border-white/40"
+                >
+                  <UtensilsCrossed className="h-4 w-4 text-[#C5A46D]" /> Dining Menu
+                </Link>
+              </div>
+
+              {/* Metadata Strip */}
+              <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#C5A46D]/20 pt-5 text-[9px] font-bold uppercase tracking-[.18em] text-[#F5F0E6]/65 sm:mt-10 sm:pt-6">
+                <span className="inline-flex items-center gap-2 text-[#F5F0E6]">
+                  <MapPin className="h-3.5 w-3.5 text-[#C5A46D]" /> Lake Hawassa Shore, Sidama, Ethiopia
+                </span>
+                <span className="hidden h-1 w-1 rounded-full bg-[#C5A46D] sm:block" />
+                <span className="text-[#C5A46D]">Elevation 1,685m</span>
+                <span className="hidden h-1 w-1 rounded-full bg-[#C5A46D] sm:block" />
+                <span className="text-[#C5A46D]">Relax. Enjoy. Remember.</span>
+              </div>
+            </div>
+
+            {/* Right Column: Direct Reservations Card */}
+            <div className="relative mx-auto w-full max-w-[460px] lg:max-w-none">
+              <div className="rounded-[2.4rem] border border-[#C5A46D]/35 bg-[#163D32]/92 p-6 sm:p-8 shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
+                <div className="flex items-center justify-between border-b border-[#C5A46D]/20 pb-4">
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-[.24em] text-[#C5A46D]">Direct Reservations</span>
+                    <h3 className="font-display text-2xl sm:text-3xl text-[#F5F0E6] leading-tight mt-0.5">Plan Your Stay</h3>
+                  </div>
+                  <span className="rounded-full bg-[#0F2D24] border border-[#C5A46D]/40 px-3.5 py-1 text-[9px] font-extrabold uppercase tracking-widest text-[#C5A46D]">
+                    Best Rate
+                  </span>
+                </div>
+
+                <div className="mt-5 space-y-3.5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-white/10 bg-[#0F2D24]/80 p-2.5">
+                      <label className="text-[8px] font-bold uppercase tracking-[.18em] text-[#C5A46D] flex items-center gap-1">
+                        <Calendar className="h-3 w-3" /> Check-in
+                      </label>
+                      <input
+                        type="date"
+                        value={checkIn}
+                        onChange={(e) => setCheckIn(e.target.value)}
+                        className="mt-1 w-full bg-transparent text-xs font-semibold text-[#F5F0E6] outline-none"
+                      />
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-[#0F2D24]/80 p-2.5">
+                      <label className="text-[8px] font-bold uppercase tracking-[.18em] text-[#C5A46D] flex items-center gap-1">
+                        <Calendar className="h-3 w-3" /> Check-out
+                      </label>
+                      <input
+                        type="date"
+                        value={checkOut}
+                        onChange={(e) => setCheckOut(e.target.value)}
+                        className="mt-1 w-full bg-transparent text-xs font-semibold text-[#F5F0E6] outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-white/10 bg-[#0F2D24]/80 p-2.5">
+                      <label className="text-[8px] font-bold uppercase tracking-[.18em] text-[#C5A46D] flex items-center gap-1">
+                        <Users className="h-3 w-3" /> Guests
+                      </label>
+                      <select
+                        value={guests}
+                        onChange={(e) => setGuests(e.target.value)}
+                        className="mt-1 w-full bg-transparent text-xs font-semibold text-[#F5F0E6] outline-none"
+                      >
+                        <option value="1" className="bg-[#163D32]">1 Guest</option>
+                        <option value="2" className="bg-[#163D32]">2 Guests</option>
+                        <option value="3" className="bg-[#163D32]">3 Guests</option>
+                        <option value="4" className="bg-[#163D32]">4+ Family / Group</option>
+                      </select>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-[#0F2D24]/80 p-2.5">
+                      <label className="text-[8px] font-bold uppercase tracking-[.18em] text-[#C5A46D] flex items-center gap-1">
+                        <BedDouble className="h-3 w-3" /> Suite Category
+                      </label>
+                      <select
+                        value={roomType}
+                        onChange={(e) => setRoomType(e.target.value)}
+                        className="mt-1 w-full bg-transparent text-xs font-semibold text-[#F5F0E6] outline-none"
+                      >
+                        <option value="all" className="bg-[#163D32]">All Suites &amp; Rooms</option>
+                        <option value="lake" className="bg-[#163D32]">Lake Hawassa View</option>
+                        <option value="garden" className="bg-[#163D32]">Garden Retreats</option>
+                        <option value="suites" className="bg-[#163D32]">Luxury Deluxe Suites</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Live Resort Highlights */}
+                  <div className="grid grid-cols-2 gap-2 text-[9px] font-bold text-[#F5F0E6]/85 pt-1">
+                    <span className="flex items-center gap-1.5 rounded-lg bg-[#0F2D24]/60 border border-[#C5A46D]/20 p-2">
+                      <Sun className="h-3.5 w-3.5 text-[#C5A46D] shrink-0" />
+                      <span>24°C Lake Breeze</span>
+                    </span>
+                    <span className="flex items-center gap-1.5 rounded-lg bg-[#0F2D24]/60 border border-[#C5A46D]/20 p-2">
+                      <UtensilsCrossed className="h-3.5 w-3.5 text-[#C5A46D] shrink-0" />
+                      <span>Buffet Breakfast</span>
+                    </span>
+                    <span className="flex items-center gap-1.5 rounded-lg bg-[#0F2D24]/60 border border-[#C5A46D]/20 p-2">
+                      <Waves className="h-3.5 w-3.5 text-[#C5A46D] shrink-0" />
+                      <span>Heated Pool Access</span>
+                    </span>
+                    <span className="flex items-center gap-1.5 rounded-lg bg-[#0F2D24]/60 border border-[#C5A46D]/20 p-2">
+                      <Sparkles className="h-3.5 w-3.5 text-[#C5A46D] shrink-0" />
+                      <span>Private Pier Open</span>
+                    </span>
+                  </div>
+
+                  <Link
+                    href={`/guest/rooms?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}${
+                      roomType !== 'all' ? `&type=${roomType}` : ''
+                    }`}
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#C5A46D] py-3.5 text-xs font-black uppercase tracking-[.15em] text-[#163D32] shadow-lg shadow-[#C5A46D]/20 hover:bg-[#B8955E] transition duration-200 active:scale-95"
+                  >
+                    <span>Check Availability &amp; Rates</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Subtle Scroll Down Indicator */}
-          <div className="mt-6 flex justify-center">
+          <div className="mt-8 sm:mt-12 flex justify-center">
             <a
               href="#about"
               className="inline-flex items-center gap-2 text-[9px] font-bold uppercase tracking-[.26em] text-[#F5F0E6]/70 hover:text-white transition"
