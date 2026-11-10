@@ -344,10 +344,10 @@ export default function GuestTableOrderingPage({
   // Loading state
   if (loadingTable) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center text-center p-6">
+      <div className="min-h-screen bg-[#F5F0E6] flex items-center justify-center text-center p-6">
         <div className="space-y-3">
-          <div className="h-10 w-10 mx-auto rounded-full border-4 border-[#0E7480] border-t-transparent animate-spin" />
-          <p className="text-xs font-bold text-[#0B252C] uppercase tracking-widest">
+          <div className="h-10 w-10 mx-auto rounded-full border-4 border-[#163D32] border-t-transparent animate-spin" />
+          <p className="text-xs font-bold text-[#163D32] uppercase tracking-widest">
             Connecting to Table QR Service...
           </p>
         </div>
@@ -358,18 +358,18 @@ export default function GuestTableOrderingPage({
   // Table Error / Not Found View
   if (!table || tableError) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[#F5F0E6] flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-xl text-center space-y-4 border border-gray-100">
           <div className="h-12 w-12 rounded-2xl bg-red-50 text-red-500 mx-auto flex items-center justify-center">
             <AlertCircle className="h-6 w-6" />
           </div>
-          <h2 className="text-xl font-black text-[#0B252C]">Table Code Not Available</h2>
+          <h2 className="text-xl font-black text-[#163D32]">Table Code Not Available</h2>
           <p className="text-xs text-gray-500 leading-relaxed">
             {tableError || 'This QR code is invalid or not registered in our live resort directory.'}
           </p>
           <Link
             href="/guest/restaurant"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#0B252C] px-5 py-2.5 text-xs font-bold text-[#F8D77A] shadow-md hover:bg-[#0E7480] transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#163D32] px-5 py-2.5 text-xs font-bold text-[#C5A46D] shadow-md hover:bg-[#163D32] transition-colors"
           >
             Browse Restaurant Menu <ArrowRight className="h-4 w-4" />
           </Link>
@@ -381,7 +381,7 @@ export default function GuestTableOrderingPage({
   // ─── BLOCKED TABLE STATES (Cleaning or Out of Service) ───
   if (table.status === 'out_of_service' || table.status === 'cleaning') {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[#F5F0E6] flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-xl text-center space-y-4 border border-gray-100">
           <div className="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center">
             <Ban className="h-6 w-6" />
@@ -389,7 +389,7 @@ export default function GuestTableOrderingPage({
           <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-amber-800">
             Table {table.table_number} • {table.status.replace('_', ' ')}
           </span>
-          <h2 className="text-xl font-black text-[#0B252C]">Table Currently Unavailable</h2>
+          <h2 className="text-xl font-black text-[#163D32]">Table Currently Unavailable</h2>
           <p className="text-xs text-gray-500 leading-relaxed">
             {table.status === 'cleaning'
               ? 'Our hospitality team is currently sanitizing and setting this table for you. Please check back shortly.'
@@ -397,7 +397,7 @@ export default function GuestTableOrderingPage({
           </p>
           <button
             onClick={loadTableAndSession}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#0B252C] px-5 py-2.5 text-xs font-bold text-[#F8D77A] shadow-md hover:bg-[#0E7480] transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#163D32] px-5 py-2.5 text-xs font-bold text-[#C5A46D] shadow-md hover:bg-[#163D32] transition-colors"
           >
             <RotateCw className="h-4 w-4" /> Refresh Table Status
           </button>
@@ -409,21 +409,21 @@ export default function GuestTableOrderingPage({
   // ─── BLOCKED TABLE STATE (Occupied by another session) ───
   if (table.status === 'occupied' && !session) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[#F5F0E6] flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-xl text-center space-y-4 border border-gray-100">
-          <div className="h-12 w-12 rounded-2xl bg-stone-100 text-[#0B252C] mx-auto flex items-center justify-center">
+          <div className="h-12 w-12 rounded-2xl bg-stone-100 text-[#163D32] mx-auto flex items-center justify-center">
             <UtensilsCrossed className="h-6 w-6" />
           </div>
           <span className="rounded-full bg-stone-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-stone-700">
             {table.table_number} • Occupied
           </span>
-          <h2 className="text-xl font-black text-[#0B252C]">Active Dining Session in Progress</h2>
+          <h2 className="text-xl font-black text-[#163D32]">Active Dining Session in Progress</h2>
           <p className="text-xs text-gray-500 leading-relaxed">
             Table {table.table_number} is currently occupied by another party. If you have been seated here by our team, please ask your server to open a new session.
           </p>
           <button
             onClick={loadTableAndSession}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#0B252C] px-5 py-2.5 text-xs font-bold text-[#F8D77A] shadow-md hover:bg-[#0E7480] transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#163D32] px-5 py-2.5 text-xs font-bold text-[#C5A46D] shadow-md hover:bg-[#163D32] transition-colors"
           >
             <RotateCw className="h-4 w-4" /> Check Status Again
           </button>
@@ -464,41 +464,41 @@ export default function GuestTableOrderingPage({
     }
 
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#F5F0E6] flex items-center justify-center p-4">
         <div className="max-w-md w-full rounded-3xl bg-white p-6 sm:p-8 shadow-2xl border border-gray-100 text-center space-y-5 animate-in zoom-in-95">
-          <div className="h-16 w-16 rounded-full bg-[#0E7480]/10 text-[#0E7480] mx-auto flex items-center justify-center shadow-inner">
+          <div className="h-16 w-16 rounded-full bg-[#163D32]/10 text-[#163D32] mx-auto flex items-center justify-center shadow-inner">
             {isDelivered ? <CheckCircle2 className="h-8 w-8 text-emerald-600" /> : <Clock className="h-8 w-8 animate-pulse" />}
           </div>
 
           <div className="space-y-1">
-            <span className="rounded-full bg-[#0E7480]/10 px-3 py-1 text-[11px] font-black text-[#0E7480]">
+            <span className="rounded-full bg-[#163D32]/10 px-3 py-1 text-[11px] font-black text-[#163D32]">
               {table.table_number} • {table.section}
             </span>
-            <h2 className="text-2xl font-black text-[#0B252C] pt-2">{statusTitle}</h2>
+            <h2 className="text-2xl font-black text-[#163D32] pt-2">{statusTitle}</h2>
             <p className="text-xs text-gray-500 leading-relaxed">{statusDesc}</p>
           </div>
 
           {/* Real Live Progress Tracker */}
-          <div className="rounded-2xl bg-[#F8FAFC] p-4 text-left border border-gray-100 space-y-3">
-            <div className="flex items-center justify-between text-xs font-extrabold text-[#0B252C]">
-              <span className="flex items-center gap-1.5 text-[#0E7480]">
+          <div className="rounded-2xl bg-[#F5F0E6] p-4 text-left border border-gray-100 space-y-3">
+            <div className="flex items-center justify-between text-xs font-extrabold text-[#163D32]">
+              <span className="flex items-center gap-1.5 text-[#163D32]">
                 <Sparkles className="h-4 w-4" />
                 Live Status Tracker
               </span>
-              <span className="text-[#C9902F] font-black">
+              <span className="text-[#C5A46D] font-black">
                 {activeOrder.total} ETB
               </span>
             </div>
 
             {/* Dynamic Step Bar based on real database status */}
             <div className="h-2.5 w-full bg-gray-200 rounded-full overflow-hidden">
-              <div className={`h-full bg-gradient-to-r from-[#0E7480] to-[#14919B] rounded-full transition-all duration-500 ${stepPercent}`} />
+              <div className={`h-full bg-gradient-to-r from-[#163D32] to-[#163D32] rounded-full transition-all duration-500 ${stepPercent}`} />
             </div>
 
             <div className="grid grid-cols-4 text-[9px] font-black uppercase text-gray-400 tracking-wider text-center pt-1">
-              <span className={isPending ? 'text-[#0E7480]' : ''}>Pending</span>
-              <span className={isAccepted || isPreparing ? 'text-[#0E7480]' : ''}>Kitchen</span>
-              <span className={isReady ? 'text-[#0E7480]' : ''}>Ready</span>
+              <span className={isPending ? 'text-[#163D32]' : ''}>Pending</span>
+              <span className={isAccepted || isPreparing ? 'text-[#163D32]' : ''}>Kitchen</span>
+              <span className={isReady ? 'text-[#163D32]' : ''}>Ready</span>
               <span className={isDelivered ? 'text-emerald-600' : ''}>Served</span>
             </div>
           </div>
@@ -527,7 +527,7 @@ export default function GuestTableOrderingPage({
           <div className="space-y-2 pt-2">
             <button
               onClick={() => setActiveOrder(null)}
-              className="w-full rounded-xl bg-[#0B252C] py-3 text-xs font-bold text-[#F8D77A] shadow-md hover:bg-[#0E7480] transition-colors"
+              className="w-full rounded-xl bg-[#163D32] py-3 text-xs font-bold text-[#C5A46D] shadow-md hover:bg-[#163D32] transition-colors"
             >
               Order Additional Items
             </button>
@@ -550,12 +550,12 @@ export default function GuestTableOrderingPage({
 
   // ─── MAIN ORDERING MENU VIEW ───
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] pb-28">
+    <div className="min-h-screen bg-[#F5F0E6] text-[#26312D] pb-28">
       {/* ─── TOP TABLE BANNER ─── */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs px-4 py-3 sm:px-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-[#0B252C] border border-[#C9902F]/30 p-1 flex items-center justify-center shadow-md">
+            <div className="h-11 w-11 rounded-2xl bg-[#163D32] border border-[#C5A46D]/30 p-1 flex items-center justify-center shadow-md">
               <Image
                 src="/tule-resort-logo.png"
                 alt="Tule Resort Logo"
@@ -566,8 +566,8 @@ export default function GuestTableOrderingPage({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-[#0B252C]">{table.table_number}</span>
-                <span className="rounded-full bg-[#0E7480]/10 px-2 py-0.5 text-[9px] font-black text-[#0E7480] border border-[#0E7480]/20">
+                <span className="text-sm font-black text-[#163D32]">{table.table_number}</span>
+                <span className="rounded-full bg-[#163D32]/10 px-2 py-0.5 text-[9px] font-black text-[#163D32] border border-[#163D32]/20">
                   {table.section}
                 </span>
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black text-emerald-700 border border-emerald-200">
@@ -582,7 +582,7 @@ export default function GuestTableOrderingPage({
           {totalCartCount > 0 && (
             <a
               href="#cart-section"
-              className="flex items-center gap-2 rounded-full bg-[#0E7480] hover:bg-[#0A5C66] px-4 py-2 text-xs font-black text-white shadow-lg shadow-[#0E7480]/30 animate-bounce transition-colors"
+              className="flex items-center gap-2 rounded-full bg-[#163D32] hover:bg-[#163D32] px-4 py-2 text-xs font-black text-white shadow-lg shadow-[#163D32]/30 animate-bounce transition-colors"
             >
               <ShoppingBag className="h-4 w-4" />
               <span>{totalCartCount}</span>
@@ -594,13 +594,13 @@ export default function GuestTableOrderingPage({
 
       {/* ─── HERO GREETING ─── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
-        <div className="rounded-3xl bg-gradient-to-r from-[#0B252C] via-[#0E353F] to-[#0E7480] text-white p-6 sm:p-8 shadow-xl relative overflow-hidden">
+        <div className="rounded-3xl bg-gradient-to-r from-[#163D32] via-[#0F2D24] to-[#163D32] text-white p-6 sm:p-8 shadow-xl relative overflow-hidden">
           <div className="relative z-10 max-w-xl space-y-2">
-            <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold text-[#F8D77A] border border-[#C9902F]/30">
+            <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold text-[#C5A46D] border border-[#C5A46D]/30">
               Welcome to Tule Dining
             </span>
             <h1 className="text-2xl sm:text-3xl font-black">
-              You&apos;re ordering from <span className="text-[#F8D77A]">{table.table_number}</span>
+              You&apos;re ordering from <span className="text-[#C5A46D]">{table.table_number}</span>
             </h1>
             <p className="text-xs text-slate-200">
               Fresh Ethiopian specialties, steaks, lake fish and beverages sent directly to our kitchen.
@@ -618,7 +618,7 @@ export default function GuestTableOrderingPage({
             placeholder="Search dishes, drinks, tibs, burger..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-xs font-semibold text-gray-800 placeholder-gray-400 focus:border-[#0E7480] focus:outline-none focus:ring-2 focus:ring-[#0E7480]/20 shadow-xs"
+            className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-xs font-semibold text-gray-800 placeholder-gray-400 focus:border-[#163D32] focus:outline-none focus:ring-2 focus:ring-[#163D32]/20 shadow-xs"
           />
         </div>
       </section>
@@ -638,7 +638,7 @@ export default function GuestTableOrderingPage({
                 onClick={() => handleScrollToCategory(cat)}
                 className={`rounded-full px-4 py-2 text-xs font-bold whitespace-nowrap transition-all duration-200 shrink-0 cursor-pointer ${
                   isActive
-                    ? 'bg-[#F97316] text-white shadow-md shadow-[#F97316]/25 ring-2 ring-[#EA580C] scale-[1.02]'
+                    ? 'bg-[#C5A46D] text-white shadow-md shadow-[#C5A46D]/25 ring-2 ring-[#C5A46D] scale-[1.02]'
                     : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-2xs'
                 }`}
               >
@@ -665,11 +665,11 @@ export default function GuestTableOrderingPage({
               {/* Category Header */}
               <div className="flex items-center justify-between border-b border-gray-200/80 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#F97316]" />
-                  <h2 className="text-lg sm:text-xl font-black text-[#0B252C] tracking-tight uppercase">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#C5A46D]" />
+                  <h2 className="text-lg sm:text-xl font-black text-[#163D32] tracking-tight uppercase">
                     {section.category}
                   </h2>
-                  <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-black text-[#EA580C] border border-orange-200/60">
+                  <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-black text-[#C5A46D] border border-orange-200/60">
                     {section.items.length}
                   </span>
                 </div>
@@ -682,7 +682,7 @@ export default function GuestTableOrderingPage({
                   return (
                     <div
                       key={item.id}
-                      className="rounded-3xl bg-white p-4 shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group hover:border-[#F97316]/40 hover:-translate-y-1"
+                      className="rounded-3xl bg-white p-4 shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group hover:border-[#C5A46D]/40 hover:-translate-y-1"
                     >
                       <div>
                         <div
@@ -691,17 +691,17 @@ export default function GuestTableOrderingPage({
                             backgroundImage: `url(${item.imageUrl || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80'})`,
                           }}
                         >
-                          <div className="absolute top-2 right-2 rounded-full bg-[#092B33]/90 backdrop-blur-md px-2.5 py-1 text-[11px] font-black text-[#FB923C] border border-[#F97316]/40 shadow-xs transition-transform duration-300 group-hover:scale-105">
+                          <div className="absolute top-2 right-2 rounded-full bg-[#0F2D24]/90 backdrop-blur-md px-2.5 py-1 text-[11px] font-black text-[#D4B87D] border border-[#C5A46D]/40 shadow-xs transition-transform duration-300 group-hover:scale-105">
                             {item.price} ETB
                           </div>
                         </div>
 
                         <div>
-                          <h3 className="text-sm font-extrabold text-gray-900 group-hover:text-[#F97316] transition-colors">
+                          <h3 className="text-sm font-extrabold text-gray-900 group-hover:text-[#C5A46D] transition-colors">
                             {item.name}
                           </h3>
                           {item.amharicName && (
-                            <p className="text-xs font-bold text-[#EA580C]">{item.amharicName}</p>
+                            <p className="text-xs font-bold text-[#C5A46D]">{item.amharicName}</p>
                           )}
                           <p className="text-[11px] text-gray-500 line-clamp-2 mt-1">
                             {item.description}
@@ -713,11 +713,11 @@ export default function GuestTableOrderingPage({
                         <span className="text-xs font-black text-gray-900">{item.price} ETB</span>
 
                         {qty > 0 ? (
-                          <div className="flex items-center gap-2 bg-[#F97316]/10 rounded-xl p-1 border border-[#F97316]/30">
+                          <div className="flex items-center gap-2 bg-[#C5A46D]/10 rounded-xl p-1 border border-[#C5A46D]/30">
                             <button
                               type="button"
                               onClick={() => updateCart(item.id, -1)}
-                              className="h-7 w-7 rounded-lg bg-white text-[#F97316] font-black flex items-center justify-center shadow-xs hover:bg-gray-50 transition-all duration-150 active:scale-90"
+                              className="h-7 w-7 rounded-lg bg-white text-[#C5A46D] font-black flex items-center justify-center shadow-xs hover:bg-gray-50 transition-all duration-150 active:scale-90"
                             >
                               <Minus className="h-3.5 w-3.5" />
                             </button>
@@ -725,7 +725,7 @@ export default function GuestTableOrderingPage({
                             <button
                               type="button"
                               onClick={() => updateCart(item.id, 1)}
-                              className="h-7 w-7 rounded-lg bg-[#F97316] text-white font-black flex items-center justify-center shadow-xs hover:bg-[#EA580C] transition-all duration-150 active:scale-90"
+                              className="h-7 w-7 rounded-lg bg-[#C5A46D] text-white font-black flex items-center justify-center shadow-xs hover:bg-[#C5A46D] transition-all duration-150 active:scale-90"
                             >
                               <Plus className="h-3.5 w-3.5" />
                             </button>
@@ -734,7 +734,7 @@ export default function GuestTableOrderingPage({
                           <button
                             type="button"
                             onClick={() => updateCart(item.id, 1)}
-                            className="rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white px-3.5 py-1.5 text-xs font-bold transition-all duration-200 active:scale-95 shadow-xs flex items-center gap-1.5 border border-[#F97316]"
+                            className="rounded-xl bg-[#C5A46D] hover:bg-[#C5A46D] text-white px-3.5 py-1.5 text-xs font-bold transition-all duration-200 active:scale-95 shadow-xs flex items-center gap-1.5 border border-[#C5A46D]"
                           >
                             <Plus className="h-3.5 w-3.5" /> Add
                           </button>
@@ -763,8 +763,8 @@ export default function GuestTableOrderingPage({
             )}
 
             <div className="flex items-center justify-between text-xs font-bold">
-              <span>Ordering for: <strong className="text-[#0E7480]">{table.table_number}</strong></span>
-              <span className="text-base font-black text-[#0B252C]">Total: <span className="text-[#C9902F]">{subtotal} ETB</span></span>
+              <span>Ordering for: <strong className="text-[#163D32]">{table.table_number}</strong></span>
+              <span className="text-base font-black text-[#163D32]">Total: <span className="text-[#C5A46D]">{subtotal} ETB</span></span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -773,23 +773,23 @@ export default function GuestTableOrderingPage({
                 placeholder="Your Name (Optional)"
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
-                className="rounded-xl border border-gray-200 px-3 py-2 text-xs focus:border-[#0E7480] focus:outline-none"
+                className="rounded-xl border border-gray-200 px-3 py-2 text-xs focus:border-[#163D32] focus:outline-none"
               />
               <input
                 type="text"
                 placeholder="Special kitchen notes (Optional)"
                 value={specialNotes}
                 onChange={(e) => setSpecialNotes(e.target.value)}
-                className="rounded-xl border border-gray-200 px-3 py-2 text-xs focus:border-[#0E7480] focus:outline-none"
+                className="rounded-xl border border-gray-200 px-3 py-2 text-xs focus:border-[#163D32] focus:outline-none"
               />
             </div>
 
             <button
               onClick={handleSubmitOrder}
               disabled={isSubmitting}
-              className="w-full rounded-2xl bg-gradient-to-r from-[#0B252C] via-[#0E353F] to-[#0E7480] py-3.5 text-xs font-black uppercase tracking-wider text-[#F8D77A] shadow-xl shadow-[#0B252C]/30 hover:brightness-110 disabled:opacity-50 transition-all flex items-center justify-center gap-2 border border-[#C9902F]/30"
+              className="w-full rounded-2xl bg-gradient-to-r from-[#163D32] via-[#0F2D24] to-[#163D32] py-3.5 text-xs font-black uppercase tracking-wider text-[#C5A46D] shadow-xl shadow-[#163D32]/30 hover:brightness-110 disabled:opacity-50 transition-all flex items-center justify-center gap-2 border border-[#C5A46D]/30"
             >
-              <CheckCircle2 className="h-4 w-4 text-[#F8D77A]" />
+              <CheckCircle2 className="h-4 w-4 text-[#C5A46D]" />
               {isSubmitting ? 'Sending to Kitchen...' : `Place Order (${subtotal} ETB)`}
             </button>
           </div>

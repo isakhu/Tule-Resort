@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, ShieldCheck, Sparkles, BedDouble } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import RoomBookingForm from '@/components/RoomBookingForm';
 import { getRoomBySlug } from '@/lib/rooms';
 
@@ -10,15 +10,15 @@ export default async function RoomBookPage({ params }: { params: Promise<{ slug:
 
   if (!room) {
     return (
-      <main className="min-h-screen bg-[#FFF9F2] px-4 py-20 text-[#1E293B] flex items-center justify-center">
-        <div className="mx-auto max-w-md rounded-3xl border border-gray-100 bg-white p-8 text-center shadow-xl">
-          <h1 className="text-2xl font-black text-gray-900">Accommodation Not Found</h1>
-          <p className="mt-3 text-xs text-gray-500">
+      <main className="min-h-screen bg-[#F5F0E6] px-4 py-20 text-[#26312D] flex items-center justify-center">
+        <div className="mx-auto max-w-md rounded-3xl border border-[#163D32]/10 bg-white p-8 text-center shadow-xl">
+          <h1 className="font-display text-2xl font-bold text-[#26312D]">Accommodation Not Found</h1>
+          <p className="mt-3 text-xs text-[#8A9B83]">
             The requested room accommodation could not be found or is currently unavailable.
           </p>
           <Link
             href="/guest/rooms"
-            className="mt-6 inline-flex rounded-xl bg-[#073B4C] px-6 py-2.5 text-xs font-bold text-white hover:bg-[#0B4F6C]"
+            className="mt-6 inline-flex rounded-full bg-[#163D32] hover:bg-[#C5A46D] hover:text-[#163D32] px-6 py-2.5 text-xs font-bold text-[#F5F0E6] transition"
           >
             Back to Accommodations
           </Link>
@@ -32,26 +32,27 @@ export default async function RoomBookPage({ params }: { params: Promise<{ slug:
   const currency = 'ETB';
 
   return (
-    <main className="min-h-screen bg-[#F8FBFC] text-[#1E293B] pb-24">
-      {/* ─── TOP HEADER (Image 3 Header) ─── */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200/80 px-4 py-4 shadow-xs">
+    <main className="min-h-screen bg-[#F5F0E6] text-[#26312D] pb-24">
+      {/* ─── TOP HEADER ─── */}
+      <header className="sticky top-0 z-40 bg-[#163D32] text-[#F5F0E6] border-b border-[#C5A46D]/20 px-4 py-4 shadow-sm">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Link
             href={`/guest/rooms/${encodeURIComponent(room.slug || room.id)}`}
-            className="flex items-center justify-center h-9 w-9 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            className="flex items-center justify-center h-9 w-9 rounded-full bg-white/10 text-[#F5F0E6] hover:bg-white/20 transition-colors"
+            aria-label="Back to room details"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
 
-          <h1 className="text-base font-black text-gray-900 tracking-tight">
-            Complete Booking
+          <h1 className="font-display text-lg font-medium text-[#F5F0E6] tracking-wide">
+            Complete Reservation
           </h1>
 
-          <div className="w-9" /> {/* Spacer for centering */}
+          <div className="w-9" />
         </div>
       </header>
 
-      {/* ─── COMPLETE BOOKING FORM CONTAINER ─── */}
+      {/* ─── BOOKING FORM CONTAINER ─── */}
       <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-6">
         <RoomBookingForm
           roomId={room.id}

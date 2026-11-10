@@ -13,25 +13,95 @@ const services = [
 ];
 
 export default function ServicesPage() {
-  return <div className="min-h-screen bg-[#F8FBFC] text-[#073B4C]">
-    <header className="relative overflow-hidden bg-[#073B4C] text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,rgba(201,162,39,.24),transparent_30%),radial-gradient(circle_at_10%_90%,rgba(11,79,108,.9),transparent_50%)]" />
-      <div className="relative mx-auto max-w-7xl px-4 py-6 md:px-6">
-        <Link href="/guest" className="inline-flex items-center gap-2 text-sm font-bold text-white/65 hover:text-white"><ArrowLeft className="h-4 w-4" /> Guest services</Link>
-        <div className="py-14 md:py-20">
-          <p className="inline-flex items-center gap-2 rounded-full border border-[#C9A227]/40 bg-[#C9A227]/10 px-4 py-2 text-[10px] font-black uppercase tracking-[.24em] text-[#E2C35A]"><Sparkles className="h-4 w-4" /> Tule Resort · Hawassa</p>
-          <h1 className="mt-5 text-6xl font-black tracking-[-.07em] md:text-8xl">RESORT<br /><span className="text-[#C9A227]">SERVICES.</span></h1>
-          <p className="mt-6 max-w-2xl text-base leading-8 text-white/65 md:text-lg">Everything that makes a stay easier, healthier, more comfortable and more memorable — delivered with Tule hospitality.</p>
-          <div className="mt-7 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-3 text-xs font-black uppercase tracking-[.12em]"><Clock3 className="h-4 w-4 text-[#C9A227]" />Guest services · daily schedule</div>
+  return (
+    <div className="min-h-screen bg-[#F5F0E6] text-[#26312D]">
+      <header className="relative overflow-hidden bg-[#163D32] text-[#F5F0E6]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,rgba(197,164,109,.15),transparent_30%),radial-gradient(circle_at_10%_90%,rgba(138,155,131,.12),transparent_50%)]" />
+        <div className="relative mx-auto max-w-7xl px-4 py-6 md:px-6">
+          <Link href="/guest" className="inline-flex items-center gap-2 text-sm font-bold text-[#F5F0E6]/70 hover:text-[#C5A46D] transition">
+            <ArrowLeft className="h-4 w-4" /> Guest services
+          </Link>
+          <div className="py-14 md:py-20">
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#C5A46D]/40 bg-[#C5A46D]/15 px-4 py-2 text-[10px] font-black uppercase tracking-[.24em] text-[#C5A46D]">
+              <Sparkles className="h-4 w-4" /> Tule Resort · Hawassa
+            </p>
+            <h1 className="mt-5 font-display text-6xl font-light tracking-tight md:text-8xl leading-none">
+              RESORT<br />
+              <span className="italic font-normal text-[#C5A46D]">SERVICES.</span>
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-[#F5F0E6]/80 md:text-lg">
+              Everything that makes a stay easier, healthier, more comfortable and more memorable — delivered with Tule hospitality.
+            </p>
+            <div className="mt-7 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-3 text-xs font-black uppercase tracking-[.12em] text-[#F5F0E6]">
+              <Clock3 className="h-4 w-4 text-[#C5A46D]" /> Guest services · daily schedule
+            </div>
+          </div>
         </div>
-      </div>
-    </header>
-    <main className="mx-auto max-w-7xl px-4 py-12 md:px-6 md:py-16">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">{services.map(([name, description, Icon]) => { const ServiceIcon = Icon as typeof Sparkles; return <article key={name as string} className="rounded-3xl border border-[#0B4F6C]/10 bg-white p-6 shadow-[0_15px_45px_rgba(7,59,76,.07)]"><ServiceIcon className="h-7 w-7 text-[#0B4F6C]" /><h2 className="mt-5 text-xl font-black tracking-[-.03em]">{name as string}</h2><p className="mt-3 text-sm leading-6 text-[#073B4C]/55">{description as string}</p><Link href="/guest/my-activity" className="mt-5 inline-flex rounded-full bg-[#C9A227] px-4 py-3 text-[10px] font-black uppercase tracking-[.13em] text-[#073B4C]">Request / Book</Link></article>; })}</div>
-      <section className="mt-12 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-[2rem] bg-[#EAF4F7] p-7 md:p-9"><Users className="h-7 w-7 text-[#0B4F6C]" /><h2 className="mt-4 text-3xl font-black tracking-[-.04em]">Family, wellness and business.</h2><p className="mt-3 text-sm leading-7 text-[#073B4C]/60">From a quiet wellness session to a family day or a productive conference, the service collection is designed for different kinds of stays.</p></div>
-        <div className="rounded-[2rem] border border-[#C9A227]/30 bg-[#F3E9D2]/55 p-7 md:p-9"><p className="text-[10px] font-black uppercase tracking-[.24em] text-[#073B4C]/55">Guest assistance</p><h2 className="mt-3 text-3xl font-black tracking-[-.04em]">One place to request help.</h2><p className="mt-3 text-sm leading-7 text-[#073B4C]/60">Use the guest activity area for service requests and bookings. Final prices, availability and operating details can be managed from the manager dashboard.</p><Link href="/guest/my-activity" className="mt-5 inline-flex rounded-full bg-[#0B4F6C] px-5 py-3 text-[10px] font-black uppercase tracking-[.13em] text-white">Open Guest Activity</Link></div>
-      </section>
-    </main>
-  </div>;
+      </header>
+
+      <main className="mx-auto max-w-7xl px-4 py-12 md:px-6 md:py-16">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {services.map(([name, description, Icon]) => {
+            const ServiceIcon = Icon as typeof Sparkles;
+            return (
+              <article
+                key={name as string}
+                className="group rounded-3xl border border-[#163D32]/10 bg-white p-7 shadow-[0_12px_35px_rgba(22,61,50,0.05)] transition duration-300 hover:-translate-y-1 hover:border-[#C5A46D]/60 hover:shadow-[0_20px_45px_rgba(22,61,50,0.1)] flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F5F0E6] text-[#163D32] border border-[#163D32]/10">
+                    <ServiceIcon className="h-6 w-6 text-[#163D32]" />
+                  </div>
+                  <h2 className="mt-5 font-display text-2xl font-medium tracking-tight text-[#26312D]">
+                    {name as string}
+                  </h2>
+                  <p className="mt-3 text-sm leading-6 text-[#26312D]/70 font-normal">
+                    {description as string}
+                  </p>
+                </div>
+                <Link
+                  href="/guest/my-activity"
+                  className="mt-6 inline-flex justify-center rounded-full bg-[#163D32] hover:bg-[#C5A46D] hover:text-[#163D32] px-5 py-2.5 text-[10px] font-black uppercase tracking-[.14em] text-[#F5F0E6] transition duration-200"
+                >
+                  Request / Book
+                </Link>
+              </article>
+            );
+          })}
+        </div>
+
+        <section className="mt-12 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-[2.2rem] bg-white border border-[#163D32]/10 p-8 md:p-10 shadow-[0_12px_40px_rgba(22,61,50,0.05)]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F5F0E6] text-[#163D32]">
+              <Users className="h-6 w-6 text-[#163D32]" />
+            </div>
+            <h2 className="mt-4 font-display text-3xl font-medium tracking-tight text-[#26312D]">
+              Family, wellness and business.
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-[#26312D]/70">
+              From a quiet wellness session to a family day or a productive conference, our service collection is designed for all kinds of stays.
+            </p>
+          </div>
+
+          <div className="rounded-[2.2rem] border border-[#C5A46D]/30 bg-[#163D32] p-8 md:p-10 text-[#F5F0E6] shadow-[0_15px_45px_rgba(22,61,50,0.15)]">
+            <p className="text-[10px] font-black uppercase tracking-[.24em] text-[#C5A46D]">
+              Guest assistance
+            </p>
+            <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-[#F5F0E6]">
+              One place to request help.
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-[#F5F0E6]/80">
+              Use the guest activity area for service requests, room delivery, and bookings with direct concierge tracking.
+            </p>
+            <Link
+              href="/guest/my-activity"
+              className="mt-6 inline-flex rounded-full bg-[#C5A46D] hover:bg-[#B8955E] px-6 py-3 text-[10px] font-black uppercase tracking-[.14em] text-[#163D32] shadow-md transition"
+            >
+              Open Guest Activity
+            </Link>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
 }

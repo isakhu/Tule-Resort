@@ -237,11 +237,11 @@ export default function StaffShell({
   });
 
   return (
-    <div className="flex min-h-screen bg-[#F4F7F8] text-[#1E293B]">
+    <div className="flex min-h-screen bg-[#F5F0E6] text-[#26312D]">
       {/* ─── SIDEBAR (Desktop) ─── */}
-      <aside className="hidden lg:flex w-64 flex-col bg-[#0B252C] text-[#94A3B8] border-r border-[#153E47] shrink-0 select-none">
+      <aside className="hidden lg:flex w-64 flex-col bg-[#163D32] text-[#94A3B8] border-r border-[#163D32] shrink-0 select-none">
         {/* Official Logo & Tagline */}
-        <Link href="/staff/dashboard" className="p-5 pb-4 flex items-center gap-3 border-b border-[#153E47]/70 hover:opacity-95 transition-opacity">
+        <Link href="/staff/dashboard" className="p-5 pb-4 flex items-center gap-3 border-b border-[#163D32]/70 hover:opacity-95 transition-opacity">
           <div className="h-11 w-11 shrink-0 flex items-center justify-center rounded-xl bg-black/40 border border-white/10 overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -254,7 +254,7 @@ export default function StaffShell({
             <h1 className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
               Tule Resort
             </h1>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#F97316]">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#C5A46D]">
               Staff & Operations
             </p>
           </div>
@@ -272,7 +272,7 @@ export default function StaffShell({
                 href={item.href}
                 className={`group flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200 active:scale-98 ${
                   isActive
-                    ? 'bg-gradient-to-r from-[#0D828A] to-[#14B8A6] text-white shadow-md shadow-[#0D828A]/30 border-l-4 border-[#F97316] translate-x-0.5'
+                    ? 'bg-gradient-to-r from-[#163D32] to-[#C5A46D] text-white shadow-md shadow-[#163D32]/30 border-l-4 border-[#C5A46D] translate-x-0.5'
                     : 'text-[#94A3B8] hover:bg-white/5 hover:text-white hover:translate-x-1'
                 }`}
               >
@@ -284,8 +284,8 @@ export default function StaffShell({
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-bold transition-transform duration-200 group-hover:scale-105 animate-[tule-pulse-subtle_2.5s_ease-in-out_infinite] ${
                       isActive
-                        ? 'bg-white text-[#0D828A]'
-                        : 'bg-[#F97316]/20 text-[#FB923C]'
+                        ? 'bg-white text-[#163D32]'
+                        : 'bg-[#C5A46D]/20 text-[#D4B87D]'
                     }`}
                   >
                     {item.badge}
@@ -297,9 +297,9 @@ export default function StaffShell({
         </nav>
 
         {/* Bottom Location & Account Footer */}
-        <div className="p-4 border-t border-[#153E47]/70 space-y-3 bg-[#07191E]">
+        <div className="p-4 border-t border-[#163D32]/70 space-y-3 bg-[#0F2D24]">
           <div className="flex items-center gap-2.5 p-2 rounded-lg bg-white/5 border border-white/5">
-            <Store className="h-4 w-4 text-[#C9902F] shrink-0" />
+            <Store className="h-4 w-4 text-[#C5A46D] shrink-0" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-white truncate">Tule Resort & Spa</p>
               <p className="text-[10px] text-teal-200/50 truncate">Lake Hawassa • Main Property</p>
@@ -332,8 +332,8 @@ export default function StaffShell({
             className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="relative w-72 max-w-[80vw] bg-[#0B252C] text-[#94A3B8] h-full flex flex-col z-10 shadow-2xl border-r border-[#153E47]">
-            <div className="p-5 flex items-center justify-between border-b border-[#153E47]">
+          <div className="relative w-72 max-w-[80vw] bg-[#163D32] text-[#94A3B8] h-full flex flex-col z-10 shadow-2xl border-r border-[#163D32]">
+            <div className="p-5 flex items-center justify-between border-b border-[#163D32]">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-black/40 border border-white/10 overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -345,7 +345,7 @@ export default function StaffShell({
                 </div>
                 <div>
                   <h1 className="text-sm font-black text-white">Tule Resort</h1>
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#C9902F]">Staff Portal</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#C5A46D]">Staff Portal</p>
                 </div>
               </div>
               <button
@@ -367,7 +367,7 @@ export default function StaffShell({
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
                       isActive
-                        ? 'bg-gradient-to-r from-[#0E7480] to-[#14919B] text-white shadow-md shadow-[#0E7480]/30 border-l-4 border-[#C9902F]'
+                        ? 'bg-gradient-to-r from-[#163D32] to-[#163D32] text-white shadow-md shadow-[#163D32]/30 border-l-4 border-[#C5A46D]'
                         : 'text-[#94A3B8] hover:bg-white/5 hover:text-white'
                     }`}
                   >
@@ -376,7 +376,7 @@ export default function StaffShell({
                       <span>{item.label}</span>
                     </div>
                     {item.badge !== undefined && item.badge > 0 && (
-                      <span className="rounded-full bg-[#C9902F]/20 text-[#F8D77A] px-2 py-0.5 text-xs font-bold">
+                      <span className="rounded-full bg-[#C5A46D]/20 text-[#C5A46D] px-2 py-0.5 text-xs font-bold">
                         {item.badge}
                       </span>
                     )}
@@ -385,7 +385,7 @@ export default function StaffShell({
               })}
             </nav>
 
-            <div className="p-4 border-t border-[#153E47] bg-[#07191E]">
+            <div className="p-4 border-t border-[#163D32] bg-[#0F2D24]">
               <button
                 onClick={handleLogout}
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-500/10 px-4 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/20"
@@ -417,7 +417,7 @@ export default function StaffShell({
                 placeholder="Search orders, tables, menu..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-[#F4F7F8] py-2 pl-10 pr-4 text-xs font-medium text-gray-800 placeholder-gray-400 focus:border-[#0E7480] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E7480]/20 transition-all"
+                className="w-full rounded-xl border border-gray-200 bg-[#F5F0E6] py-2 pl-10 pr-4 text-xs font-medium text-gray-800 placeholder-gray-400 focus:border-[#163D32] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#163D32]/20 transition-all"
               />
             </div>
           </div>
@@ -439,7 +439,7 @@ export default function StaffShell({
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#C9902F] px-1 text-[9px] font-black text-white ring-2 ring-white">
+                  <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#C5A46D] px-1 text-[9px] font-black text-white ring-2 ring-white">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -459,7 +459,7 @@ export default function StaffShell({
                     {unreadCount > 0 && (
                       <button
                         onClick={() => handleMarkAsRead()}
-                        className="text-[11px] font-semibold text-[#0E7480] hover:underline flex items-center gap-1"
+                        className="text-[11px] font-semibold text-[#163D32] hover:underline flex items-center gap-1"
                       >
                         <CheckCheck className="h-3 w-3" />
                         Mark all read
@@ -541,7 +541,7 @@ export default function StaffShell({
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="flex items-center gap-2.5 rounded-full p-1 pr-3 hover:bg-gray-100 transition-all border border-gray-200"
               >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#073B4C] to-[#159A9C] text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#0F2D24] to-[#C5A46D] text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
                   {profile?.fullName ? profile.fullName.charAt(0) : 'A'}
                 </div>
                 <div className="hidden sm:block text-left leading-tight">
@@ -568,7 +568,7 @@ export default function StaffShell({
 
                   <button
                     onClick={() => setIsPasswordModalOpen(true)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left font-semibold text-gray-700 hover:bg-teal-50 hover:text-[#0E7480] rounded-xl transition-colors mt-1"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left font-semibold text-gray-700 hover:bg-teal-50 hover:text-[#163D32] rounded-xl transition-colors mt-1"
                   >
                     <KeyRound className="h-4 w-4" />
                     Change Password
@@ -607,7 +607,7 @@ export default function StaffShell({
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-gray-100 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100">
               <div className="flex items-center gap-2 text-gray-900 font-bold text-base">
-                <KeyRound className="h-5 w-5 text-[#0E7480]" />
+                <KeyRound className="h-5 w-5 text-[#163D32]" />
                 Update Staff Password
               </div>
               <button
@@ -642,7 +642,7 @@ export default function StaffShell({
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="At least 6 characters"
                   required
-                  className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-xs text-gray-900 focus:border-[#0E7480] focus:outline-none focus:ring-2 focus:ring-[#0E7480]/20"
+                  className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-xs text-gray-900 focus:border-[#163D32] focus:outline-none focus:ring-2 focus:ring-[#163D32]/20"
                 />
               </div>
 
@@ -656,7 +656,7 @@ export default function StaffShell({
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-type new password"
                   required
-                  className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-xs text-gray-900 focus:border-[#0E7480] focus:outline-none focus:ring-2 focus:ring-[#0E7480]/20"
+                  className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-xs text-gray-900 focus:border-[#163D32] focus:outline-none focus:ring-2 focus:ring-[#163D32]/20"
                 />
               </div>
 
@@ -671,7 +671,7 @@ export default function StaffShell({
                 <button
                   type="submit"
                   disabled={isUpdatingPassword}
-                  className="rounded-xl bg-gradient-to-r from-[#0E7480] to-[#14919B] px-5 py-2 text-xs font-bold text-white shadow-md shadow-[#0E7480]/20 hover:brightness-110 disabled:opacity-50"
+                  className="rounded-xl bg-gradient-to-r from-[#163D32] to-[#163D32] px-5 py-2 text-xs font-bold text-white shadow-md shadow-[#163D32]/20 hover:brightness-110 disabled:opacity-50"
                 >
                   {isUpdatingPassword ? 'Updating...' : 'Save Password'}
                 </button>

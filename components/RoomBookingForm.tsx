@@ -249,13 +249,13 @@ export default function RoomBookingForm({
   // ─── BOOKING SUCCESS SCREEN ───
   if (success) {
     return (
-      <div className="rounded-3xl bg-white p-8 text-center shadow-xl border border-teal-100 max-w-lg mx-auto space-y-5 animate-in zoom-in-95">
+      <div className="rounded-3xl bg-white p-8 text-center shadow-xl border border-[#163D32]/15 max-w-lg mx-auto space-y-5 animate-in zoom-in-95">
         <div className="h-16 w-16 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center shadow-inner">
           <CheckCircle2 className="h-8 w-8" />
         </div>
 
         <div className="space-y-1">
-          <span className="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-black text-[#073B4C] uppercase tracking-wider">
+          <span className="rounded-full bg-[#163D32]/8 px-3 py-1 text-[11px] font-black text-[#163D32] uppercase tracking-wider">
             Booking Confirmed
           </span>
           <h2 className="text-2xl font-black text-gray-900 pt-1">
@@ -263,13 +263,13 @@ export default function RoomBookingForm({
           </h2>
           <p className="text-xs text-gray-500">
             Booking Reference:{' '}
-            <strong className="text-[#FF6B00] font-mono text-sm">
+            <strong className="text-[#C5A46D] font-mono text-sm">
               {success.bookingNumber || 'TR-RESERVATION'}
             </strong>
           </p>
         </div>
 
-        <div className="rounded-2xl bg-[#F8F9FA] p-4 text-left text-xs border border-gray-100 space-y-2.5">
+        <div className="rounded-2xl bg-[#F5F0E6] p-4 text-left text-xs border border-gray-100 space-y-2.5">
           <div className="flex justify-between">
             <span className="text-gray-500">Room:</span>
             <span className="font-bold text-gray-900">{roomName}</span>
@@ -306,7 +306,7 @@ export default function RoomBookingForm({
           )}
           <div className="pt-2 border-t border-gray-200 flex justify-between font-black text-sm text-gray-900">
             <span>Total:</span>
-            <span className="text-[#FF6B00]">
+            <span className="text-[#C5A46D]">
               {(success.totalPrice || grandTotal).toLocaleString()} {currency}
             </span>
           </div>
@@ -318,7 +318,7 @@ export default function RoomBookingForm({
 
         <button
           onClick={() => router.push('/guest/rooms')}
-          className="w-full rounded-2xl bg-[#073B4C] py-3 text-xs font-bold text-white shadow-md hover:bg-[#0B4F6C] transition-all"
+          className="w-full rounded-2xl bg-[#163D32] py-3 text-xs font-bold text-white shadow-md hover:bg-[#0F2D24] transition-all"
         >
           Return to Accommodations
         </button>
@@ -348,7 +348,7 @@ export default function RoomBookingForm({
           </h3>
 
           <p className="text-xs text-gray-500 flex items-center gap-1 truncate mt-0.5">
-            <MapPin className="h-3.5 w-3.5 text-[#073B4C] shrink-0" />
+            <MapPin className="h-3.5 w-3.5 text-[#163D32] shrink-0" />
             {location}
           </p>
         </div>
@@ -359,7 +359,7 @@ export default function RoomBookingForm({
         {/* Check-In */}
         <div className="space-y-1 sm:pr-4">
           <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-gray-400">
-            <CalendarDays className="h-4 w-4 text-[#FF6B00]" />
+            <CalendarDays className="h-4 w-4 text-[#C5A46D]" />
             Check-in
           </div>
           <p className="text-sm font-black text-gray-900">
@@ -374,14 +374,14 @@ export default function RoomBookingForm({
             required
             value={form.checkIn}
             onChange={(e) => setForm({ ...form, checkIn: e.target.value })}
-            className="w-full mt-2 rounded-xl border border-gray-200 bg-[#F8F9FA] px-3 py-1.5 text-xs text-gray-800 focus:border-[#FF6B00] focus:outline-none"
+            className="w-full mt-2 rounded-xl border border-gray-200 bg-[#F5F0E6] px-3 py-1.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:outline-none"
           />
         </div>
 
         {/* Check-Out */}
         <div className="space-y-1 pt-3 sm:pt-0 sm:pl-4">
           <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-gray-400">
-            <CalendarDays className="h-4 w-4 text-[#FF6B00]" />
+            <CalendarDays className="h-4 w-4 text-[#C5A46D]" />
             Check-out
           </div>
           <p className="text-sm font-black text-gray-900">
@@ -396,7 +396,7 @@ export default function RoomBookingForm({
             required
             value={form.checkOut}
             onChange={(e) => setForm({ ...form, checkOut: e.target.value })}
-            className="w-full mt-2 rounded-xl border border-gray-200 bg-[#F8F9FA] px-3 py-1.5 text-xs text-gray-800 focus:border-[#FF6B00] focus:outline-none"
+            className="w-full mt-2 rounded-xl border border-gray-200 bg-[#F5F0E6] px-3 py-1.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:outline-none"
           />
         </div>
       </div>
@@ -404,7 +404,7 @@ export default function RoomBookingForm({
       {/* ─── CARD 3: ROOM DETAILS CARD (Image 3) ─── */}
       <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-3.5">
-          <div className="h-12 w-12 rounded-2xl bg-teal-50 text-[#073B4C] flex items-center justify-center font-bold shrink-0">
+          <div className="h-12 w-12 rounded-2xl bg-[#163D32]/8 text-[#163D32] flex items-center justify-center font-bold shrink-0">
             <BedDouble className="h-6 w-6" />
           </div>
           <div>
@@ -412,7 +412,7 @@ export default function RoomBookingForm({
             <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-0.5">
               <span>{bedType || '1 King Bed'} • {sizeSqm || 42} m²</span>
               <span>•</span>
-              <span className="flex items-center gap-1 font-semibold text-[#073B4C]">
+              <span className="flex items-center gap-1 font-semibold text-[#163D32]">
                 <Users className="h-3.5 w-3.5" />
                 Max {maxGuests} guests
               </span>
@@ -426,7 +426,7 @@ export default function RoomBookingForm({
           <select
             value={form.guests}
             onChange={(e) => setForm({ ...form, guests: Number(e.target.value) })}
-            className="rounded-xl border border-gray-200 bg-[#F8F9FA] px-3 py-1.5 text-xs font-bold text-gray-800 focus:border-[#FF6B00] focus:outline-none"
+            className="rounded-xl border border-gray-200 bg-[#F5F0E6] px-3 py-1.5 text-xs font-bold text-gray-800 focus:border-[#C5A46D] focus:outline-none"
           >
             {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
               <option key={n} value={n}>
@@ -453,7 +453,7 @@ export default function RoomBookingForm({
               placeholder="e.g. Dawit Haile"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 bg-[#F8F9FA] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#FF6B00] focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-gray-200 bg-[#F5F0E6] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:bg-white focus:outline-none"
             />
           </div>
 
@@ -467,7 +467,7 @@ export default function RoomBookingForm({
               placeholder="+251 911 000 000"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 bg-[#F8F9FA] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#FF6B00] focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-gray-200 bg-[#F5F0E6] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:bg-white focus:outline-none"
             />
           </div>
 
@@ -480,7 +480,7 @@ export default function RoomBookingForm({
               placeholder="guest@example.com"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 bg-[#F8F9FA] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#FF6B00] focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-gray-200 bg-[#F5F0E6] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:bg-white focus:outline-none"
             />
           </div>
 
@@ -493,7 +493,7 @@ export default function RoomBookingForm({
               placeholder="High floor, late arrival..."
               value={form.special}
               onChange={(e) => setForm({ ...form, special: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 bg-[#F8F9FA] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#FF6B00] focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-gray-200 bg-[#F5F0E6] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:bg-white focus:outline-none"
             />
           </div>
         </div>
@@ -518,7 +518,7 @@ export default function RoomBookingForm({
 
           <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
             <span className="text-sm font-black text-gray-900">Total Price</span>
-            <span className="text-xl font-black text-[#FF6B00]">
+            <span className="text-xl font-black text-[#C5A46D]">
               {grandTotal.toLocaleString()} {currency}
             </span>
           </div>
@@ -537,7 +537,7 @@ export default function RoomBookingForm({
             onClick={() => setPaymentMethod('telebirr')}
             className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
               paymentMethod === 'telebirr'
-                ? 'border-[#FF6B00] bg-orange-50/30 ring-1 ring-[#FF6B00]'
+                ? 'border-[#C5A46D] bg-[#C5A46D]/10/30 ring-1 ring-[#C5A46D]'
                 : 'border-gray-200 hover:bg-gray-50'
             }`}
           >
@@ -550,7 +550,7 @@ export default function RoomBookingForm({
                 <p className="text-[10px] text-gray-400">Instant Ethio Telecom mobile pay</p>
               </div>
             </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'telebirr' ? 'border-[#FF6B00] bg-[#FF6B00]' : 'border-gray-300'}`}>
+            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'telebirr' ? 'border-[#C5A46D] bg-[#C5A46D]' : 'border-gray-300'}`}>
               {paymentMethod === 'telebirr' && <Check className="h-3 w-3 text-white" />}
             </div>
           </label>
@@ -560,7 +560,7 @@ export default function RoomBookingForm({
             onClick={() => setPaymentMethod('cbe_birr')}
             className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
               paymentMethod === 'cbe_birr'
-                ? 'border-[#FF6B00] bg-orange-50/30 ring-1 ring-[#FF6B00]'
+                ? 'border-[#C5A46D] bg-[#C5A46D]/10/30 ring-1 ring-[#C5A46D]'
                 : 'border-gray-200 hover:bg-gray-50'
             }`}
           >
@@ -573,7 +573,7 @@ export default function RoomBookingForm({
                 <p className="text-[10px] text-gray-400">Commercial Bank of Ethiopia mobile</p>
               </div>
             </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'cbe_birr' ? 'border-[#FF6B00] bg-[#FF6B00]' : 'border-gray-300'}`}>
+            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'cbe_birr' ? 'border-[#C5A46D] bg-[#C5A46D]' : 'border-gray-300'}`}>
               {paymentMethod === 'cbe_birr' && <Check className="h-3 w-3 text-white" />}
             </div>
           </label>
@@ -583,7 +583,7 @@ export default function RoomBookingForm({
             onClick={() => setPaymentMethod('bank_transfer')}
             className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
               paymentMethod === 'bank_transfer'
-                ? 'border-[#FF6B00] bg-orange-50/30 ring-1 ring-[#FF6B00]'
+                ? 'border-[#C5A46D] bg-[#C5A46D]/10/30 ring-1 ring-[#C5A46D]'
                 : 'border-gray-200 hover:bg-gray-50'
             }`}
           >
@@ -596,7 +596,7 @@ export default function RoomBookingForm({
                 <p className="text-[10px] text-gray-400">Awash, CBE, Dashen, Bank of Abyssinia</p>
               </div>
             </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'bank_transfer' ? 'border-[#FF6B00] bg-[#FF6B00]' : 'border-gray-300'}`}>
+            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'bank_transfer' ? 'border-[#C5A46D] bg-[#C5A46D]' : 'border-gray-300'}`}>
               {paymentMethod === 'bank_transfer' && <Check className="h-3 w-3 text-white" />}
             </div>
           </label>
@@ -606,12 +606,12 @@ export default function RoomBookingForm({
             onClick={() => setPaymentMethod('pay_at_resort')}
             className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
               paymentMethod === 'pay_at_resort'
-                ? 'border-[#FF6B00] bg-orange-50/30 ring-1 ring-[#FF6B00]'
+                ? 'border-[#C5A46D] bg-[#C5A46D]/10/30 ring-1 ring-[#C5A46D]'
                 : 'border-gray-200 hover:bg-gray-50'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-[#073B4C] text-white flex items-center justify-center shadow-sm">
+              <div className="h-9 w-9 rounded-xl bg-[#163D32] text-white flex items-center justify-center shadow-sm">
                 <CreditCard className="h-4 w-4" />
               </div>
               <div>
@@ -619,7 +619,7 @@ export default function RoomBookingForm({
                 <p className="text-[10px] text-gray-400">Pay cash or card at our front desk</p>
               </div>
             </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'pay_at_resort' ? 'border-[#FF6B00] bg-[#FF6B00]' : 'border-gray-300'}`}>
+            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'pay_at_resort' ? 'border-[#C5A46D] bg-[#C5A46D]' : 'border-gray-300'}`}>
               {paymentMethod === 'pay_at_resort' && <Check className="h-3 w-3 text-white" />}
             </div>
           </label>
@@ -627,13 +627,13 @@ export default function RoomBookingForm({
 
         {/* ─── VERIFY.ET REAL-TIME DIGITAL PAYMENT VERIFICATION PANEL ─── */}
         {paymentMethod !== 'pay_at_resort' && (
-          <div className="mt-4 rounded-2xl border border-teal-100 bg-[#F4F9FA] p-4 space-y-3.5">
+          <div className="mt-4 rounded-2xl border border-[#163D32]/15 bg-[#F5F0E6] p-4 space-y-3.5">
             <div className="flex items-center justify-between border-b border-teal-200/60 pb-2">
               <div className="flex items-center gap-2">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#007042] text-[10px] font-black text-white">
                   ✓
                 </span>
-                <span className="text-xs font-black text-[#0B3D4A]">
+                <span className="text-xs font-black text-[#0F2D24]">
                   Verify.ET Automated Bank Check
                 </span>
               </div>
@@ -648,16 +648,16 @@ export default function RoomBookingForm({
                 <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
                   Account Holder / Beneficiary:
                 </span>
-                <span className="font-extrabold text-[#0B3D4A] bg-[#EAF4F7] px-2.5 py-0.5 rounded-md text-[11px]">
+                <span className="font-extrabold text-[#0F2D24] bg-[#EAF4F7] px-2.5 py-0.5 rounded-md text-[11px]">
                   Yishak Tule Karesso
                 </span>
               </div>
 
               {paymentMethod === 'telebirr' && (
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-orange-50/60 border border-orange-100 font-mono">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#C5A46D]/10/60 border border-orange-100 font-mono">
                   <div>
                     <span className="text-[10px] text-gray-500 block font-sans font-bold">Telebirr Account Number</span>
-                    <span className="font-black text-sm text-[#FF6B00]">0995781422</span>
+                    <span className="font-black text-sm text-[#C5A46D]">0995781422</span>
                   </div>
                   <button
                     type="button"
@@ -756,7 +756,7 @@ export default function RoomBookingForm({
               )}
 
               <p className="text-[10px] text-gray-400 pt-1">
-                Please transfer exactly <strong className="text-gray-700">{grandTotal.toLocaleString()} {currency}</strong> to any of the above accounts under <strong className="text-[#0B3D4A]">Yishak Tule Karesso</strong>, then enter your transaction number below.
+                Please transfer exactly <strong className="text-gray-700">{grandTotal.toLocaleString()} {currency}</strong> to any of the above accounts under <strong className="text-[#0F2D24]">Yishak Tule Karesso</strong>, then enter your transaction number below.
               </p>
             </div>
 
@@ -862,7 +862,7 @@ export default function RoomBookingForm({
         <button
           type="submit"
           disabled={loading || nights <= 0}
-          className="w-full rounded-2xl bg-gradient-to-r from-[#073B4C] via-[#0B4F6C] to-[#073B4C] hover:from-[#FF6B00] hover:to-[#E85D04] py-4 text-xs font-black uppercase tracking-wider text-white shadow-xl shadow-teal-900/20 hover:shadow-orange-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full rounded-2xl bg-gradient-to-r from-[#163D32] via-[#0F2D24] to-[#163D32] hover:from-[#C5A46D] hover:to-[#E85D04] py-4 text-xs font-black uppercase tracking-wider text-white shadow-xl shadow-teal-900/20 hover:shadow-orange-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <Lock className="h-4 w-4" />
           {loading ? 'Confirming Reservation...' : `Pay & Confirm Booking (${grandTotal.toLocaleString()} ${currency})`}

@@ -75,9 +75,9 @@ export default function StaffDashboardLayout({ children }: { children: React.Rea
 
   if (checking || !authorized) {
     return (
-      <main className="min-h-screen bg-[#0B252C] text-white flex flex-col items-center justify-center gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0E7480]" />
-        <p className="text-xs font-semibold text-[#F8D77A]/80 uppercase tracking-widest">Loading Tule Operations...</p>
+      <main className="min-h-screen bg-[#0F2D24] text-[#F5F0E6] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-[#C5A46D]" />
+        <p className="text-xs font-semibold text-[#C5A46D] uppercase tracking-widest">Loading Tule Operations...</p>
       </main>
     );
   }
