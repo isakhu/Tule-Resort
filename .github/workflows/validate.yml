@@ -25,6 +25,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Report dependency vulnerabilities
+        run: |
+          npm audit --json > npm-audit-report.json || true
+          node -e "const a = require('./npm-audit-report.json'); console.log('Dependency audit counts:', JSON.stringify(a.metadata?.vulnerabilities ?? {})); for (const [name, v] of Object.entries(a.vulnerabilities ?? {})) { const via = v.via.map(x => typeof x === 'string' ? x : x.title || x.name); console.log(name + ' | ' + v.severity + ' | direct=' + v.isDirect + ' | fix=' + JSON.stringify(v.fixAvailable) + ' | ' + via.join('; ')); }"
+
       - name: Check TypeScript
         run: npx tsc --noEmit
 
