@@ -424,7 +424,7 @@ export default function RoomsExploreClient({
 
           {/* Stay dates, guest capacity, price budget & availability bar */}
           <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs">
-            <label className="inline-flex items-center gap-1.5 rounded-full border border-[#163D32]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#26312D]">
+            <label className="inline-flex min-h-11 items-center gap-1.5 rounded-xl sm:rounded-full border border-[#163D32]/15 bg-white px-3 py-2 text-[11px] font-semibold text-[#26312D]">
               <Calendar className="h-3.5 w-3.5 text-[#7A5A27]" />
               <span className="text-[#52645D]">In</span>
               <input
@@ -436,7 +436,7 @@ export default function RoomsExploreClient({
               />
             </label>
 
-            <label className="inline-flex items-center gap-1.5 rounded-full border border-[#163D32]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#26312D]">
+            <label className="inline-flex min-h-11 items-center gap-1.5 rounded-xl sm:rounded-full border border-[#163D32]/15 bg-white px-3 py-2 text-[11px] font-semibold text-[#26312D]">
               <Calendar className="h-3.5 w-3.5 text-[#7A5A27]" />
               <span className="text-[#52645D]">Out</span>
               <input
@@ -449,7 +449,7 @@ export default function RoomsExploreClient({
               />
             </label>
 
-            <label className="inline-flex items-center gap-1.5 rounded-full border border-[#163D32]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#26312D]">
+            <label className="inline-flex min-h-11 items-center gap-1.5 rounded-xl sm:rounded-full border border-[#163D32]/15 bg-white px-3 py-2 text-[11px] font-semibold text-[#26312D]">
               <Users className="h-3.5 w-3.5 text-[#7A5A27]" />
               <select
                 value={guests ? String(guests) : ''}
@@ -466,7 +466,7 @@ export default function RoomsExploreClient({
               </select>
             </label>
 
-            <label className="inline-flex items-center gap-1.5 rounded-full border border-[#163D32]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#26312D]">
+            <label className="inline-flex min-h-11 items-center gap-1.5 rounded-xl sm:rounded-full border border-[#163D32]/15 bg-white px-3 py-2 text-[11px] font-semibold text-[#26312D]">
               <SlidersHorizontal className="h-3.5 w-3.5 text-[#C5A46D]" />
               <select
                 value={maxPrice ? String(maxPrice) : ''}
