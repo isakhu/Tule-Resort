@@ -460,42 +460,42 @@ export default function LuxuryHomeClient({
             <a
               href="#accommodations"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
+              className="flex min-h-11 items-center text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
             >
               Accommodations &amp; Suites
             </a>
             <a
               href="#experiences"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
+              className="flex min-h-11 items-center text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
             >
               Resort Experiences
             </a>
             <a
               href="#lake-hawassa"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
+              className="flex min-h-11 items-center text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
             >
               Discover Lake Hawassa
             </a>
             <a
               href="#dining"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
+              className="flex min-h-11 items-center text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
             >
               Dining &amp; Hospitality
             </a>
             <a
               href="#gallery"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
+              className="flex min-h-11 items-center text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
             >
               Photo Gallery
             </a>
             <a
               href="#contact"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
+              className="flex min-h-11 items-center text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
             >
               Contact &amp; Location
             </a>
@@ -993,7 +993,7 @@ export default function LuxuryHomeClient({
             {spotlightRoom && (
               <article
                 data-reveal
-                className="tule-reveal group relative flex flex-col justify-end overflow-hidden rounded-[2.5rem] border border-[#163D32]/15 bg-white shadow-[0_24px_60px_rgba(22,61,50,0.1)] lg:col-span-7 min-h-[580px] lg:min-h-[660px]"
+                className="tule-reveal group relative flex flex-col justify-end overflow-hidden rounded-[2.5rem] border border-[#163D32]/15 bg-white shadow-[0_24px_60px_rgba(22,61,50,0.1)] lg:col-span-7 min-h-[420px] sm:min-h-[580px] lg:min-h-[660px]"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -1173,7 +1173,7 @@ export default function LuxuryHomeClient({
               <article
                 key={service.id}
                 data-reveal
-                className="tule-reveal group relative min-h-[420px] overflow-hidden rounded-[2.2rem] border border-[#C5A46D]/20 bg-[#0F2D24] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col justify-end"
+                className="tule-reveal group relative min-h-[340px] sm:min-h-[420px] overflow-hidden rounded-[2.2rem] border border-[#C5A46D]/20 bg-[#0F2D24] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col justify-end"
                 style={{ transitionDelay: `${idx * 80}ms` }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
