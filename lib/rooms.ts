@@ -71,7 +71,13 @@ export async function getRooms(): Promise<Room[]> {
       isAvailable: row.is_available ?? true,
     }));
 
-    return mapped.length > 0 ? mapped : FALLBACK_ROOMS;
+    // Never publish placeholder room records or allow a zero-rate booking.
+    // Rows remain in Supabase so staff can correct their details and reactivate them.
+    return mapped.filter((room) => {
+      const normalizedName = room.name.trim().toLowerCase();
+      const isPlaceholderName = normalizedName === 'aa' || normalizedName === 'white';
+      return !isPlaceholderName && Number.isFinite(room.price) && room.price > 0;
+    });
   } catch (error) {
     console.warn('Falling back to offline room data because the Supabase rooms lookup threw an exception.', error);
     return FALLBACK_ROOMS;
