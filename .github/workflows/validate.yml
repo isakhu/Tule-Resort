@@ -22,6 +22,12 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Update patched Next.js dependencies
+        run: npm install --package-lock-only --save-exact next@16.4.6 eslint-config-next@16.4.6
+
+      - name: Refresh patched transitive dependencies
+        run: npm audit fix --package-lock-only
+
       - name: Install dependencies
         run: npm ci
 
@@ -29,6 +35,16 @@ jobs:
         run: |
           npm audit --json > npm-audit-report.json || true
           node -e "const a = require('./npm-audit-report.json'); console.log('Dependency audit counts:', JSON.stringify(a.metadata?.vulnerabilities ?? {})); for (const [name, v] of Object.entries(a.vulnerabilities ?? {})) { const via = v.via.map(x => typeof x === 'string' ? x : x.title || x.name); console.log(name + ' | ' + v.severity + ' | direct=' + v.isDirect + ' | fix=' + JSON.stringify(v.fixAvailable) + ' | ' + via.join('; ')); }"
+
+      - name: Upload patched dependency files
+        uses: actions/upload-artifact@v4
+        with:
+          name: patched-dependency-files
+          path: |
+            package.json
+            package-lock.json
+            npm-audit-report.json
+          if-no-files-found: error
 
       - name: Check TypeScript
         run: npx tsc --noEmit
