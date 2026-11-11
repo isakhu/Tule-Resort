@@ -86,6 +86,14 @@ export default function LuxuryHomeClient({
     (): TuleLanguage => 'en',
   );
   const copy = tuleCopy[language];
+  const craftedSuiteCount = useMemo(
+    () =>
+      initialRooms.filter((room) => {
+        const searchable = `${room.type ?? ''} ${room.name} ${room.slug}`.toLowerCase();
+        return searchable.includes('suite') || searchable.includes('deluxe');
+      }).length,
+    [initialRooms],
+  );
 
   // Quick reservation bar state
   const [checkIn, setCheckIn] = useState(() => new Date().toISOString().split('T')[0]);
@@ -857,7 +865,7 @@ export default function LuxuryHomeClient({
                   <span className="block text-[10px] font-extrabold uppercase tracking-widest text-[#C5A46D]">
                     Sanctuary
                   </span>
-                  <p className="mt-1 font-display text-xl font-medium text-[#163D32]">8 Crafted Suites</p>
+                  <p className="mt-1 font-display text-xl font-medium text-[#163D32]">{craftedSuiteCount > 0 ? `${craftedSuiteCount} Crafted ${craftedSuiteCount === 1 ? 'Suite' : 'Suites'}` : 'Discover Our Stays'}</p>
                   <p className="mt-1 text-xs text-[#26312D]/60">Handmade timber &amp; volcanic stone</p>
                 </div>
 
