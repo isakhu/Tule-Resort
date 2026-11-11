@@ -104,7 +104,10 @@ export async function getGalleryItems(): Promise<GalleryItem[]> {
       .order('display_order', { ascending: true });
 
     if (!error && data && data.length > 0) {
-      return data as GalleryItem[];
+      const placeholderTitles = new Set(['ggg', 'chilling']);
+      return (data as GalleryItem[]).filter(
+        (item) => !placeholderTitles.has((item.title ?? '').trim().toLowerCase()),
+      );
     }
     return FALLBACK_GALLERY_ITEMS;
   } catch {
