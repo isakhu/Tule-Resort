@@ -69,7 +69,7 @@ function mapFallbackMenuItems(): MenuItem[] {
 }
 
 function normalizeTuleCopy(value: string | null | undefined, fallback = ''): string {
-  return (value ?? fallback).replace(/\\bHaile\\b/gi, 'Tule');
+  return (value ?? fallback).replace(/\bHaile\b/gi, 'Tule');
 }
 
 function mapSupabaseMenuRow(row: SupabaseMenuRow): MenuItem {
