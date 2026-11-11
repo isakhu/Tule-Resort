@@ -53,7 +53,7 @@ export default function RoomCard({
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-[2rem] bg-white text-[#26312D] shadow-[0_12px_40px_rgba(22,61,50,0.06)] hover:shadow-[0_20px_50px_rgba(22,61,50,0.14)] border border-[#163D32]/10 hover:border-[#C5A46D]/60 transition-all duration-300">
       {/* ─── TOP IMAGE WITH BADGE & FAVORITE ─── */}
-      <div className="relative h-64 sm:h-72 w-full overflow-hidden bg-[#163D32]">
+      <div className="relative h-52 sm:h-72 w-full overflow-hidden bg-[#163D32]">
         <Image
           src={room.imageUrl}
           alt={room.name}
@@ -106,10 +106,10 @@ export default function RoomCard({
       </div>
 
       {/* ─── CARD CONTENT BODY ─── */}
-      <div className="flex flex-1 flex-col justify-between p-6 space-y-4">
+      <div className="flex min-w-0 flex-1 flex-col justify-between p-4 sm:p-6 space-y-4">
         <div>
           {/* Room Classification */}
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#7A5A27]">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold text-[#7A5A27]">
             <BedDouble className="h-3.5 w-3.5 shrink-0" />
             <span>{room.type || 'Resort Sanctuary'}</span>
             {room.bedType && <span className="text-[#52645D] font-medium">· {room.bedType}</span>}
@@ -152,7 +152,7 @@ export default function RoomCard({
         </div>
 
         {/* ─── BOTTOM PRICE & ACTIONS ─── */}
-        <div className="pt-4 border-t border-[#163D32]/10 flex items-center justify-between">
+        <div className="pt-4 border-t border-[#163D32]/10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-baseline gap-1">
               <span className="font-display text-2xl font-bold text-[#163D32]">
@@ -164,16 +164,16 @@ export default function RoomCard({
             <p className="text-[10px] text-[#52645D] font-medium">Inclusive of breakfast &amp; lake perks</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto">
             <Link
               href={detailsTarget}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#163D32]/20 bg-[#F5F0E6] hover:border-[#C5A46D] px-3.5 py-2.5 text-xs font-bold text-[#163D32] transition-all"
+              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-[#163D32]/20 bg-[#F5F0E6] hover:border-[#C5A46D] px-3.5 py-2.5 text-xs font-bold text-[#163D32] transition-all"
             >
               Details
             </Link>
             <Link
               href={bookTarget}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#163D32] hover:bg-[#C5A46D] hover:text-[#163D32] px-4 py-2.5 text-xs font-black uppercase tracking-wider text-[#F5F0E6] shadow-sm hover:shadow-md transition-all group/btn"
+              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-[#163D32] hover:bg-[#C5A46D] hover:text-[#163D32] px-4 py-2.5 text-xs font-black uppercase tracking-wider text-[#F5F0E6] shadow-sm hover:shadow-md transition-all group/btn"
             >
               <span>{available ? 'Book' : 'View'}</span>
               <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
