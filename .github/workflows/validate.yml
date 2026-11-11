@@ -1,5 +1,8 @@
 name: Validate Tule Resort
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
@@ -59,3 +62,16 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: build-placeholder-anon-key
+
+      - name: Commit validated dependency updates
+        if: success()
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "No dependency updates to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "fix(deps): patch Next.js and minimatch advisories"
+          git push origin HEAD:master
