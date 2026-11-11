@@ -54,7 +54,7 @@ export default function LanguageSwitcher() {
         aria-pressed={language === 'en'}
         aria-label="Switch language to English"
         onClick={() => changeLanguage('en')}
-        className={`rounded-full px-3 py-1.5 transition cursor-pointer ${
+        className={`min-h-8 rounded-full px-2 sm:px-3 py-1.5 transition cursor-pointer ${
           language === 'en' ? 'bg-[#C5A46D] text-[#163D32] font-black' : 'text-[#F5F0E6]/80 hover:text-white'
         }`}
       >
