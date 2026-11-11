@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import supabaseServer from '@/lib/supabaseServer';
+import { requireStaffOrAdmin } from '@/lib/staffAuth';
+import { getVerifiedGuestStay } from '@/lib/guestStayCookie';
 
 const SERVICE_DEPT_SLUG_MAP: Record<string, string> = {
   spa: 'Spa',
@@ -11,7 +13,7 @@ const SERVICE_DEPT_SLUG_MAP: Record<string, string> = {
 };
 
 const DEFAULT_PRICES: Record<string, number> = {
-  'pool-passes': 250,
+  'pool-passes': 400,
   'gym-membership': 500,
   spa: 800,
   'conference-room': 3500,
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
     const cleanName = String(guestName ?? '').trim();
     const cleanPhone = String(phone ?? '').trim();
     const cleanDate = String(requestedDate ?? '').trim();
-    const serviceSlug = String(serviceId ?? '').trim().toLowerCase();
+    const serviceSlug = String(serviceId ?? '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
     const guests = Math.max(1, Number(partySize ?? 1));
 
     if (!cleanName) {
@@ -45,6 +47,22 @@ export async function POST(req: Request) {
     }
     if (!cleanDate) {
       return NextResponse.json({ error: 'Requested date is required.' }, { status: 400 });
+    }
+    if (!serviceSlug) {
+      return NextResponse.json({ error: 'A valid service ID is required.' }, { status: 400 });
+    }
+
+    const verifiedStay = await getVerifiedGuestStay();
+    let effectiveStayId: string | null = verifiedStay?.id ?? null;
+
+    if (!effectiveStayId && typeof guestStayId === 'string' && guestStayId.trim()) {
+      const authHeader = req.headers.get('authorization');
+      if (authHeader) {
+        const staffAuth = await requireStaffOrAdmin(req);
+        if (staffAuth.ok) {
+          effectiveStayId = guestStayId.trim();
+        }
+      }
     }
 
     // 1. Resolve department
@@ -62,7 +80,7 @@ export async function POST(req: Request) {
 
     // 2. Resolve service ID and price from resort_services or service_offerings
     let dbServiceId: string | null = null;
-    let unitPrice = DEFAULT_PRICES[serviceSlug] || 500;
+    const unitPrice = DEFAULT_PRICES[serviceSlug] || 500;
 
     const { data: serviceRow } = await supabaseServer
       .from('resort_services')
@@ -91,7 +109,7 @@ export async function POST(req: Request) {
     const { data: requestRow, error: insertError } = await supabaseServer
       .from('service_requests')
       .insert({
-        guest_stay_id: guestStayId || null,
+        guest_stay_id: effectiveStayId,
         service_id: dbServiceId,
         department_id: deptRow.id,
         requested_date: cleanDate,
@@ -140,16 +158,46 @@ export async function POST(req: Request) {
       requestId: requestRow.id,
       request: requestRow,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function GET(req: Request) {
   try {
+    const auth = await requireStaffOrAdmin(req);
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
     const { searchParams } = new URL(req.url);
-    const deptId = searchParams.get('departmentId');
-    const statusId = searchParams.get('statusId');
+    const rawDeptId = searchParams.get('departmentId');
+    const rawStatusId = searchParams.get('statusId');
+
+    let requestedDeptId: number | null = null;
+    if (rawDeptId !== null && rawDeptId.trim() !== '' && rawDeptId.trim().toLowerCase() !== 'all') {
+      const parsed = Number(rawDeptId.trim());
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        return NextResponse.json(
+          { error: 'Invalid departmentId filter.' },
+          { status: 400 },
+        );
+      }
+      requestedDeptId = parsed;
+    }
+
+    let parsedStatusId: number | null = null;
+    if (rawStatusId !== null && rawStatusId.trim() !== '') {
+      const parsed = Number(rawStatusId.trim());
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        return NextResponse.json(
+          { error: 'Invalid statusId filter.' },
+          { status: 400 },
+        );
+      }
+      parsedStatusId = parsed;
+    }
 
     let query = supabaseServer
       .from('service_requests')
@@ -157,18 +205,36 @@ export async function GET(req: Request) {
       .order('created_at', { ascending: false })
       .limit(100);
 
-    if (deptId) {
-      query = query.eq('department_id', Number(deptId));
+    if (!auth.isAdmin) {
+      const allowedDeptIds = auth.departmentIds ?? [];
+      if (allowedDeptIds.length === 0) {
+        return NextResponse.json({ success: true, requests: [] });
+      }
+      if (requestedDeptId !== null) {
+        if (!allowedDeptIds.includes(requestedDeptId)) {
+          return NextResponse.json(
+            { error: 'Forbidden: department outside your access scope.' },
+            { status: 403 },
+          );
+        }
+        query = query.eq('department_id', requestedDeptId);
+      } else {
+        query = query.in('department_id', allowedDeptIds);
+      }
+    } else if (requestedDeptId !== null) {
+      query = query.eq('department_id', requestedDeptId);
     }
-    if (statusId) {
-      query = query.eq('status_id', Number(statusId));
+
+    if (parsedStatusId !== null) {
+      query = query.eq('status_id', parsedStatusId);
     }
 
     const { data, error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ success: true, requests: data ?? [] });
-  } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,5 +1,15 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, BedDouble, CalendarDays, CheckCircle2, ChevronRight, Users, UtensilsCrossed, Waves, Sparkles } from 'lucide-react';
+import { buildRoomExploreSearchQuery, parseRoomExploreFilters } from '@/lib/bookingParams';
+
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Plan & Book Your Stay',
+  description:
+    'Select check-in dates, guest count, and luxury lakeside rooms or dining experiences at Tule Resort Hawassa.',
+};
 
 const steps = [
   ['1', 'Choose experience'],
@@ -8,7 +18,15 @@ const steps = [
   ['4', 'Confirmation'],
 ];
 
-export default function BookingPage() {
+export default async function BookingPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const rawSearch = searchParams ? await searchParams : {};
+  const filters = parseRoomExploreFilters(rawSearch);
+  const exploreQuery = buildRoomExploreSearchQuery(filters);
+  const roomsHref = `/guest/rooms${exploreQuery ? `?${exploreQuery}` : ''}`;
   return (
     <div className="min-h-screen bg-[#F5F0E6] text-[#26312D]">
       <header className="bg-[#163D32] text-[#F5F0E6] border-b border-[#C5A46D]/20">
@@ -49,7 +67,7 @@ export default function BookingPage() {
 
         <section className="mt-8 grid gap-5 md:grid-cols-3">
           <Link
-            href="/guest/rooms"
+            href={roomsHref}
             className="group rounded-[2rem] border border-[#163D32]/10 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[#C5A46D]/60 hover:shadow-[0_20px_45px_rgba(22,61,50,0.08)]"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F5F0E6] text-[#163D32] border border-[#163D32]/10">

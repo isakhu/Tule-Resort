@@ -17,4 +17,27 @@ export const supabaseServer = createClient(supabaseUrl, supabaseServiceRoleKey, 
   auth: { persistSession: false },
 });
 
+export function createSupabaseUserClient(accessToken: string) {
+  const userUrl =
+    process.env.SUPABASE_URL ??
+    process.env.NEXT_PUBLIC_SUPABASE_URL ??
+    (isBuildPhase ? SUPABASE_BUILD_FALLBACK_URL : '');
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    (isBuildPhase ? SUPABASE_BUILD_FALLBACK_KEY : '');
+
+  if (!userUrl || !anonKey) {
+    throw new Error('Missing SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY in environment');
+  }
+
+  return createClient(userUrl, anonKey, {
+    auth: { persistSession: false },
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  });
+}
+
 export default supabaseServer;

@@ -11,6 +11,56 @@ export interface VerifyPaymentInput {
   waitMs?: number;
 }
 
+export interface VerifyEtReceipt {
+  status?: string;
+  amount?: number | string;
+  currency?: string;
+  payer_name?: string;
+  receiver_name?: string;
+  transaction_date?: string;
+}
+
+export interface VerifyEtResult {
+  verified?: boolean;
+  status?: string;
+  bank?: string;
+  bank_name?: string;
+  transactionNumber?: string;
+  receiptNumber?: string;
+  transaction_number?: string;
+  amount?: number | string;
+  total?: number | string;
+  currency?: string;
+  payerName?: string;
+  payer_name?: string;
+  sender?: string;
+  sender_name?: string;
+  receiverName?: string;
+  receiver?: string;
+  receiver_name?: string;
+  transactionDate?: string;
+  receipt?: VerifyEtReceipt;
+}
+
+export interface VerifyEtVerification {
+  processingStatus?: string;
+  requestId?: string;
+  verified?: boolean;
+  status?: string;
+  bank?: string;
+  result?: VerifyEtResult;
+}
+
+export interface VerifyEtApiResponse {
+  requestId?: string;
+  message?: string;
+  errorMessage?: string;
+  completedAt?: string;
+  error?: { message?: string };
+  verification?: VerifyEtVerification;
+  data?: VerifyEtResult | VerifyEtResult[];
+}
+
 export interface VerifyPaymentOutput {
   success: boolean;
   verified: boolean;
@@ -25,12 +75,13 @@ export interface VerifyPaymentOutput {
   message: string;
   amountMatches?: boolean;
   amountDifference?: number;
+  receiverMatches?: boolean;
   alreadyRecorded?: boolean;
   existingEntity?: {
     type: string;
     id: string;
   } | null;
-  raw?: any;
+  raw?: unknown;
 }
 
 const BANK_NAMES: Record<string, string> = {
@@ -127,7 +178,7 @@ export async function verifyBankPayment(input: VerifyPaymentInput): Promise<Veri
   const waitMs = input.waitMs ?? 7000;
 
   // Build payload with bank-specific fields for maximum reliability
-  const payload: Record<string, any> = {
+  const payload: Record<string, string | number | undefined> = {
     reference: rawRef,
   };
 
@@ -179,9 +230,9 @@ export async function verifyBankPayment(input: VerifyPaymentInput): Promise<Veri
       cache: 'no-store',
     });
 
-    let resJson: any = null;
+    let resJson: VerifyEtApiResponse | null = null;
     try {
-      resJson = await response.json();
+      resJson = (await response.json()) as VerifyEtApiResponse;
     } catch {
       return {
         success: false,
@@ -211,7 +262,7 @@ export async function verifyBankPayment(input: VerifyPaymentInput): Promise<Veri
             headers: { 'x-api-key': apiKey },
             cache: 'no-store',
           });
-          const pollJson = await pollRes.json();
+          const pollJson = (await pollRes.json()) as VerifyEtApiResponse & { data?: { processingStatus?: string } };
           if (pollJson?.data?.processingStatus === 'completed' || pollJson?.verification?.processingStatus === 'completed') {
             finalData = pollJson;
             break;
@@ -291,24 +342,48 @@ export async function verifyBankPayment(input: VerifyPaymentInput): Promise<Veri
       finalData?.completedAt ||
       undefined;
 
-    // Compare with expected amount if specified
+    // Compare with expected amount and verified resort receiver
+    let finalVerified = Boolean(isVerified);
     let amountMatches = true;
     let amountDifference: number | undefined = undefined;
+    let receiverMatches = true;
 
-    if (isVerified && input.expectedAmount && detectedAmount > 0) {
-      amountDifference = Math.round((detectedAmount - input.expectedAmount) * 100) / 100;
-      // Allow +/- 1 ETB tolerance for rounding differences
-      if (Math.abs(amountDifference) > 1.0) {
+    if (finalVerified && input.expectedAmount != null && input.expectedAmount > 0) {
+      if (detectedAmount > 0) {
+        amountDifference = Math.round((detectedAmount - input.expectedAmount) * 100) / 100;
+        // Allow +/- 1 ETB tolerance for rounding differences
+        if (Math.abs(amountDifference) > 1.0) {
+          amountMatches = false;
+        }
+      } else {
+        // Bank response omitted paid amount even though expectedAmount is required -> fail closed
         amountMatches = false;
       }
     }
 
+    if (finalVerified && typeof receiverName === 'string' && receiverName.trim()) {
+      const normalizedReceiver = receiverName.toLowerCase().replace(/\s+/g, ' ').trim();
+      const validHolders = Array.from(
+        new Set(Object.values(RESORT_BANK_ACCOUNTS).map((acc) => acc.accountHolder.toLowerCase())),
+      );
+      receiverMatches =
+        normalizedReceiver.includes('yishak') ||
+        normalizedReceiver.includes('tule') ||
+        validHolders.some((holder) => normalizedReceiver.includes(holder));
+    }
+
     let resultMessage = '';
-    if (isVerified) {
-      resultMessage = `Payment of ${detectedAmount ? detectedAmount.toLocaleString() : ''} ${detectedCurrency} verified successfully via ${getFriendlyBankName(detectedBank)}.`;
-      if (!amountMatches && input.expectedAmount) {
-        resultMessage += ` WARNING: Verified amount (${detectedAmount.toLocaleString()} ${detectedCurrency}) does not match expected amount (${input.expectedAmount.toLocaleString()} ${input.expectedCurrency || 'ETB'}).`;
+    if (finalVerified && (!amountMatches || !receiverMatches)) {
+      finalVerified = false;
+      if (!receiverMatches) {
+        resultMessage = `Payment recipient (${receiverName}) does not match Tule Resort official account holder.`;
+      } else if (detectedAmount <= 0 && input.expectedAmount) {
+        resultMessage = `Payment reference was found on ${getFriendlyBankName(detectedBank)}, but the paid amount could not be confirmed against expected ${input.expectedAmount.toLocaleString()} ${input.expectedCurrency || 'ETB'}.`;
+      } else if (input.expectedAmount) {
+        resultMessage = `Verified amount (${detectedAmount.toLocaleString()} ${detectedCurrency}) does not match expected amount (${input.expectedAmount.toLocaleString()} ${input.expectedCurrency || 'ETB'}).`;
       }
+    } else if (finalVerified) {
+      resultMessage = `Payment of ${detectedAmount ? detectedAmount.toLocaleString() : ''} ${detectedCurrency} verified successfully via ${getFriendlyBankName(detectedBank)}.`;
     } else {
       resultMessage =
         finalData?.errorMessage ||
@@ -319,7 +394,7 @@ export async function verifyBankPayment(input: VerifyPaymentInput): Promise<Veri
 
     return {
       success: true,
-      verified: isVerified,
+      verified: finalVerified,
       bank: detectedBank,
       bankName: getFriendlyBankName(detectedBank),
       transactionNumber: detectedTxNumber,
@@ -331,6 +406,7 @@ export async function verifyBankPayment(input: VerifyPaymentInput): Promise<Veri
       message: resultMessage,
       amountMatches,
       amountDifference,
+      receiverMatches,
       raw: finalData,
     };
   } catch (error) {

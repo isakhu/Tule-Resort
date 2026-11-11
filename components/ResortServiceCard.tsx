@@ -17,11 +17,24 @@ export default function ResortServiceCard({ service, index = 0 }: { service: Res
       ? '/guest/restaurant'
       : service.id === 'cafeteria'
         ? '/guest/cafeteria'
-        : `/guest/${service.id}/request`;
+        : service.id === 'pool-passes' || service.id === 'tule-aqua'
+          ? '/guest/tule-aqua'
+          : service.id === 'experiences'
+            ? '/guest/services'
+            : `/guest/${encodeURIComponent(service.id)}/request`;
+
+  const infoUrl =
+    targetUrl.endsWith('/request') ? `/guest/${encodeURIComponent(service.id)}` : targetUrl;
 
   return (
     <article className="group relative overflow-hidden rounded-[2.2rem] border border-[#163D32]/15 bg-[#163D32] shadow-[0_20px_50px_rgba(22,61,50,0.12)] transition duration-500 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(22,61,50,0.2)]">
-      <Link href={targetUrl} className="block relative h-[360px] sm:h-[400px] cursor-pointer">
+      <Link
+        href={targetUrl}
+        tabIndex={-1}
+        aria-hidden="true"
+        className="block relative h-[360px] sm:h-[400px] cursor-pointer"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={service.imageUrl}
           alt={`${service.name} at Tule Resort`}
@@ -44,7 +57,7 @@ export default function ResortServiceCard({ service, index = 0 }: { service: Res
           <h2 className="font-display text-3xl sm:text-4xl font-medium tracking-tight text-[#F5F0E6] group-hover:text-[#C5A46D] transition-colors">
             {service.name}
           </h2>
-          <p className="mt-2 max-w-xl text-xs sm:text-sm leading-relaxed text-[#F5F0E6]/80 font-normal">
+          <p className="mt-2 max-w-xl text-xs sm:text-sm leading-relaxed text-[#F5F0E6]/85 font-normal">
             {service.description}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -65,15 +78,17 @@ export default function ResortServiceCard({ service, index = 0 }: { service: Res
           href={targetUrl}
           className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#C5A46D] hover:bg-[#B8955E] px-5 py-3 text-xs font-black uppercase tracking-[.14em] text-[#163D32] transition duration-200 active:scale-[.98]"
         >
-          Explore service <ChevronRight className="h-4 w-4" />
+          Explore {service.name} <ChevronRight className="h-4 w-4" />
         </Link>
-        <Link
-          href={targetUrl}
-          className="h-11 w-11 shrink-0 rounded-full border border-white/15 bg-white/5 text-[#F5F0E6] flex items-center justify-center hover:bg-white/15 hover:text-[#C5A46D] transition"
-          aria-label={`View Tule Resort information for ${service.name}`}
-        >
-          <ArrowUpRight className="h-4 w-4" />
-        </Link>
+        {infoUrl !== targetUrl && (
+          <Link
+            href={infoUrl}
+            className="h-11 w-11 shrink-0 rounded-full border border-white/15 bg-white/5 text-[#F5F0E6] flex items-center justify-center hover:bg-white/15 hover:text-[#C5A46D] transition"
+            aria-label={`View overview for ${service.name}`}
+          >
+            <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        )}
       </div>
     </article>
   );

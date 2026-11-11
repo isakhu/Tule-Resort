@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   BedDouble,
   Wifi,
@@ -9,25 +10,31 @@ import {
   UtensilsCrossed,
   ShieldCheck,
   Tv,
-  Sparkles,
   Search,
   Compass,
   Check,
-  ArrowRight,
   Phone,
   MapPin,
   Calendar,
   SlidersHorizontal,
-  ChevronRight,
-  Maximize2
+  Users,
 } from 'lucide-react';
 import RoomCard, { type RoomCardData } from './RoomCard';
+import {
+  buildRoomExploreSearchQuery,
+  buildStaySearchQuery,
+  normalizeSortParam,
+  normalizeStayDates,
+  type RoomCategoryId,
+  type RoomExploreFilters,
+} from '@/lib/bookingParams';
 
 interface RoomsExploreClientProps {
   initialRooms: RoomCardData[];
+  initialFilters?: RoomExploreFilters;
 }
 
-const CATEGORIES = [
+const CATEGORIES: Array<{ id: RoomCategoryId; label: string; labelAm: string }> = [
   { id: 'all', label: 'All Accommodations', labelAm: 'ሁሉም ክፍሎች' },
   { id: 'lake', label: 'Lake Hawassa View', labelAm: 'የሐይቅ እይታ' },
   { id: 'garden', label: 'Garden & Pool View', labelAm: 'የአትክልት እና ገንዳ እይታ' },
@@ -36,13 +43,86 @@ const CATEGORIES = [
   { id: 'family', label: 'Family Stays', labelAm: 'የቤተሰብ ክፍሎች' },
 ];
 
-export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientProps) {
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'size'>('featured');
+const DEFAULT_FILTERS: RoomExploreFilters = {
+  category: 'all',
+  q: '',
+  sort: 'featured',
+  availableOnly: false,
+};
+
+export default function RoomsExploreClient({
+  initialRooms,
+  initialFilters = DEFAULT_FILTERS,
+}: RoomsExploreClientProps) {
+  const router = useRouter();
+  const [filters, setFilters] = useState<RoomExploreFilters>(initialFilters);
+  const { category: activeCategory, q: searchQuery, sort: sortBy, checkIn, checkOut, guests, maxPrice, availableOnly } = filters;
+
+  const updateFilters = (patch: Partial<RoomExploreFilters>) => {
+    setFilters((prev) => {
+      const merged: RoomExploreFilters = { ...prev, ...patch };
+      if (patch.checkIn !== undefined || patch.checkOut !== undefined) {
+        const normalizedDates = normalizeStayDates(merged.checkIn, merged.checkOut);
+        merged.checkIn = normalizedDates.checkIn;
+        merged.checkOut = normalizedDates.checkOut ?? (patch.checkOut === '' ? undefined : merged.checkOut);
+        if (merged.checkIn && merged.checkOut && merged.checkOut <= merged.checkIn) {
+          merged.checkOut = undefined;
+        }
+      }
+      const nextQuery = buildRoomExploreSearchQuery(merged);
+      router.replace(`/guest/rooms${nextQuery ? `?${nextQuery}` : ''}`, { scroll: false });
+      return merged;
+    });
+  };
+
+  const resetAllFilters = () => {
+    const emptyFilters: RoomExploreFilters = {
+      category: 'all',
+      q: '',
+      sort: 'featured',
+      availableOnly: false,
+    };
+    setFilters(emptyFilters);
+    router.replace('/guest/rooms', { scroll: false });
+  };
+
+  const hasSelectedDates = Boolean(checkIn && checkOut && checkOut > checkIn);
+  const stayQuery = useMemo(
+    () => buildStaySearchQuery({ checkIn, checkOut, guests }),
+    [checkIn, checkOut, guests]
+  );
+
+  const hasActiveFilters = Boolean(
+    activeCategory !== 'all' ||
+      searchQuery.trim() ||
+      sortBy !== 'featured' ||
+      checkIn ||
+      checkOut ||
+      guests ||
+      maxPrice ||
+      availableOnly
+  );
 
   const filteredRooms = useMemo(() => {
     let result = [...initialRooms];
+
+    // Availability filter
+    if (availableOnly) {
+      result = result.filter((r) => r.isAvailable !== false);
+    }
+
+    // Guest capacity filter
+    if (guests && guests > 0) {
+      result = result.filter((r) => {
+        const cap = Math.max(Number(r.maxOccupancy ?? 0), Number(r.capacity ?? 0));
+        return cap === 0 || cap >= guests;
+      });
+    }
+
+    // Max nightly budget filter
+    if (maxPrice && maxPrice > 0) {
+      result = result.filter((r) => r.price <= maxPrice);
+    }
 
     // Category filter
     if (activeCategory === 'lake') {
@@ -90,7 +170,9 @@ export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientP
           (r.nameAm && r.nameAm.includes(q)) ||
           r.description.toLowerCase().includes(q) ||
           r.amenities?.some((a) => a.toLowerCase().includes(q)) ||
-          r.bedType?.toLowerCase().includes(q)
+          r.bedType?.toLowerCase().includes(q) ||
+          r.view?.toLowerCase().includes(q) ||
+          r.type?.toLowerCase().includes(q)
       );
     }
 
@@ -104,7 +186,7 @@ export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientP
     }
 
     return result;
-  }, [initialRooms, activeCategory, searchQuery, sortBy]);
+  }, [initialRooms, activeCategory, searchQuery, sortBy, availableOnly, guests, maxPrice]);
 
   return (
     <div className="min-h-screen bg-[#F5F0E6] text-[#26312D] antialiased">
@@ -132,7 +214,7 @@ export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientP
 
         <div className="relative mx-auto max-w-7xl px-4 pt-8 pb-14 sm:px-6 md:pt-12 md:pb-20">
           {/* Top Brand & Navigation */}
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 pr-32 sm:pr-44">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-black/20 overflow-hidden shadow-inner">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -282,10 +364,10 @@ export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientP
       </section>
 
       {/* ========================================================================= */}
-      {/* 4. INTERACTIVE CATEGORY TABS, SEARCH & LIVE SORT CONTROLS                */}
+      {/* 4. INTERACTIVE CATEGORY TABS, SEARCH, DATES & LIVE FILTER CONTROLS       */}
       {/* ========================================================================= */}
       <section className="sticky top-0 z-30 border-b border-[#163D32]/10 bg-[#F5F0E6]/95 backdrop-blur-md px-4 py-4 sm:px-6 shadow-xs">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-7xl space-y-3">
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             {/* Category tabs */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
@@ -294,7 +376,8 @@ export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientP
                 return (
                   <button
                     key={cat.id}
-                    onClick={() => setActiveCategory(cat.id)}
+                    type="button"
+                    onClick={() => updateFilters({ category: cat.id })}
                     className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition-all ${
                       active
                         ? 'bg-[#163D32] text-[#F5F0E6] shadow-md shadow-[#163D32]/20 font-black'
@@ -311,13 +394,14 @@ export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientP
             <div className="flex items-center gap-2.5">
               {/* Search box */}
               <div className="relative flex-1 md:w-64">
-                <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8A9B83]" />
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52645D]" />
                 <input
                   type="text"
+                  aria-label="Search rooms and amenities"
                   placeholder="Search rooms, amenities..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-full border border-[#163D32]/15 bg-white pl-9 pr-3.5 py-2 text-xs text-[#26312D] placeholder-[#8A9B83] outline-none focus:border-[#C5A46D] focus:ring-2 focus:ring-[#C5A46D]/20"
+                  onChange={(e) => updateFilters({ q: e.target.value })}
+                  className="w-full rounded-full border border-[#163D32]/15 bg-white pl-9 pr-3.5 py-2 text-xs text-[#26312D] placeholder-[#52645D] outline-none focus:border-[#C5A46D] focus:ring-2 focus:ring-[#C5A46D]/20"
                 />
               </div>
 
@@ -325,7 +409,8 @@ export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientP
               <div className="relative">
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
+                  onChange={(e) => updateFilters({ sort: normalizeSortParam(e.target.value) })}
+                  aria-label="Sort rooms"
                   className="rounded-full border border-[#163D32]/15 bg-white px-4 py-2 text-xs font-bold text-[#26312D] outline-none focus:border-[#C5A46D] cursor-pointer"
                 >
                   <option value="featured">Featured</option>
@@ -336,25 +421,105 @@ export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientP
               </div>
             </div>
           </div>
+
+          {/* Stay dates, guest capacity, price budget & availability bar */}
+          <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs">
+            <label className="inline-flex items-center gap-1.5 rounded-full border border-[#163D32]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#26312D]">
+              <Calendar className="h-3.5 w-3.5 text-[#7A5A27]" />
+              <span className="text-[#52645D]">In</span>
+              <input
+                type="date"
+                value={checkIn || ''}
+                onChange={(e) => updateFilters({ checkIn: e.target.value || undefined })}
+                aria-label="Check-in date"
+                className="bg-transparent text-xs font-bold text-[#163D32] outline-none"
+              />
+            </label>
+
+            <label className="inline-flex items-center gap-1.5 rounded-full border border-[#163D32]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#26312D]">
+              <Calendar className="h-3.5 w-3.5 text-[#7A5A27]" />
+              <span className="text-[#52645D]">Out</span>
+              <input
+                type="date"
+                value={checkOut || ''}
+                min={checkIn || undefined}
+                onChange={(e) => updateFilters({ checkOut: e.target.value || undefined })}
+                aria-label="Check-out date"
+                className="bg-transparent text-xs font-bold text-[#163D32] outline-none"
+              />
+            </label>
+
+            <label className="inline-flex items-center gap-1.5 rounded-full border border-[#163D32]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#26312D]">
+              <Users className="h-3.5 w-3.5 text-[#7A5A27]" />
+              <select
+                value={guests ? String(guests) : ''}
+                onChange={(e) => updateFilters({ guests: e.target.value ? Number(e.target.value) : undefined })}
+                aria-label="Filter by minimum guests"
+                className="bg-transparent text-xs font-bold text-[#163D32] outline-none cursor-pointer"
+              >
+                <option value="">Any Guests</option>
+                <option value="1">1+ Guest</option>
+                <option value="2">2+ Guests</option>
+                <option value="3">3+ Guests</option>
+                <option value="4">4+ Guests</option>
+                <option value="6">6+ Guests</option>
+              </select>
+            </label>
+
+            <label className="inline-flex items-center gap-1.5 rounded-full border border-[#163D32]/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#26312D]">
+              <SlidersHorizontal className="h-3.5 w-3.5 text-[#C5A46D]" />
+              <select
+                value={maxPrice ? String(maxPrice) : ''}
+                onChange={(e) => updateFilters({ maxPrice: e.target.value ? Number(e.target.value) : undefined })}
+                aria-label="Maximum nightly rate"
+                className="bg-transparent text-xs font-bold text-[#163D32] outline-none cursor-pointer"
+              >
+                <option value="">Any Rate</option>
+                <option value="6000">Up to 6,000 ETB</option>
+                <option value="9000">Up to 9,000 ETB</option>
+                <option value="12000">Up to 12,000 ETB</option>
+                <option value="18000">Up to 18,000 ETB</option>
+              </select>
+            </label>
+
+            <button
+              type="button"
+              onClick={() => updateFilters({ availableOnly: !availableOnly })}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-bold transition ${
+                availableOnly
+                  ? 'bg-[#163D32] text-[#C5A46D] border border-[#163D32]'
+                  : 'border border-[#163D32]/15 bg-white text-[#26312D] hover:border-[#C5A46D]'
+              }`}
+            >
+              <Check className="h-3.5 w-3.5" />
+              {hasSelectedDates ? 'Available For Dates' : 'Available Only'}
+            </button>
+          </div>
         </div>
       </section>
 
       {/* ========================================================================= */}
       {/* 5. ROOM CARDS GRID                                                        */}
       {/* ========================================================================= */}
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 md:py-14">
+      <main id="rooms-results" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 md:py-14 scroll-mt-36">
         {/* Results count label */}
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-[#8A9B83]">
-            Showing <span className="text-[#163D32] font-black">{filteredRooms.length}</span> luxury rooms &amp; suites
-          </p>
-          {(activeCategory !== 'all' || searchQuery) && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#52645D]">
+              Showing <span className="text-[#163D32] font-black">{filteredRooms.length}</span> luxury rooms &amp; suites
+            </p>
+            {hasSelectedDates && (
+              <p className="text-[11px] text-[#163D32]/85 mt-0.5 font-medium">
+                Stay window: <strong>{checkIn}</strong> to <strong>{checkOut}</strong>
+                {guests ? ` · ${guests}+ Guests` : ''}
+              </p>
+            )}
+          </div>
+          {hasActiveFilters && (
             <button
-              onClick={() => {
-                setActiveCategory('all');
-                setSearchQuery('');
-              }}
-              className="text-xs font-bold text-[#C5A46D] hover:underline"
+              type="button"
+              onClick={resetAllFilters}
+              className="text-xs font-bold text-[#7A5A27] hover:underline"
             >
               Reset Filters
             </button>
@@ -364,21 +529,24 @@ export default function RoomsExploreClient({ initialRooms }: RoomsExploreClientP
         {filteredRooms.length > 0 ? (
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {filteredRooms.map((room) => (
-              <RoomCard key={room.id} room={room} />
+              <RoomCard
+                key={room.id}
+                room={room}
+                stayQuery={stayQuery}
+                hasSelectedDates={hasSelectedDates}
+              />
             ))}
           </div>
         ) : (
           <div className="rounded-3xl border border-[#163D32]/15 bg-white p-12 text-center">
-            <Compass className="mx-auto h-12 w-12 text-[#C5A46D]" />
-            <h3 className="mt-4 text-xl font-bold text-[#26312D]">No rooms match your search</h3>
-            <p className="mt-2 text-sm text-[#8A9B83]">
-              Try adjusting your search query or reset your view filter to explore all accommodations.
+            <Compass className="mx-auto h-12 w-12 text-[#7A5A27]" />
+            <h2 className="mt-4 text-xl font-bold text-[#26312D]">No rooms match your search</h2>
+            <p className="mt-2 text-sm text-[#52645D]">
+              Try adjusting your dates, guest count, or view filter to explore all accommodations.
             </p>
             <button
-              onClick={() => {
-                setActiveCategory('all');
-                setSearchQuery('');
-              }}
+              type="button"
+              onClick={resetAllFilters}
               className="mt-6 rounded-full bg-[#163D32] hover:bg-[#C5A46D] hover:text-[#163D32] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-[#F5F0E6] transition"
             >
               Show All Accommodations

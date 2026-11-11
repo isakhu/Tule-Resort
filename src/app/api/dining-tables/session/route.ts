@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import supabaseServer from '@/lib/supabaseServer';
+import { getVerifiedGuestStay } from '@/lib/guestStayCookie';
 
-const STAY_COOKIE_NAME = 'tule_guest_stay';
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SESSION_TTL_MS = 6 * 60 * 60 * 1000;
 
 export async function POST(req: Request) {
   try {
@@ -13,20 +14,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'tableToken is required.' }, { status: 400 });
     }
 
-    const cookieStore = await cookies();
-    const rawStay = cookieStore.get(STAY_COOKIE_NAME)?.value;
-    let stayId: string | null = null;
-    let stayGuestName: string | null = null;
-
-    if (rawStay) {
-      try {
-        const parsed = JSON.parse(rawStay);
-        stayId = parsed.id;
-        stayGuestName = parsed.guest_name;
-      } catch {
-        // ignore
-      }
-    }
+    const verifiedStay = await getVerifiedGuestStay();
+    const stayId = verifiedStay?.id ?? null;
+    const stayGuestName = verifiedStay?.guest_name ?? null;
 
     const { data, error } = await supabaseServer.rpc('get_or_create_table_session', {
       p_table_token: tableToken.trim(),
@@ -64,29 +54,67 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: 'tableToken is required.' }, { status: 400 });
     }
 
-    // 1. Fetch table
-    const { data: table, error: tableErr } = await supabaseServer
+    // 1. Fetch table (avoid PostgREST filter interpolation & invalid UUID errors)
+    const cleanTableToken = tableToken.trim().replace(/[(),*]/g, '');
+    let tableQuery = supabaseServer
       .from('dining_tables')
       .select('id, table_number, section, capacity, status, is_active, qr_token')
-      .or(`qr_token.eq.${tableToken.trim()},id.eq.${tableToken.trim()}`)
-      .eq('is_active', true)
-      .maybeSingle();
+      .eq('is_active', true);
+
+    tableQuery = UUID_REGEX.test(cleanTableToken)
+      ? tableQuery.or(`qr_token.eq.${cleanTableToken},id.eq.${cleanTableToken}`)
+      : tableQuery.eq('qr_token', cleanTableToken);
+
+    const { data: table, error: tableErr } = await tableQuery.maybeSingle();
 
     if (tableErr || !table) {
       return NextResponse.json({ success: false, error: 'Dining table not found.' }, { status: 404 });
     }
 
-    // 2. Fetch session if token provided
-    let activeSession: any = null;
-    let activeOrders: any[] = [];
+    // 1b. Close expired active table sessions (> 6h) cleanly and free stale occupied tables
+    const ttlCutoffIso = new Date(Date.now() - SESSION_TTL_MS).toISOString();
+    let sessionExpired = false;
 
-    if (sessionToken) {
+    await supabaseServer
+      .from('table_sessions')
+      .update({ status: 'closed', closed_at: new Date().toISOString() })
+      .eq('table_id', table.id)
+      .eq('status', 'active')
+      .lt('opened_at', ttlCutoffIso);
+
+    if (table.status === 'occupied') {
+      const { data: unexpiredSessions } = await supabaseServer
+        .from('table_sessions')
+        .select('id')
+        .eq('table_id', table.id)
+        .eq('status', 'active')
+        .gte('opened_at', ttlCutoffIso)
+        .limit(1);
+
+      if (!unexpiredSessions || unexpiredSessions.length === 0) {
+        await supabaseServer
+          .from('dining_tables')
+          .update({ status: 'available', updated_at: new Date().toISOString() })
+          .eq('id', table.id)
+          .eq('status', 'occupied');
+
+        table.status = 'available';
+        sessionExpired = Boolean(sessionToken);
+      }
+    }
+
+    // 2. Fetch active unexpired session if token provided
+    let activeSession: Record<string, unknown> | null = null;
+    let activeOrders: Array<Record<string, unknown>> = [];
+
+    if (sessionToken && sessionToken.trim()) {
       const { data: session } = await supabaseServer
         .from('table_sessions')
         .select('*')
         .eq('table_id', table.id)
         .eq('session_token', sessionToken.trim())
         .eq('status', 'active')
+        .gte('opened_at', ttlCutoffIso)
         .maybeSingle();
 
       if (session) {
@@ -113,6 +141,8 @@ export async function GET(req: Request) {
           .order('created_at', { ascending: false });
 
         activeOrders = orders ?? [];
+      } else {
+        sessionExpired = true;
       }
     }
 
@@ -121,6 +151,7 @@ export async function GET(req: Request) {
       table,
       session: activeSession,
       orders: activeOrders,
+      sessionExpired,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Error querying dining table.';

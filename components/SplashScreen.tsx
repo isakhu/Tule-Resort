@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 /**
  * Luxury splash / preloader screen.
@@ -8,22 +9,44 @@ import { useEffect, useState } from "react";
  * Fades out gracefully once the app has hydrated.
  */
 export default function SplashScreen() {
-  const [phase, setPhase] = useState<"visible" | "exit" | "gone">("visible");
+  const pathname = usePathname();
+  const isOperationalRoute = Boolean(
+    pathname?.startsWith("/staff") || pathname?.startsWith("/admin")
+  );
+  const [phase, setPhase] = useState<"visible" | "exit" | "gone">(
+    isOperationalRoute ? "gone" : "visible"
+  );
 
   useEffect(() => {
-    const exitTimer = setTimeout(() => setPhase("exit"), 1800);
-    const removeTimer = setTimeout(() => setPhase("gone"), 2600);
+    const win = window as Window & { __tuleSplashDone?: boolean };
+    if (isOperationalRoute) {
+      win.__tuleSplashDone = true;
+      window.dispatchEvent(new CustomEvent("tule-splash-exit"));
+      return;
+    }
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const exitDelay = reduceMotion ? 200 : 1800;
+    const removeDelay = reduceMotion ? 350 : 2600;
+
+    const exitTimer = setTimeout(() => {
+      setPhase("exit");
+      win.__tuleSplashDone = true;
+      window.dispatchEvent(new CustomEvent("tule-splash-exit"));
+    }, exitDelay);
+    const removeTimer = setTimeout(() => setPhase("gone"), removeDelay);
 
     return () => {
       clearTimeout(exitTimer);
       clearTimeout(removeTimer);
     };
-  }, []);
+  }, [isOperationalRoute]);
 
-  if (phase === "gone") return null;
+  if (isOperationalRoute || phase === "gone") return null;
 
   return (
     <div
+      id="tule-splash-screen"
       aria-hidden="true"
       style={{
         position: "fixed",
@@ -121,7 +144,7 @@ export default function SplashScreen() {
         >
           <div
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontFamily: "var(--font-cormorant), Georgia, serif",
               fontSize: "30px",
               fontWeight: 600,
               letterSpacing: "0.06em",
@@ -133,7 +156,7 @@ export default function SplashScreen() {
           <div
             style={{
               marginTop: "6px",
-              fontFamily: "'Bricolage Grotesque', system-ui, sans-serif",
+              fontFamily: "var(--font-bricolage), system-ui, sans-serif",
               fontSize: "9px",
               fontWeight: 700,
               textTransform: "uppercase",
@@ -194,7 +217,7 @@ export default function SplashScreen() {
           to   { width: 100%; }
         }
         @media (prefers-reduced-motion: reduce) {
-          [aria-hidden="true"] * {
+          #tule-splash-screen * {
             animation-duration: 0.01ms !important;
             animation-iteration-count: 1 !important;
             transition-duration: 0.01ms !important;

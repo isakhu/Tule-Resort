@@ -1,43 +1,80 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
-import {
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  Flame,
-  Layers,
-  Filter,
-  RefreshCw,
-  Utensils
-} from 'lucide-react';
+import { AlertCircle, Clock, RefreshCw, Utensils, X } from 'lucide-react';
 import supabase from '@/lib/supabaseClient';
+import {
+  deriveTicketStations,
+  formatOrderLocationLabel,
+  isPreparingOrInProgressStatus,
+  isReadyStatus,
+  KITCHEN_STATIONS,
+  type KitchenStation,
+  ORDER_STATUS_ID,
+} from '@/lib/orderStatuses';
+
+interface KitchenTicketItem {
+  name: string;
+  quantity: number;
+  category?: string;
+}
 
 interface KitchenTicket {
   id: string;
   orderNumber: string;
   tableLabel: string;
-  station: 'Grill' | 'Hot Wot' | 'Salad & Cold' | 'Bakery' | 'General Kitchen';
-  items: { name: string; quantity: number; notes?: string }[];
+  station: KitchenStation;
+  stations: KitchenStation[];
+  items: KitchenTicketItem[];
+  orderNotes?: string;
   status: 'pending' | 'preparing' | 'ready';
-  statusId?: number;
+  statusId: number;
   elapsedMinutes: number;
   serverName: string;
 }
 
+interface KitchenOrderRow {
+  id: string;
+  guest_name?: string | null;
+  room_number?: string | null;
+  notes?: string | null;
+  status_id?: number | null;
+  created_at?: string | null;
+  status?: { id?: number; name?: string | null } | Array<{ id?: number; name?: string | null }> | null;
+  dining_table?: { table_number?: string | null } | Array<{ table_number?: string | null }> | null;
+  items?: Array<{
+    id: string;
+    quantity?: number | null;
+    menu_item?:
+      | { id?: string; name?: string | null; category?: string | null }
+      | Array<{ id?: string; name?: string | null; category?: string | null }>
+      | null;
+  }> | null;
+}
+
+function unwrapSingle<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
 export default function KitchenStationPage() {
-  const [stationFilter, setStationFilter] = useState<string>('All Stations');
+  const [stationFilter, setStationFilter] = useState<'All Stations' | KitchenStation>('All Stations');
   const [tickets, setTickets] = useState<KitchenTicket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'live' | 'reconnecting'>('live');
 
   const fetchLiveKitchenOrders = useCallback(async (isSilent = false) => {
     try {
-      if (!isSilent) setLoading(true);
+      if (!isSilent) {
+        setLoading(true);
+      }
       const { data, error } = await supabase
         .from('orders')
-        .select(`
+        .select(
+          `
           id,
           guest_name,
           room_number,
@@ -53,13 +90,23 @@ export default function KitchenStationPage() {
             price,
             menu_item:menu_items(id, name, category)
           )
-        `)
-        .in('status_id', [1, 2, 7, 3, 8])
+        `
+        )
+        .in('status_id', [
+          ORDER_STATUS_ID.PENDING,
+          ORDER_STATUS_ID.CONFIRMED,
+          ORDER_STATUS_ID.ACCEPTED,
+          ORDER_STATUS_ID.PREPARING,
+          ORDER_STATUS_ID.IN_PROGRESS,
+          ORDER_STATUS_ID.READY,
+        ])
         .order('created_at', { ascending: true });
 
       if (error) {
         console.warn('Could not fetch kitchen orders from Supabase:', error.message);
-        setTickets([]);
+        if (!isSilent) {
+          setActionError(`Unable to sync kitchen queue: ${error.message}`);
+        }
         return;
       }
 
@@ -68,36 +115,48 @@ export default function KitchenStationPage() {
         return;
       }
 
-      const formatted: KitchenTicket[] = data.map((o: any) => {
+      const formatted: KitchenTicket[] = (data as KitchenOrderRow[]).map((o) => {
         const createdAt = o.created_at ? new Date(o.created_at).getTime() : Date.now();
         const elapsedMinutes = Math.max(1, Math.round((Date.now() - createdAt) / 60000));
 
-        const items = (o.items || []).map((it: any) => ({
-          name: it.menu_item?.name || 'Dish Item',
-          quantity: Number(it.quantity) || 1,
-          notes: it.menu_item?.category || undefined,
-        }));
+        const items: KitchenTicketItem[] = (o.items || []).map((it) => {
+          const mi = unwrapSingle(it.menu_item);
+          return {
+            name: mi?.name || 'Dish Item',
+            quantity: Number(it.quantity) || 1,
+            category: mi?.category || undefined,
+          };
+        });
 
-        const stName = (o.status?.name || '').toLowerCase();
-        const isPrep = stName.includes('prep') || stName.includes('progress') || o.status_id === 3 || o.status_id === 8;
-        const status: KitchenTicket['status'] = isPrep ? 'preparing' : 'pending';
+        const st = unwrapSingle(o.status);
+        const dt = unwrapSingle(o.dining_table);
+        const statusId = Number(o.status_id ?? ORDER_STATUS_ID.PENDING);
 
-        const tableLabel = o.dining_table?.table_number
-          ? o.dining_table.table_number
-          : o.room_number
-          ? `Room ${o.room_number}`
-          : o.guest_name
-          ? `Guest: ${o.guest_name}`
-          : 'Dine-In';
+        let status: KitchenTicket['status'] = 'pending';
+        if (isReadyStatus(statusId, st?.name)) {
+          status = 'ready';
+        } else if (isPreparingOrInProgressStatus(statusId, st?.name)) {
+          status = 'preparing';
+        }
+
+        const stations = deriveTicketStations(items);
+        const tableLabel = formatOrderLocationLabel({
+          tableNumber: dt?.table_number,
+          roomNumber: o.room_number,
+          guestName: o.guest_name,
+          fallback: 'Dine-In',
+        });
 
         return {
           id: o.id,
           orderNumber: `#${String(o.id).slice(-4).toUpperCase()}`,
           tableLabel,
-          station: 'General Kitchen',
+          station: stations[0],
+          stations,
           items,
+          orderNotes: o.notes?.trim() || undefined,
           status,
-          statusId: o.status_id,
+          statusId,
           elapsedMinutes,
           serverName: 'Tule Waitstaff',
         };
@@ -106,20 +165,21 @@ export default function KitchenStationPage() {
       setTickets(formatted);
     } catch (err) {
       console.warn('Error loading kitchen orders:', err);
-      if (!isSilent) setTickets([]);
+      if (!isSilent) {
+        setActionError('Network error syncing kitchen orders.');
+      }
     } finally {
       if (!isSilent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchLiveKitchenOrders();
+    void Promise.resolve().then(() => fetchLiveKitchenOrders(true));
 
-    // 1. Live subscription with status monitoring
     const channel = supabase
       .channel('kitchen:orders-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchLiveKitchenOrders(true);
+        void fetchLiveKitchenOrders(true);
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
@@ -129,15 +189,13 @@ export default function KitchenStationPage() {
         }
       });
 
-    // 2. Resilience: 15-second background catch-up polling
     const pollInterval = setInterval(() => {
-      fetchLiveKitchenOrders(true);
+      void fetchLiveKitchenOrders(true);
     }, 15000);
 
-    // 3. Fast reconnect upon tablet wake or online event
     const handleOnline = () => {
       setConnectionStatus('live');
-      fetchLiveKitchenOrders(true);
+      void fetchLiveKitchenOrders(true);
     };
 
     const handleOffline = () => {
@@ -146,7 +204,7 @@ export default function KitchenStationPage() {
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        fetchLiveKitchenOrders(true);
+        void fetchLiveKitchenOrders(true);
       }
     };
 
@@ -163,40 +221,66 @@ export default function KitchenStationPage() {
     };
   }, [fetchLiveKitchenOrders]);
 
-  const handleUpdateStatus = async (ticketId: string, nextStatus: KitchenTicket['status']) => {
+  const handleUpdateStatus = async (
+    ticketId: string,
+    target: 'preparing' | 'ready' | 'delivered'
+  ) => {
+    if (updatingId === ticketId) return;
+
     const currentTicket = tickets.find((t) => t.id === ticketId);
-    const expectedStatusId = currentTicket?.statusId;
+    if (!currentTicket) return;
 
-    // Optimistic UI update
+    const expectedStatusId = currentTicket.statusId;
+    const targetStatusId =
+      target === 'preparing'
+        ? ORDER_STATUS_ID.PREPARING
+        : target === 'ready'
+        ? ORDER_STATUS_ID.READY
+        : ORDER_STATUS_ID.DELIVERED;
+
+    setUpdatingId(ticketId);
+    setActionError(null);
+
+    const previousTickets = tickets;
     setTickets((prev) =>
-      prev.map((t) => (t.id === ticketId ? { ...t, status: nextStatus, statusId: nextStatus === 'preparing' ? 3 : nextStatus === 'ready' ? 4 : 1 } : t))
+      target === 'delivered'
+        ? prev.filter((t) => t.id !== ticketId)
+        : prev.map((t) =>
+            t.id === ticketId ? { ...t, status: target, statusId: targetStatusId } : t
+          )
     );
-
-    // Target status ID: 3 = Preparing, 4 = Ready
-    const targetStatusId = nextStatus === 'preparing' ? 3 : nextStatus === 'ready' ? 4 : 1;
 
     try {
       const { error } = await supabase.rpc('update_entity_status', {
         p_entity_type: 'order',
         p_entity_id: ticketId,
         p_to_status_id: targetStatusId,
-        p_notes: `Kitchen marked ticket as ${nextStatus}`,
+        p_notes: `Kitchen marked ticket as ${target}`,
         p_expected_status_id: expectedStatusId ?? null,
       });
 
       if (error) {
-        console.warn('Failed to update kitchen ticket status:', error.message);
-        // Refresh immediately on state conflict or other error
-        fetchLiveKitchenOrders();
+        setTickets(previousTickets);
+        setActionError(
+          error.message.includes('STATE_CONFLICT')
+            ? `Conflict updating ${currentTicket.orderNumber}: status changed elsewhere. Queue refreshed.`
+            : error.message || `Failed to update ${currentTicket.orderNumber}.`
+        );
+        void fetchLiveKitchenOrders(true);
       }
     } catch (err) {
-      console.warn('Failed to update kitchen ticket status in Supabase:', err);
-      fetchLiveKitchenOrders();
+      setTickets(previousTickets);
+      setActionError(
+        err instanceof Error ? err.message : `Connection error updating ${currentTicket.orderNumber}.`
+      );
+      void fetchLiveKitchenOrders(true);
+    } finally {
+      setUpdatingId(null);
     }
   };
 
   const filteredTickets = tickets.filter(
-    (t) => stationFilter === 'All Stations' || t.station === stationFilter
+    (t) => stationFilter === 'All Stations' || t.stations.includes(stationFilter)
   );
 
   return (
@@ -204,31 +288,37 @@ export default function KitchenStationPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-[#0B252C] border border-[#C9902F]/30 p-1 flex items-center justify-center shadow-md">
+          <div className="h-11 w-11 rounded-2xl bg-[#163D32] border border-[#C5A46D]/35 p-1 flex items-center justify-center shadow-sm">
             <Image
               src="/tule-resort-logo.png"
-              alt="Tule Logo"
+              alt="Tule Resort Logo"
               width={36}
               height={36}
               className="object-contain"
             />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-[#0B252C] tracking-tight">
+            <p className="text-[11px] font-bold uppercase tracking-[.22em] text-[#7A5A27]">
+              Culinary Dispatch
+            </p>
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold text-[#163D32] tracking-tight">
               Kitchen Display System (KDS)
             </h1>
-            <p className="text-xs text-gray-500 font-medium">Live culinary station tickets and preparation timers</p>
+            <p className="text-xs text-[#52645D] font-medium">
+              Live culinary station tickets and preparation timers
+            </p>
           </div>
         </div>
 
         {/* Station Tabs, Connection Status & Refresh */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Connection Resilience Indicator */}
           <div
-            className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-bold border transition-colors shadow-2xs ${
+            role="status"
+            aria-live="polite"
+            className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[11px] font-bold border transition-colors ${
               connectionStatus === 'live'
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border-amber-300 animate-pulse'
+                ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                : 'bg-amber-50 text-amber-900 border-amber-300 animate-pulse'
             }`}
             title={
               connectionStatus === 'live'
@@ -238,29 +328,34 @@ export default function KitchenStationPage() {
           >
             <span
               className={`h-2 w-2 rounded-full ${
-                connectionStatus === 'live' ? 'bg-emerald-500' : 'bg-amber-500'
+                connectionStatus === 'live' ? 'bg-emerald-600' : 'bg-amber-600'
               }`}
             />
-            <span>{connectionStatus === 'live' ? 'Live KDS' : 'Reconnecting (Polling Active)'}</span>
+            <span>{connectionStatus === 'live' ? 'Live KDS' : 'Reconnecting (Polling)'}</span>
           </div>
 
           <button
+            type="button"
             onClick={() => fetchLiveKitchenOrders()}
-            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-2xs"
+            className="flex items-center gap-1.5 rounded-xl border border-[#D5CCB9] bg-white px-3 py-1.5 text-xs font-bold text-[#163D32] hover:bg-[#F5F0E6] transition-colors shadow-2xs"
             title="Refresh kitchen orders"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-[#0E7480] ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-3.5 w-3.5 text-[#7A5A27] ${loading ? 'animate-spin' : ''}`}
+              aria-hidden="true"
+            />
             <span>Sync</span>
           </button>
 
-          {(['All Stations', 'Grill', 'Hot Wot', 'Salad & Cold'] as const).map((st) => (
+          {(['All Stations', ...KITCHEN_STATIONS] as const).map((st) => (
             <button
               key={st}
+              type="button"
               onClick={() => setStationFilter(st)}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors ${
                 stationFilter === st
-                  ? 'bg-[#0B252C] text-[#F8D77A] shadow-sm'
-                  : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                  ? 'bg-[#163D32] text-[#F5F0E6] border border-[#C5A46D]/30 shadow-xs'
+                  : 'bg-white text-[#52645D] hover:bg-[#EDE6D8] border border-[#E6DFD1]'
               }`}
             >
               {st}
@@ -269,15 +364,36 @@ export default function KitchenStationPage() {
         </div>
       </div>
 
+      {actionError && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-900"
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{actionError}</span>
+          </div>
+          <button
+            type="button"
+            aria-label="Dismiss error"
+            onClick={() => setActionError(null)}
+            className="rounded-lg p-1 text-rose-700 hover:bg-rose-100"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
       {/* Tickets Grid or Clean Empty State */}
       {filteredTickets.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-gray-200 bg-white/70 p-12 text-center max-w-xl mx-auto shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0E7480]/10 text-[#0E7480] mb-4">
-            <Utensils className="h-7 w-7" />
+        <div className="rounded-3xl border border-dashed border-[#D5CCB9] bg-white p-12 text-center max-w-xl mx-auto shadow-xs">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F5F0E6] border border-[#E6DFD1] text-[#7A5A27] mb-4">
+            <Utensils className="h-7 w-7" aria-hidden="true" />
           </div>
-          <h3 className="text-base font-extrabold text-[#0B252C]">Kitchen Queue Clear</h3>
-          <p className="mt-1 text-xs text-gray-500 leading-relaxed max-w-sm mx-auto font-medium">
-            No culinary tickets currently waiting for preparation. New guest orders from dining tables or room service will appear here instantly with live timers.
+          <h2 className="font-display text-lg font-semibold text-[#163D32]">Kitchen Queue Clear</h2>
+          <p className="mt-1 text-xs text-[#52645D] leading-relaxed max-w-sm mx-auto font-medium">
+            No culinary tickets currently waiting for preparation. New guest orders from dining
+            tables or room service will appear here instantly with live timers.
           </p>
         </div>
       ) : (
@@ -288,82 +404,108 @@ export default function KitchenStationPage() {
             return (
               <div
                 key={ticket.id}
-                className={`rounded-3xl bg-white p-5 shadow-sm border flex flex-col justify-between transition-all ${
+                className={`rounded-3xl bg-white p-5 shadow-xs border flex flex-col justify-between transition-colors ${
                   isDelayed
                     ? 'border-red-300 ring-2 ring-red-100'
                     : ticket.status === 'ready'
-                    ? 'border-emerald-200 bg-emerald-50/10'
-                    : 'border-gray-200/80 hover:border-[#0E7480]/40'
+                    ? 'border-emerald-300 bg-emerald-50/15'
+                    : 'border-[#E6DFD1] hover:border-[#C5A46D]'
                 }`}
               >
                 {/* Ticket Top Banner */}
                 <div>
-                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#E6DFD1]">
                     <div className="flex items-center gap-2">
-                      <span className="text-base font-black text-[#0B252C]">{ticket.orderNumber}</span>
-                      <span className="rounded-lg bg-[#0E7480]/10 px-2 py-0.5 text-[10px] font-black text-[#0E7480]">
+                      <span className="text-base font-bold text-[#163D32]">
+                        {ticket.orderNumber}
+                      </span>
+                      <span className="rounded-lg bg-[#163D32]/10 px-2 py-0.5 text-[11px] font-bold text-[#163D32]">
                         {ticket.tableLabel}
                       </span>
                     </div>
 
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
                         isDelayed
-                          ? 'bg-red-100 text-red-700 animate-pulse'
-                          : 'bg-gray-100 text-gray-600'
+                          ? 'bg-red-100 text-red-800 animate-pulse'
+                          : 'bg-[#F5F0E6] text-[#52645D] border border-[#E6DFD1]'
                       }`}
                     >
-                      <Clock className="h-3 w-3" />
+                      <Clock className="h-3 w-3" aria-hidden="true" />
                       {ticket.elapsedMinutes} min
                     </span>
                   </div>
 
-                  <div className="py-2 text-[10px] text-gray-400 flex items-center justify-between">
-                    <span>Station: <strong className="text-gray-700">{ticket.station}</strong></span>
+                  <div className="py-2 text-[11px] text-[#52645D] flex items-center justify-between">
+                    <span>
+                      Station: <strong className="text-[#163D32]">{ticket.station}</strong>
+                    </span>
                     <span>Server: {ticket.serverName}</span>
                   </div>
 
                   {/* Items List */}
                   <div className="mt-2 space-y-2.5">
                     {ticket.items.map((item, idx) => (
-                      <div key={idx} className="rounded-xl bg-[#F8FAFC] p-2.5 text-xs border border-gray-100">
-                        <div className="flex items-center justify-between font-bold text-gray-900">
+                      <div
+                        key={idx}
+                        className="rounded-xl bg-[#F5F0E6]/65 p-2.5 text-xs border border-[#E6DFD1]"
+                      >
+                        <div className="flex items-center justify-between font-bold text-[#163D32]">
                           <span>{item.name}</span>
-                          <span className="text-sm font-black text-[#C9902F]">×{item.quantity}</span>
+                          <span className="text-sm font-bold text-[#7A5A27]">×{item.quantity}</span>
                         </div>
-                        {item.notes && (
-                          <p className="text-[10px] text-amber-700 font-semibold mt-0.5">
-                            Note: {item.notes}
+                        {item.category && (
+                          <p className="text-[11px] text-[#52645D] font-semibold mt-0.5">
+                            {item.category}
                           </p>
                         )}
                       </div>
                     ))}
+                    {ticket.orderNotes && (
+                      <p className="rounded-xl bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-900 border border-amber-200">
+                        Order Note: {ticket.orderNotes}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="pt-4 mt-4 border-t border-gray-100">
+                <div className="pt-4 mt-4 border-t border-[#E6DFD1]">
                   {ticket.status === 'pending' && (
                     <button
+                      type="button"
+                      disabled={updatingId === ticket.id}
                       onClick={() => handleUpdateStatus(ticket.id, 'preparing')}
-                      className="w-full rounded-xl bg-[#0E7480] py-2.5 text-xs font-bold text-white shadow-md shadow-[#0E7480]/20 hover:bg-[#0A5C66] transition-colors"
+                      className="w-full rounded-xl bg-[#163D32] hover:bg-[#0F2D24] border border-[#C5A46D]/30 py-2.5 text-xs font-bold text-[#F5F0E6] shadow-xs transition-colors disabled:opacity-50"
                     >
-                      Start Preparing
+                      {updatingId === ticket.id ? 'Updating...' : 'Start Preparing'}
                     </button>
                   )}
 
                   {ticket.status === 'preparing' && (
                     <button
+                      type="button"
+                      disabled={updatingId === ticket.id}
                       onClick={() => handleUpdateStatus(ticket.id, 'ready')}
-                      className="w-full rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-700 transition-colors"
+                      className="w-full rounded-xl bg-emerald-700 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 transition-colors disabled:opacity-50"
                     >
-                      ✓ Mark Ready for Pickup
+                      {updatingId === ticket.id ? 'Updating...' : '✓ Mark Ready for Pickup'}
                     </button>
                   )}
 
                   {ticket.status === 'ready' && (
-                    <div className="rounded-xl bg-emerald-50 py-2 text-center text-xs font-black text-emerald-700">
-                      Ready for Server
+                    <div className="space-y-2">
+                      <div className="rounded-xl bg-emerald-50 py-2 text-center text-xs font-bold text-emerald-900 border border-emerald-200">
+                        Ready for Server
+                      </div>
+                      <button
+                        type="button"
+                        disabled={updatingId === ticket.id}
+                        onClick={() => handleUpdateStatus(ticket.id, 'delivered')}
+                        className="w-full rounded-xl border border-[#D5CCB9] bg-white py-2 text-[11px] font-bold text-[#163D32] hover:bg-[#F5F0E6] transition-colors disabled:opacity-50"
+                      >
+                        {updatingId === ticket.id ? 'Clearing...' : 'Mark Served / Picked Up'}
+                      </button>
                     </div>
                   )}
                 </div>

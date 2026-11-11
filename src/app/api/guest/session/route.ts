@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import supabaseServer from '@/lib/supabaseServer';
-
-const COOKIE_NAME = 'tule_guest_stay';
+import {
+  GUEST_STAY_COOKIE_NAME,
+  GUEST_STAY_COOKIE_OPTIONS,
+  signGuestStayCookie,
+  verifyGuestStayCookie,
+} from '@/lib/guestStayCookie';
 
 export interface GuestStayData {
   id: string;
@@ -48,15 +52,9 @@ export async function POST(req: Request) {
 
     const stay: GuestStayData = data.stay;
 
-    // Set HTTP-only secure cookie
+    // Set HTTP-only HMAC-signed secure cookie
     const cookieStore = await cookies();
-    cookieStore.set(COOKIE_NAME, JSON.stringify(stay), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
+    cookieStore.set(GUEST_STAY_COOKIE_NAME, signGuestStayCookie(stay), GUEST_STAY_COOKIE_OPTIONS);
 
     return NextResponse.json({ success: true, stay });
   } catch (err) {
@@ -68,17 +66,15 @@ export async function POST(req: Request) {
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const raw = cookieStore.get(COOKIE_NAME)?.value;
+    const raw = cookieStore.get(GUEST_STAY_COOKIE_NAME)?.value;
 
     if (!raw) {
       return NextResponse.json({ authenticated: false });
     }
 
-    let parsedStay: GuestStayData;
-    try {
-      parsedStay = JSON.parse(raw);
-    } catch {
-      cookieStore.delete(COOKIE_NAME);
+    const parsedStay = verifyGuestStayCookie<GuestStayData>(raw);
+    if (!parsedStay) {
+      cookieStore.delete(GUEST_STAY_COOKIE_NAME);
       return NextResponse.json({ authenticated: false });
     }
 
@@ -91,7 +87,7 @@ export async function GET() {
       .maybeSingle();
 
     if (error || !dbStay) {
-      cookieStore.delete(COOKIE_NAME);
+      cookieStore.delete(GUEST_STAY_COOKIE_NAME);
       return NextResponse.json({ authenticated: false, reason: 'Stay is no longer active or checked in.' });
     }
 
@@ -120,7 +116,7 @@ export async function GET() {
 export async function DELETE() {
   try {
     const cookieStore = await cookies();
-    cookieStore.delete(COOKIE_NAME);
+    cookieStore.delete(GUEST_STAY_COOKIE_NAME);
     return NextResponse.json({ success: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Error clearing guest session.';

@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Luxury resort booking, lakeside restaurant dining, and instant QR table ordering at Lake Hawassa, Ethiopia.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#0B252C',
-    theme_color: '#0B252C',
+    background_color: '#163D32',
+    theme_color: '#163D32',
     orientation: 'portrait-primary',
     scope: '/',
     icons: [

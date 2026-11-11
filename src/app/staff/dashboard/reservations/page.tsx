@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import Link from 'next/link';
 import {
   CalendarDays,
@@ -44,6 +44,17 @@ type Reservation = {
   room?: { name: string; room_type: string | null } | null;
 };
 
+type VerifyModalResult = {
+  success?: boolean;
+  verified: boolean;
+  message: string;
+  bankName?: string;
+  transactionNumber?: string;
+  amount?: number;
+  currency?: string;
+  payerName?: string;
+};
+
 const statusLabel = {
   pending: 'Pending',
   confirmed: 'Confirmed',
@@ -64,43 +75,110 @@ export default function ManagerReservationsPage() {
   const [verifyingRes, setVerifyingRes] = useState<Reservation | null>(null);
   const [verifyInputRef, setVerifyInputRef] = useState('');
   const [verifyLoading, setVerifyLoading] = useState(false);
-  const [verifyResult, setVerifyResult] = useState<any>(null);
+  const [verifyResult, setVerifyResult] = useState<VerifyModalResult | null>(null);
+
+  const verifyModalTitleId = useId();
+  const verifyRefInputId = useId();
 
   async function load() {
     setLoading(true);
     setError('');
-    const { data, error } = await supabase
+    const { data, error: fetchError } = await supabase
       .from('room_reservations')
       .select('*, room:rooms(name, room_type)')
       .order('created_at', { ascending: false });
 
-    if (error) setError(error.message);
+    if (fetchError) setError(fetchError.message);
     else setReservations((data ?? []) as Reservation[]);
     setLoading(false);
   }
 
   useEffect(() => {
-    void load();
+    let active = true;
+    (async () => {
+      const { data, error: fetchError } = await supabase
+        .from('room_reservations')
+        .select('*, room:rooms(name, room_type)')
+        .order('created_at', { ascending: false });
+      if (!active) return;
+      if (fetchError) setError(fetchError.message);
+      else setReservations((data ?? []) as Reservation[]);
+      setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
+
+  useEffect(() => {
+    if (!verifyingRes) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setVerifyingRes(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [verifyingRes]);
 
   async function changeStatus(id: string, status: Reservation['status']) {
     setBusy(id);
-    const patch: any = { status, updated_at: new Date().toISOString() };
+    setError('');
+    if (status === 'checked_out') {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) {
+          setError('Staff session expired. Please sign in again to process checkout.');
+          setBusy('');
+          return;
+        }
+        const target = reservations.find((r) => r.id === id);
+        const res = await fetch(`/api/folio/${id}/checkout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            paymentMethod: target?.payment_method || 'pay_at_resort',
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          setError(json.error || 'Checkout failed. Open Folio & Bill to settle stay charges.');
+        } else {
+          await load();
+        }
+      } catch {
+        setError('Network error executing guest checkout.');
+      } finally {
+        setBusy('');
+      }
+      return;
+    }
+
+    const patch: { status: Reservation['status']; updated_at: string; checked_in_at?: string } = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
     if (status === 'checked_in') patch.checked_in_at = new Date().toISOString();
-    if (status === 'checked_out') patch.checked_out_at = new Date().toISOString();
-    const { error } = await supabase.from('room_reservations').update(patch).eq('id', id);
-    if (error) setError(error.message);
+    const { error: updateError } = await supabase.from('room_reservations').update(patch).eq('id', id);
+    if (updateError) setError(updateError.message);
     else await load();
     setBusy('');
   }
 
   async function changePayment(id: string, payment_status: string) {
     setBusy(id);
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from('room_reservations')
       .update({ payment_status, updated_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) setError(error.message);
+    if (updateError) setError(updateError.message);
     else await load();
     setBusy('');
   }
@@ -120,9 +198,14 @@ export default function ManagerReservationsPage() {
     setVerifyResult(null);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+
       const res = await fetch('/api/payments/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           reference: verifyInputRef.trim(),
           bank: verifyingRes.payment_method,
@@ -131,11 +214,10 @@ export default function ManagerReservationsPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as VerifyModalResult;
       setVerifyResult(data);
 
       if (data.verified) {
-        // Update reservation to paid & confirmed in Supabase
         await supabase
           .from('room_reservations')
           .update({
@@ -146,7 +228,6 @@ export default function ManagerReservationsPage() {
           })
           .eq('id', verifyingRes.id);
 
-        // Register in used_payment_references
         await supabase.rpc('register_payment_reference', {
           p_reference: data.transactionNumber || verifyInputRef.trim().toUpperCase(),
           p_entity_type: 'reservation',
@@ -157,11 +238,11 @@ export default function ManagerReservationsPage() {
 
         await load();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setVerifyResult({
         success: false,
         verified: false,
-        message: err.message || 'Network error verifying payment.',
+        message: err instanceof Error ? err.message : 'Network error verifying payment.',
       });
     } finally {
       setVerifyLoading(false);
@@ -179,29 +260,30 @@ export default function ManagerReservationsPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#F8F5EE] text-[#182326]">
-      <header className="border-b border-white/10 bg-[#0B3D4A] text-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 md:px-6">
+    <div className="min-h-screen bg-[#F5F0E6] text-[#1A1A1A]">
+      <div className="mx-auto max-w-7xl px-4 py-7 md:px-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E6DFD1] pb-6">
           <div className="flex items-center gap-3">
-            <CalendarDays className="h-6 w-6 text-[#159A9C]" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#163D32] text-[#C5A46D] shadow-md">
+              <CalendarDays className="h-6 w-6" aria-hidden="true" />
+            </div>
             <div>
-              <p className="font-display text-2xl">Reservations</p>
-              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-white/50">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#7A5A27]">
                 Tule Resort · Manager Console
               </p>
+              <h1 className="font-display text-3xl font-semibold text-[#163D32]">Reservations</h1>
             </div>
           </div>
           <button
+            type="button"
             onClick={() => void load()}
-            className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-bold hover:bg-white/15 transition cursor-pointer"
+            className="flex w-fit items-center gap-2 rounded-xl border border-[#163D32]/15 bg-white px-4 py-2.5 text-sm font-bold text-[#163D32] hover:bg-[#163D32]/5 transition cursor-pointer"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Refresh
           </button>
         </div>
-      </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-7 md:px-6">
         {/* Status Filters */}
         <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {(
@@ -215,53 +297,54 @@ export default function ManagerReservationsPage() {
             ] as Reservation['status'][]
           ).map((s) => (
             <button
+              type="button"
               key={s}
               onClick={() => setFilter(filter === s ? 'all' : s)}
               className={`rounded-2xl border p-4 text-left bg-white transition cursor-pointer ${
                 filter === s
-                  ? 'border-[#C8A15A] ring-2 ring-[#C8A15A]/15'
-                  : 'border-[#0B3D4A]/10 hover:border-[#0B3D4A]/25'
+                  ? 'border-[#C5A46D] ring-2 ring-[#C5A46D]/25'
+                  : 'border-[#E6DFD1] hover:border-[#163D32]/30'
               }`}
             >
-              <p className="text-[10px] font-black uppercase tracking-wider text-[#182326]/45">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#52645D]">
                 {statusLabel[s]}
               </p>
-              <p className="mt-1 text-2xl font-black text-[#0B3D4A]">{counts[s] || 0}</p>
+              <p className="mt-1 text-2xl font-black text-[#163D32]">{counts[s] || 0}</p>
             </button>
           ))}
         </div>
 
         {error && (
-          <div className="mt-5 rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700 border border-red-200">
+          <div role="alert" className="rounded-xl bg-rose-50 p-4 text-sm font-bold text-rose-800 border border-rose-200">
             {error}
           </div>
         )}
 
         {loading ? (
-          <p className="py-16 text-center text-black/50">Loading reservations…</p>
+          <p className="py-16 text-center text-[#52645D]">Loading reservations…</p>
         ) : visible.length === 0 ? (
-          <div className="mt-6 rounded-3xl border border-dashed border-[#0B3D4A]/20 bg-white p-14 text-center">
-            <Clock3 className="mx-auto h-10 w-10 text-[#0B3D4A]/20" />
-            <p className="mt-4 font-display text-3xl">No reservations found</p>
+          <div className="rounded-3xl border border-dashed border-[#E6DFD1] bg-white p-14 text-center">
+            <Clock3 className="mx-auto h-10 w-10 text-[#7A5A27]/35" aria-hidden="true" />
+            <p className="mt-4 font-display text-3xl text-[#163D32]">No reservations found</p>
           </div>
         ) : (
-          <div className="mt-6 space-y-4">
+          <div className="space-y-4">
             {visible.map((r) => (
               <article
                 key={r.id}
-                className="rounded-3xl border border-[#0B3D4A]/10 bg-white p-5 shadow-sm md:p-6"
+                className="rounded-3xl border border-[#E6DFD1] bg-white p-5 shadow-sm md:p-6"
               >
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-[#EAF4F7] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#0B4F6C]">
+                      <span className="rounded-full bg-[#F5F0E6] border border-[#E6DFD1] px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#163D32] font-mono">
                         {r.booking_number}
                       </span>
-                      <span className="rounded-full bg-stone-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider">
+                      <span className="rounded-full bg-[#163D32]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#163D32]">
                         {statusLabel[r.status]}
                       </span>
                       <span
-                        className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${
+                        className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
                           r.payment_status === 'paid'
                             ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                             : 'bg-amber-50 text-amber-800 border border-amber-200'
@@ -271,30 +354,30 @@ export default function ManagerReservationsPage() {
                       </span>
                     </div>
 
-                    <h2 className="mt-3 text-2xl font-black text-[#0B3D4A]">
+                    <h2 className="mt-3 font-display text-2xl font-semibold text-[#163D32]">
                       {r.guest_name}
                     </h2>
-                    <p className="mt-1 text-sm text-black/55">
+                    <p className="mt-1 text-sm text-[#52645D]">
                       {r.room?.name || 'Room'} · {r.guests} guest{r.guests === 1 ? '' : 's'}
                     </p>
                   </div>
 
                   <div className="lg:text-right">
-                    <p className="text-2xl font-black text-[#0B3D4A]">
+                    <p className="text-2xl font-black text-[#163D32]">
                       {Number(r.total_price || 0).toLocaleString()} {r.currency}
                     </p>
-                    <p className="text-xs text-black/50 mt-1 capitalize">
-                      Method: <strong className="text-gray-800">{r.payment_method?.replaceAll('_', ' ') || 'Pay at Resort'}</strong>
+                    <p className="text-xs text-[#52645D] mt-1 capitalize">
+                      Method: <strong className="text-[#163D32]">{r.payment_method?.replaceAll('_', ' ') || 'Pay at Resort'}</strong>
                     </p>
                     {r.payment_reference && (
-                      <p className="text-xs text-[#007042] font-mono font-bold mt-0.5">
+                      <p className="text-xs text-emerald-800 font-mono font-bold mt-0.5">
                         Ref: {r.payment_reference}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="mt-5 grid gap-3 rounded-2xl bg-[#F8F5EE] p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div className="mt-5 grid gap-3 rounded-2xl bg-[#F5F0E6]/75 border border-[#E6DFD1] p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
                   <Info label="Check-in" value={r.check_in} />
                   <Info label="Check-out" value={r.check_out} />
                   <Info label="Phone" value={r.guest_phone} />
@@ -302,19 +385,20 @@ export default function ManagerReservationsPage() {
                 </div>
 
                 {r.special_requests && (
-                  <p className="mt-4 rounded-xl bg-[#F3E9D2]/40 p-3 text-sm">
-                    <strong>Special request:</strong> {r.special_requests}
+                  <p className="mt-4 rounded-xl bg-[#F5F0E6] border border-[#E6DFD1] p-3 text-sm text-[#1A1A1A]">
+                    <strong className="text-[#163D32]">Special request:</strong> {r.special_requests}
                   </p>
                 )}
 
-                <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[#0B3D4A]/10 pt-4">
+                <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[#E6DFD1] pt-4">
                   {/* Verify.ET Bank Verifier Trigger */}
                   <button
+                    type="button"
                     onClick={() => openVerifyModal(r)}
-                    className="flex items-center gap-2 rounded-xl bg-[#007042] hover:bg-[#005a35] px-4 py-2.5 text-sm font-bold text-white transition shadow-sm cursor-pointer"
+                    className="flex items-center gap-2 rounded-xl bg-[#0F2D24] hover:bg-[#163D32] px-4 py-2.5 text-sm font-bold text-[#C5A46D] transition shadow-sm cursor-pointer"
                     title="Verify payment with Verify.ET"
                   >
-                    <ShieldCheck className="h-4 w-4" />
+                    <ShieldCheck className="h-4 w-4" aria-hidden="true" />
                     Verify.ET Check
                   </button>
 
@@ -356,9 +440,9 @@ export default function ManagerReservationsPage() {
                     <>
                       <Link
                         href="/staff/dashboard/receipts"
-                        className="flex items-center gap-2 rounded-xl bg-[#159A9C] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0B3D4A] transition"
+                        className="flex items-center gap-2 rounded-xl border border-[#163D32]/20 bg-[#F5F0E6] px-4 py-2.5 text-sm font-bold text-[#163D32] hover:bg-[#E6DFD1] transition"
                       >
-                        <FileText className="h-4 w-4" />
+                        <FileText className="h-4 w-4" aria-hidden="true" />
                         Folio &amp; Bill
                       </Link>
                       <Action
@@ -387,85 +471,100 @@ export default function ManagerReservationsPage() {
 
       {/* ─── VERIFY.ET MODAL ─── */}
       {verifyingRes && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl border border-gray-100 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-xs animate-in fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setVerifyingRes(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={verifyModalTitleId}
+            className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl border border-[#E6DFD1] space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-[#E6DFD1] pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#007042] text-white">
-                  <ShieldCheck className="h-5 w-5" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#163D32] text-[#C5A46D]">
+                  <ShieldCheck className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 text-sm">
+                  <h3 id={verifyModalTitleId} className="font-bold text-[#163D32] text-sm">
                     Verify.ET Ethiopian Bank Check
                   </h3>
-                  <p className="text-[10px] text-gray-400 font-semibold uppercase">
+                  <p className="text-[11px] text-[#52645D] font-semibold uppercase">
                     Automated Non-Custodial Verification
                   </p>
                 </div>
               </div>
               <button
+                type="button"
+                aria-label="Close payment verification modal"
                 onClick={() => setVerifyingRes(null)}
-                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 text-sm"
+                className="rounded-lg p-1.5 text-[#52645D] hover:bg-[#F5F0E6] hover:text-[#163D32] text-sm"
               >
                 ✕
               </button>
             </div>
 
-            <div className="rounded-2xl bg-gray-50 p-3.5 text-xs space-y-1.5 border border-gray-100">
+            <div className="rounded-2xl bg-[#F5F0E6] p-3.5 text-xs space-y-1.5 border border-[#E6DFD1]">
               <div className="flex justify-between">
-                <span className="text-gray-500">Guest:</span>
-                <span className="font-bold text-gray-900">{verifyingRes.guest_name}</span>
+                <span className="text-[#52645D]">Guest:</span>
+                <span className="font-bold text-[#163D32]">{verifyingRes.guest_name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Booking:</span>
-                <span className="font-mono font-bold text-[#0B3D4A]">{verifyingRes.booking_number}</span>
+                <span className="text-[#52645D]">Booking:</span>
+                <span className="font-mono font-bold text-[#163D32]">{verifyingRes.booking_number}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Required Amount:</span>
-                <span className="font-bold text-emerald-700">
+                <span className="text-[#52645D]">Required Amount:</span>
+                <span className="font-bold text-emerald-800">
                   {Number(verifyingRes.total_price || 0).toLocaleString()} {verifyingRes.currency || 'ETB'}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Payment Method:</span>
-                <span className="font-bold capitalize">{verifyingRes.payment_method?.replaceAll('_', ' ')}</span>
+                <span className="text-[#52645D]">Payment Method:</span>
+                <span className="font-bold capitalize text-[#163D32]">{verifyingRes.payment_method?.replaceAll('_', ' ')}</span>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-gray-700">
+              <label htmlFor={verifyRefInputId} className="block text-xs font-bold text-[#163D32]">
                 Transaction Reference / FT / Receipt Code:
               </label>
               <input
+                id={verifyRefInputId}
                 type="text"
                 placeholder="e.g. FT26144SG2ST or Telebirr Txn Number"
                 value={verifyInputRef}
                 onChange={(e) => setVerifyInputRef(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs font-mono font-bold text-gray-900 focus:border-[#007042] focus:outline-none"
+                className="w-full rounded-xl border border-[#E6DFD1] bg-white px-3.5 py-2.5 text-xs font-mono font-bold text-[#163D32] focus:border-[#163D32] focus:outline-none"
               />
             </div>
 
             <div className="flex gap-2 pt-1">
               <button
-                onClick={runVerification}
+                type="button"
+                onClick={() => void runVerification()}
                 disabled={verifyLoading || !verifyInputRef.trim()}
-                className="flex-1 rounded-xl bg-[#007042] hover:bg-[#005a35] py-2.5 text-xs font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                className="flex-1 rounded-xl bg-[#163D32] hover:bg-[#0F2D24] py-2.5 text-xs font-bold text-[#C5A46D] transition disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
                 {verifyLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                     Checking with Bank Network...
                   </>
                 ) : (
                   <>
-                    <Search className="h-4 w-4" />
+                    <Search className="h-4 w-4" aria-hidden="true" />
                     Verify on Bank Network
                   </>
                 )}
               </button>
               <button
+                type="button"
                 onClick={() => setVerifyingRes(null)}
-                className="rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-600 hover:bg-gray-50"
+                className="rounded-xl border border-[#E6DFD1] px-4 py-2.5 text-xs font-bold text-[#52645D] hover:bg-[#F5F0E6]"
               >
                 Close
               </button>
@@ -474,6 +573,7 @@ export default function ManagerReservationsPage() {
             {/* Verification Result Feedback */}
             {verifyResult && (
               <div
+                role="status"
                 className={`rounded-xl p-3.5 text-xs border animate-in fade-in-50 ${
                   verifyResult.verified
                     ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
@@ -482,9 +582,9 @@ export default function ManagerReservationsPage() {
               >
                 <div className="flex items-start gap-2.5">
                   {verifyResult.verified ? (
-                    <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircle className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" aria-hidden="true" />
                   ) : (
-                    <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+                    <AlertTriangle className="h-5 w-5 text-rose-700 shrink-0 mt-0.5" aria-hidden="true" />
                   )}
                   <div className="space-y-1 flex-1">
                     <p className="font-bold">
@@ -496,16 +596,16 @@ export default function ManagerReservationsPage() {
                     {verifyResult.verified && (
                       <div className="mt-2 pt-2 border-t border-emerald-200 grid grid-cols-2 gap-2 text-[11px]">
                         <div>
-                          <span className="text-emerald-700/80 block">Verified Amount:</span>
+                          <span className="text-emerald-800/80 block">Verified Amount:</span>
                           <span className="font-bold">
                             {verifyResult.amount?.toLocaleString()} {verifyResult.currency || 'ETB'}
                           </span>
                         </div>
                         <div>
-                          <span className="text-emerald-700/80 block">Payer / Account:</span>
+                          <span className="text-emerald-800/80 block">Payer / Account:</span>
                           <span className="font-bold">{verifyResult.payerName || 'Verified Guest'}</span>
                         </div>
-                        <div className="col-span-2 text-emerald-700 font-bold">
+                        <div className="col-span-2 text-emerald-800 font-bold">
                           ✓ Reservation updated to Paid &amp; Confirmed!
                         </div>
                       </div>
@@ -517,15 +617,15 @@ export default function ManagerReservationsPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-black uppercase tracking-wider text-black/40">{label}</p>
-      <p className="mt-1 break-all font-bold">{value}</p>
+      <p className="text-[11px] font-bold uppercase tracking-wider text-[#52645D]">{label}</p>
+      <p className="mt-1 break-all font-bold text-[#163D32]">{value}</p>
     </div>
   );
 }
@@ -545,15 +645,16 @@ function Action({
 }) {
   return (
     <button
+      type="button"
       disabled={busy}
       onClick={onClick}
       className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50 transition cursor-pointer ${
         danger
-          ? 'border border-red-200 text-red-700 hover:bg-red-50'
-          : 'bg-[#0B3D4A] text-white hover:bg-[#073B4C]'
+          ? 'border border-rose-200 text-rose-700 hover:bg-rose-50'
+          : 'bg-[#163D32] text-white hover:bg-[#0F2D24]'
       }`}
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-4 w-4" aria-hidden="true" />
       {busy ? 'Updating…' : label}
     </button>
   );

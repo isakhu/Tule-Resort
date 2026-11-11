@@ -21,6 +21,8 @@ export async function GET(req: Request) {
   return NextResponse.json({
     success: true,
     roles: rolesRes.data ?? [],
-    departments: (deptsRes.data ?? []).filter((d: any) => d.is_active !== false),
+    departments: ((deptsRes.data as Array<{ id: number; name: string; is_active?: boolean | null }> | null) ?? []).filter(
+      (d) => d.is_active !== false
+    ),
   });
 }

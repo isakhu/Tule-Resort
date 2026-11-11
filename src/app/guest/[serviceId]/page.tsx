@@ -1,143 +1,146 @@
-'use client';
-
-import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Heart, Loader2, Minus, Plus, ShoppingCart } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound, useParams } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
-import type { MenuItem } from '@/lib/menu';
+import { notFound, redirect } from 'next/navigation';
+import { ArrowLeft, ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
+import { getResortService } from '@/lib/resortServices';
 
-import { menuItems as fallbackMenuItems } from '@/data/menu-items';
+export const dynamic = 'force-dynamic';
 
-const SERVICES: Record<string, { name: string; type: 'orderable' | 'bookable' | 'request' }> = {
-  cafeteria: { name: 'Cafeteria', type: 'orderable' },
-  restaurant: { name: 'Restaurant & Bar', type: 'orderable' },
-};
-
-type SupabaseMenuRow = { id?: string | number | null; name?: string | null; amharic_name?: string | null; category?: string | null; price?: number | string | null; image_url?: string | null; description?: string | null; is_active?: boolean | null; is_available?: boolean | null; dietary_tags?: string[] | null };
-type CartEntry = { id: string; name: string; price: number; quantity: number; imageUrl: string; amharicName: string };
-
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80';
-const CART_KEY = 'tule-resort-cart';
-const LEGACY_CART_KEY = 'haile-resort-cart';
-
-function getCartKey() { return CART_KEY; }
-
-export default function ServicePage() {
-  const params = useParams<{ serviceId: string }>();
-  const serviceId = params?.serviceId ?? '';
-  const [items, setItems] = useState<MenuItem[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string>('All');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [favorites, setFavorites] = useState<Record<string, boolean>>({});
-  const service = SERVICES[serviceId];
-
-  useEffect(() => {
-    let mounted = true;
-    async function loadMenu() {
-      try {
-        setLoading(true); setError('');
-        const { data, error: fetchError } = await supabase.from('menu_items').select('*').eq('is_active', true).eq('department', serviceId).order('category', { ascending: true }).order('name', { ascending: true });
-        if (!mounted) return;
-        if (fetchError || !data || data.length === 0) {
-          // Graceful fallback to static menu items
-          const mapped: MenuItem[] = fallbackMenuItems.map((item) => ({
-            id: String(item.id),
-            name: item.name,
-            amharicName: item.amharicName,
-            category: item.category,
-            price: Number(item.price ?? 0),
-            imageUrl: item.imageUrl || FALLBACK_IMAGE,
-            description: item.description,
-            isAvailable: true,
-            dietaryTags: [],
-          }));
-          setItems(mapped);
-          setActiveCategory('All');
-          return;
-        }
-        const mapped: MenuItem[] = (data ?? []).map((row: SupabaseMenuRow) => ({ id: String(row.id ?? ''), name: row.name ?? 'Untitled item', amharicName: row.amharic_name ?? '', category: row.category ?? 'General', price: Number(row.price ?? 0), imageUrl: row.image_url ?? FALLBACK_IMAGE, description: row.description ?? '', isAvailable: row.is_available ?? row.is_active ?? true, dietaryTags: Array.isArray(row.dietary_tags) ? row.dietary_tags.filter((tag): tag is string => typeof tag === 'string') : [] }));
-        setItems(mapped); setActiveCategory('All');
-      } catch {
-        if (!mounted) return;
-        const mapped: MenuItem[] = fallbackMenuItems.map((item) => ({
-          id: String(item.id),
-          name: item.name,
-          amharicName: item.amharicName,
-          category: item.category,
-          price: Number(item.price ?? 0),
-          imageUrl: item.imageUrl || FALLBACK_IMAGE,
-          description: item.description,
-          isAvailable: true,
-          dietaryTags: [],
-        }));
-        setItems(mapped);
-        setActiveCategory('All');
-      }
-      finally { if (mounted) setLoading(false); }
-    }
-    if (!serviceId) return;
-    void loadMenu();
-    return () => { mounted = false; };
-  }, [serviceId]);
-
-  const categories = useMemo(() => ['All', ...Array.from(new Set(items.map((item) => item.category).filter(Boolean)))], [items]);
-  const filteredItems = useMemo(() => activeCategory === 'All' ? items : items.filter((item) => item.category === activeCategory), [activeCategory, items]);
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ serviceId: string }>;
+}): Promise<Metadata> {
+  const { serviceId } = await params;
+  const service = await getResortService(decodeURIComponent(serviceId));
 
   if (!service) {
-    if (typeof window !== 'undefined') {
-      if (serviceId === 'rooms') window.location.replace('/guest/rooms');
-      else window.location.replace(`/guest/${serviceId}/request`);
-    }
-    return (
-      <div className="min-h-screen grid place-items-center bg-[#163D32] text-white p-6">
-        <div className="text-center">
-          <p className="text-white/70">Connecting to {serviceId}...</p>
-          <Link href={serviceId === 'rooms' ? '/guest/rooms' : `/guest/${serviceId}/request`} className="mt-4 inline-block rounded-full bg-[#C5A46D] px-5 py-3 text-xs font-black uppercase text-stone-950">Continue</Link>
-        </div>
-      </div>
-    );
+    return {
+      title: 'Guest Service',
+      description: 'Explore bespoke hospitality services at Tule Resort, Hawassa.',
+    };
   }
 
-  const updateQuantity = (itemId: string, direction: 'inc' | 'dec') => setQuantities((prev) => { const current = prev[itemId] ?? 1; const next = direction === 'inc' ? current + 1 : Math.max(1, current - 1); return { ...prev, [itemId]: next }; });
-  const addToOrder = (item: MenuItem) => {
-    if (typeof window === 'undefined') return;
-    const quantity = quantities[item.id] ?? 1;
-    const existing = JSON.parse(localStorage.getItem(getCartKey()) ?? localStorage.getItem(LEGACY_CART_KEY) ?? '[]') as CartEntry[];
-    const foundIndex = existing.findIndex((entry) => entry.id === item.id);
-    if (foundIndex >= 0) existing[foundIndex].quantity += quantity;
-    else existing.push({ id: item.id, name: item.name, price: item.price, quantity, imageUrl: item.imageUrl, amharicName: item.amharicName });
-    localStorage.setItem(getCartKey(), JSON.stringify(existing));
+  return {
+    title: service.name,
+    description: service.description,
+    openGraph: {
+      title: `${service.name} | Tule Resort Hawassa`,
+      description: service.description,
+      images: service.imageUrl ? [{ url: service.imageUrl, alt: service.name }] : undefined,
+    },
   };
+}
+
+export default async function ServiceDetailPage({
+  params,
+}: {
+  params: Promise<{ serviceId: string }>;
+}) {
+  const { serviceId } = await params;
+  const decodedId = decodeURIComponent(serviceId).trim().toLowerCase();
+
+  if (decodedId === 'rooms') {
+    redirect('/guest/rooms');
+  }
+  if (decodedId === 'restaurant') {
+    redirect('/guest/restaurant');
+  }
+  if (decodedId === 'cafeteria') {
+    redirect('/guest/cafeteria');
+  }
+  if (decodedId === 'pool-passes' || decodedId === 'tule-aqua') {
+    redirect('/guest/tule-aqua');
+  }
+  if (decodedId === 'experiences') {
+    redirect('/guest/services');
+  }
+
+  const service = await getResortService(decodeURIComponent(serviceId));
+  if (!service) {
+    notFound();
+  }
+
+  const requestHref = `/guest/${encodeURIComponent(service.id)}/request`;
 
   return (
-    <div className="min-h-screen bg-[#163D32] text-[#f7efe3]">
-      <header className="relative overflow-hidden border-b border-white/10 bg-[#0F2D24]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(217,154,61,0.22),transparent_46%)]" />
-        <div className="relative mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <Link href="/guest" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#C5A46D] backdrop-blur-sm transition hover:bg-white/10"><ArrowLeft className="h-4 w-4" />Back</Link>
-            <Link href="/guest" className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1.5"><img src="/tule-resort-logo.png" alt="Tule Resort logo" className="h-8 w-8 rounded-md object-contain" /><span className="text-[10px] font-black uppercase tracking-[.2em] text-[#C5A46D]">Tule Resort</span></Link>
-            <button className="inline-flex items-center gap-2 rounded-full bg-[#C5A46D] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-[#1a120d] shadow-lg shadow-[#C5A46D]/25 transition hover:scale-[1.02]"><ShoppingCart className="h-4 w-4" />Review Order</button>
+    <div className="min-h-screen bg-[#F5F0E6] text-[#26312D]">
+      <header className="relative overflow-hidden bg-[#163D32] text-[#F5F0E6] border-b border-[#C5A46D]/20">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+          <div className="flex items-center justify-between gap-4">
+            <Link
+              href="/guest/services"
+              className="inline-flex items-center gap-2 text-sm font-bold text-[#F5F0E6]/80 hover:text-[#C5A46D] transition"
+            >
+              <ArrowLeft className="h-4 w-4" /> Resort Services
+            </Link>
+            <Link
+              href="/guest"
+              className="text-xs font-black uppercase tracking-[.2em] text-[#C5A46D] hover:underline"
+            >
+              Guest Portal
+            </Link>
           </div>
-          <div className="pb-4 pt-2"><p className="mb-2 text-xs font-semibold uppercase tracking-[0.28em] text-[#C5A46D]">Tule Resort • Hawassa</p><h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">{service.name}</h1><p className="mt-3 max-w-2xl text-sm text-[#e8dcc7] sm:text-base">Curated dishes, seasonal flavors, and warm Ethiopian hospitality.</p></div>
+
+          <div className="py-12 md:py-16 grid gap-8 lg:grid-cols-[1.1fr_.9fr] items-center">
+            <div>
+              <p className="inline-flex items-center gap-2 rounded-full border border-[#C5A46D]/40 bg-[#C5A46D]/15 px-4 py-1.5 text-[10px] font-black uppercase tracking-[.24em] text-[#C5A46D]">
+                <Sparkles className="h-3.5 w-3.5" /> {service.eyebrow}
+              </p>
+              <h1 className="mt-5 font-display text-4xl sm:text-6xl font-light tracking-tight leading-none text-[#F5F0E6]">
+                {service.name}
+              </h1>
+              <p className="mt-5 max-w-2xl text-sm sm:text-base leading-relaxed text-[#F5F0E6]/85">
+                {service.description}
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link
+                  href={requestHref}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#C5A46D] hover:bg-[#B8955E] px-6 py-3.5 text-xs font-black uppercase tracking-[.14em] text-[#163D32] shadow-lg transition"
+                >
+                  Request This Service <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/guest/booking"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#C5A46D]/40 bg-[#0F2D24] px-6 py-3.5 text-xs font-bold uppercase tracking-[.14em] text-[#F5F0E6] hover:border-[#C5A46D] transition"
+                >
+                  Book a Stay
+                </Link>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-[2rem] border border-[#C5A46D]/30 bg-[#0F2D24] shadow-2xl h-64 sm:h-80">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={service.imageUrl}
+                alt={service.name}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-        {!loading && !error && categories.length > 1 && <div className="mb-6 overflow-x-auto pb-2"><div className="flex min-w-max gap-2">{categories.map((category) => <button key={category} type="button" onClick={() => setActiveCategory(category)} className={`rounded-full border px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] transition ${activeCategory === category ? 'border-[#C5A46D] bg-[#C5A46D] text-[#1b130d]' : 'border-white/10 bg-[#0F2D24] text-[#e8dcc7] hover:border-[#C5A46D]/60 hover:text-white'}`}>{category}</button>)}</div></div>}
-        {loading && <div className="flex min-h-[280px] items-center justify-center rounded-[28px] border border-white/10 bg-[#0F2D24]"><div className="flex items-center gap-3 text-[#C5A46D]"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm font-medium">Loading menu...</span></div></div>}
-        {!loading && error && <div className="rounded-[28px] border border-[#C5A46D]/30 bg-[#0F2D24] p-8 text-center"><p className="text-lg font-semibold text-white">{error}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-full bg-[#C5A46D] px-5 py-2 text-sm font-bold text-[#1b130d]">Try again</button></div>}
-        {!loading && !error && filteredItems.length === 0 && <div className="rounded-[28px] border border-white/10 bg-[#0F2D24] p-8 text-center text-[#e8dcc7]">No menu items are currently available.</div>}
-        {!loading && !error && filteredItems.length > 0 && <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{filteredItems.map((item) => { const quantity = quantities[item.id] ?? 1; return (
-          <article key={item.id} className="group overflow-hidden rounded-[28px] border border-white/10 bg-[#0F2D24] shadow-[0_20px_45px_rgba(0,0,0,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#C5A46D]/60">
-            <div className="relative h-60 overflow-hidden"><img src={item.imageUrl || FALLBACK_IMAGE} alt={item.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" onError={(event) => { event.currentTarget.src = FALLBACK_IMAGE; }} /><div className="absolute inset-0 bg-gradient-to-t from-[#163D32]/80 via-transparent to-transparent" /><button type="button" onClick={() => setFavorites((prev) => ({ ...prev, [item.id]: !prev[item.id] }))} className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-[#163D32]/45 backdrop-blur-sm text-white transition hover:bg-[#163D32]/70" aria-label={`Favorite ${item.name}`}><Heart className={`h-4 w-4 ${favorites[item.id] ? 'fill-[#f7b267] text-[#f7b267]' : 'text-white'}`} /></button><div className="absolute left-4 top-4 rounded-full border border-[#C5A46D]/30 bg-[#0F2D24]/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#C5A46D]">{item.category}</div><div className="absolute bottom-4 right-4 rounded-xl bg-[#C5A46D] px-3 py-2 text-lg font-black text-[#1a120d] shadow-lg shadow-[#C5A46D]/30">{item.price} Br</div></div>
-            <div className="space-y-4 p-5"><div><h2 className="text-2xl font-black leading-tight text-white">{item.name}</h2><p className="mt-1 text-base text-[#C5A46D]">{item.amharicName || '—'}</p></div><p className="text-sm leading-6 text-[#d8cfc2]">{item.description}</p><div className="flex items-center justify-between gap-3"><div className="inline-flex items-center rounded-full border border-white/10 bg-[#201a16] p-1"><button type="button" onClick={() => updateQuantity(item.id, 'dec')} className="flex h-8 w-8 items-center justify-center rounded-full text-[#f7efe3] transition hover:bg-white/5"><Minus className="h-4 w-4" /></button><span className="min-w-8 text-center text-sm font-bold text-white">{quantity}</span><button type="button" onClick={() => updateQuantity(item.id, 'inc')} className="flex h-8 w-8 items-center justify-center rounded-full text-[#f7efe3] transition hover:bg-white/5"><Plus className="h-4 w-4" /></button></div><button type="button" onClick={() => addToOrder(item)} className="rounded-full bg-[#C5A46D] px-4 py-2.5 text-xs font-black uppercase tracking-[0.2em] text-[#1a120d] transition hover:bg-[#f8dca8]">Add to order</button></div></div>
-          </article>); })}</div>}
+      <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        {service.features.length > 0 && (
+          <section className="rounded-[2rem] border border-[#163D32]/10 bg-white p-8 shadow-sm">
+            <h2 className="font-display text-2xl font-medium text-[#26312D]">
+              Included Highlights
+            </h2>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {service.features.map((feature) => (
+                <div
+                  key={feature}
+                  className="flex items-center gap-2.5 rounded-2xl bg-[#F5F0E6] px-4 py-3 text-sm font-semibold text-[#26312D] border border-[#163D32]/8"
+                >
+                  <CheckCircle2 className="h-4 w-4 text-[#163D32] shrink-0" />
+                  <span>{feature}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
-      <footer className="border-t border-white/10 bg-[#0F2D24]"><div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8"><div className="flex items-center gap-3"><img src="/tule-resort-logo.png" alt="Tule Resort logo" className="h-12 w-12 rounded-lg object-contain bg-black/40 border border-white/10" /><p className="text-xs font-black uppercase tracking-[.18em] text-[#C5A46D]">Tule Resort • Hawassa</p></div><p className="text-[10px] uppercase tracking-[.18em] text-white/35">Relax. Enjoy. Remember.</p></div></footer>
     </div>
   );
 }

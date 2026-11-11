@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowLeft, Clock3, Droplets, LifeBuoy, LockKeyhole, ShieldCheck, ShowerHead, Sun, Table2, Ticket, TowelRack, Users, Sparkles } from 'lucide-react';
+import { ArrowLeft, Clock3, Droplets, LifeBuoy, LockKeyhole, ShieldCheck, ShowerHead, Sun, Table2, Ticket, TowelRack, Users } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Tule Aqua & Lakeside Pool',
+  description:
+    'Enjoy our open-air lakeside swimming pool, shallow children pool, sun loungers, and pool passes at Tule Resort in Hawassa.',
+};
 
 const facilities = [
   ['Outdoor pool', 'Open-air swimming with a relaxed lakeside atmosphere.', Droplets],
@@ -51,7 +58,7 @@ export default function TuleAquaPage() {
                   <LifeBuoy className="h-4 w-4 text-[#C5A46D]" /> Certified Lifeguards
                 </span>
                 <Link
-                  href="/guest/my-activity"
+                  href="/guest/pool-passes/request"
                   className="inline-flex items-center rounded-full bg-[#C5A46D] hover:bg-[#B8955E] px-6 py-3 text-xs font-black uppercase tracking-[.12em] text-[#163D32] transition shadow-md"
                 >
                   Book a Pool Experience
@@ -82,30 +89,30 @@ export default function TuleAquaPage() {
       <main className="mx-auto max-w-7xl px-4 py-12 md:px-6 md:py-16">
         <section className="grid gap-6 lg:grid-cols-[1.15fr_.85fr]">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[.25em] text-[#8A9B83]">Pool access</p>
+            <p className="text-xs font-black uppercase tracking-[.22em] text-[#52645D]">Pool access</p>
             <h2 className="mt-2 font-display text-4xl font-medium tracking-tight md:text-5xl text-[#26312D]">
               Clear pricing. All-day water.
             </h2>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#26312D]/70 font-normal">
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#26312D]/80 font-normal">
               Tule Aqua is available 24 hours a day, including twilight swimming, so guests can enjoy the pool experience on their own schedule.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <article className="rounded-3xl bg-[#163D32] p-6 text-[#F5F0E6] shadow-[0_15px_45px_rgba(22,61,50,.1)] border border-[#C5A46D]/20">
               <Ticket className="h-6 w-6 text-[#C5A46D]" />
-              <p className="mt-5 text-xs font-black uppercase tracking-[.18em] text-[#F5F0E6]/60">Adults</p>
+              <p className="mt-5 text-xs font-black uppercase tracking-[.18em] text-[#F5F0E6]/75">Adults</p>
               <p className="mt-1 font-display text-3xl font-bold">400 <span className="text-sm font-sans font-normal text-[#C5A46D]">ETB</span></p>
             </article>
             <article className="rounded-3xl border border-[#163D32]/10 bg-white p-6 shadow-sm">
               <Users className="h-6 w-6 text-[#163D32]" />
-              <p className="mt-5 text-xs font-black uppercase tracking-[.18em] text-[#8A9B83]">Children</p>
-              <p className="mt-1 font-display text-3xl font-bold text-[#26312D]">300 <span className="text-sm font-sans font-normal text-[#8A9B83]">ETB</span></p>
+              <p className="mt-5 text-xs font-black uppercase tracking-[.18em] text-[#52645D]">Children</p>
+              <p className="mt-1 font-display text-3xl font-bold text-[#26312D]">300 <span className="text-sm font-sans font-normal text-[#52645D]">ETB</span></p>
             </article>
           </div>
         </section>
 
         <section className="mt-14">
-          <p className="text-[10px] font-black uppercase tracking-[.25em] text-[#8A9B83]">Pool facilities</p>
+          <p className="text-xs font-black uppercase tracking-[.22em] text-[#52645D]">Pool facilities</p>
           <h2 className="mt-2 font-display text-4xl font-medium tracking-tight md:text-5xl text-[#26312D]">
             Everything for a relaxing pool day.
           </h2>
@@ -121,7 +128,7 @@ export default function TuleAquaPage() {
                     <FacilityIcon className="h-5 w-5 text-[#163D32]" />
                   </div>
                   <h3 className="mt-4 font-display text-xl font-medium text-[#26312D]">{title as string}</h3>
-                  <p className="mt-2 text-xs leading-5 text-[#26312D]/70">{description as string}</p>
+                  <p className="mt-2 text-xs leading-5 text-[#26312D]/75">{description as string}</p>
                 </article>
               );
             })}
@@ -130,11 +137,11 @@ export default function TuleAquaPage() {
 
         <section className="mt-14 grid gap-6 lg:grid-cols-[1.05fr_.95fr]">
           <div className="rounded-[2.2rem] bg-white border border-[#163D32]/10 p-8 md:p-10 shadow-[0_12px_40px_rgba(22,61,50,0.05)]">
-            <p className="text-[10px] font-black uppercase tracking-[.24em] text-[#C5A46D]">Food &amp; drinks</p>
+            <p className="text-xs font-black uppercase tracking-[.22em] text-[#7A5A27]">Food &amp; drinks</p>
             <h2 className="mt-2 font-display text-3xl font-medium tracking-tight text-[#26312D]">
               Order from the Tule Resort menu.
             </h2>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#26312D]/70">
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#26312D]/75">
               Poolside guests can enjoy snacks, cold drinks, iced juices, and hot dishes delivered straight to your lounger from the central restaurant kitchen.
             </p>
             <Link
@@ -146,7 +153,7 @@ export default function TuleAquaPage() {
           </div>
 
           <div className="rounded-[2.2rem] border border-[#163D32]/10 bg-white p-8 md:p-10 shadow-[0_12px_40px_rgba(22,61,50,0.05)]">
-            <p className="text-[10px] font-black uppercase tracking-[.24em] text-[#8A9B83]">Pool safety rules</p>
+            <p className="text-xs font-black uppercase tracking-[.22em] text-[#52645D]">Pool safety rules</p>
             <div className="mt-5 grid gap-3">
               {safetyRules.map((rule) => (
                 <div key={rule} className="flex items-start gap-3 rounded-2xl bg-[#F5F0E6] p-3.5 border border-[#163D32]/5">
@@ -161,7 +168,7 @@ export default function TuleAquaPage() {
         <section className="mt-14 rounded-[2.2rem] bg-[#163D32] p-8 text-[#F5F0E6] md:p-12 border border-[#C5A46D]/20 shadow-xl">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[.24em] text-[#C5A46D]">Tule Aqua · 24 hours</p>
+              <p className="text-xs font-black uppercase tracking-[.22em] text-[#C5A46D]">Tule Aqua · 24 hours</p>
               <h2 className="mt-2 font-display text-3xl md:text-4xl font-medium tracking-tight">
                 Make the water part of your stay.
               </h2>
@@ -170,7 +177,7 @@ export default function TuleAquaPage() {
               </p>
             </div>
             <Link
-              href="/guest/my-activity"
+              href="/guest/pool-passes/request"
               className="shrink-0 rounded-full bg-[#C5A46D] hover:bg-[#B8955E] px-7 py-4 text-center text-xs font-black uppercase tracking-[.13em] text-[#163D32] shadow-lg transition"
             >
               Book a Pool Experience

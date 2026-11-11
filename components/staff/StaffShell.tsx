@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -8,7 +8,6 @@ import {
   ClipboardList,
   Clock,
   UtensilsCrossed,
-  Flame,
   CalendarDays,
   BedDouble,
   DollarSign,
@@ -24,11 +23,12 @@ import {
   ChevronDown,
   KeyRound,
   ShieldCheck,
-  CheckCircle2,
   Store,
   Layers,
   ChefHat,
-  CheckCheck
+  CheckCheck,
+  Camera,
+  type LucideIcon,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { DashboardModule } from '@/lib/permissions';
@@ -42,6 +42,34 @@ interface StaffProfile {
   allowedModules?: DashboardModule[];
 }
 
+interface NotificationPayload {
+  title?: string;
+  event?: string;
+  room_number?: string | number;
+  entity_type?: string;
+  type?: string;
+  notes?: string;
+  priority?: string;
+  from_status_id?: string | number;
+  to_status_id?: string | number;
+}
+
+interface StaffNotification {
+  id: string;
+  is_read: boolean;
+  created_at: string;
+  payload?: NotificationPayload | null;
+}
+
+interface NavItemDef {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  module: DashboardModule;
+  keywords?: string;
+  badge?: number;
+}
+
 export default function StaffShell({
   children,
   badgeCounts,
@@ -51,18 +79,27 @@ export default function StaffShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const newPasswordId = useId();
+  const confirmPasswordId = useId();
+  const passwordModalTitleId = useId();
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const notificationsContainerRef = useRef<HTMLDivElement>(null);
+  const profileContainerRef = useRef<HTMLDivElement>(null);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [profile, setProfile] = useState<StaffProfile | null>(null);
   const [currentDateTime, setCurrentDateTime] = useState('');
+  const [nowMs, setNowMs] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
 
   // Password change modal
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   // Live Notifications
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<StaffNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -74,8 +111,9 @@ export default function StaffShell({
           .order('created_at', { ascending: false })
           .limit(20);
         if (data) {
-          setNotifications(data);
-          setUnreadCount(data.filter((n) => !n.is_read).length);
+          const typedData = data as StaffNotification[];
+          setNotifications(typedData);
+          setUnreadCount(typedData.filter((n) => !n.is_read).length);
         }
       } catch (err) {
         console.error('Failed to load notifications:', err);
@@ -90,7 +128,8 @@ export default function StaffShell({
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload) => {
-          setNotifications((prev) => [payload.new, ...prev].slice(0, 20));
+          const incoming = payload.new as StaffNotification;
+          setNotifications((prev) => [incoming, ...prev].slice(0, 20));
           setUnreadCount((c) => c + 1);
         }
       )
@@ -130,6 +169,7 @@ export default function StaffShell({
     // Live date and time formatting
     const updateTime = () => {
       const now = new Date();
+      setNowMs(now.getTime());
       const formatted = now.toLocaleDateString('en-US', {
         weekday: 'short',
         day: 'numeric',
@@ -146,6 +186,51 @@ export default function StaffShell({
     const timer = setInterval(updateTime, 30000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!notificationsOpen && !profileDropdownOpen && !searchFocused && !mobileMenuOpen && !isPasswordModalOpen) {
+      return;
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setNotificationsOpen(false);
+        setProfileDropdownOpen(false);
+        setSearchFocused(false);
+        setMobileMenuOpen(false);
+        setIsPasswordModalOpen(false);
+      }
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (notificationsOpen && notificationsContainerRef.current && !notificationsContainerRef.current.contains(target)) {
+        setNotificationsOpen(false);
+      }
+      if (profileDropdownOpen && profileContainerRef.current && !profileContainerRef.current.contains(target)) {
+        setProfileDropdownOpen(false);
+      }
+      if (searchFocused && searchContainerRef.current && !searchContainerRef.current.contains(target)) {
+        setSearchFocused(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, [notificationsOpen, profileDropdownOpen, searchFocused, mobileMenuOpen, isPasswordModalOpen]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen && !isPasswordModalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileMenuOpen, isPasswordModalOpen]);
 
   useEffect(() => {
     // Fetch profile
@@ -206,35 +291,40 @@ export default function StaffShell({
     }
   }
 
-  interface NavItemDef {
-    label: string;
-    href: string;
-    icon: any;
-    module: DashboardModule;
-    badge?: number;
-  }
-
   const ALL_NAV_ITEMS: NavItemDef[] = [
-    { label: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard, module: 'dashboard' },
-    { label: 'Live Queue', href: '/staff/dashboard/queue', icon: Clock, module: 'queue' },
-    { label: 'Orders', href: '/staff/dashboard/orders', icon: ClipboardList, module: 'orders', badge: badgeCounts?.orders },
-    { label: 'Tables', href: '/staff/dashboard/tables', icon: Layers, module: 'tables' },
-    { label: 'Kitchen', href: '/staff/dashboard/kitchen', icon: ChefHat, module: 'kitchen' },
-    { label: 'Menu', href: '/staff/dashboard/menu', icon: UtensilsCrossed, module: 'menu' },
-    { label: 'Reservations', href: '/staff/dashboard/reservations', icon: CalendarDays, module: 'reservations' },
-    { label: 'Rooms', href: '/staff/dashboard/rooms', icon: BedDouble, module: 'rooms' },
-    { label: 'Receipts & Sales', href: '/staff/dashboard/receipts', icon: DollarSign, module: 'receipts' },
-    { label: 'Wellness & Spa', href: '/staff/dashboard/services', icon: Sparkles, module: 'spa' },
-    { label: 'Housekeeping', href: '/staff/dashboard/housekeeping', icon: Sparkles, module: 'housekeeping' },
-    { label: 'Maintenance', href: '/staff/dashboard/maintenance', icon: Wrench, module: 'maintenance' },
-    { label: 'Staff Management', href: '/admin/staff', icon: Users, module: 'staff_management' },
-    { label: 'Settings', href: '/staff/dashboard/settings', icon: Settings, module: 'settings' },
+    { label: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard, module: 'dashboard', keywords: 'overview home kpi analytics' },
+    { label: 'Live Queue', href: '/staff/dashboard/queue', icon: Clock, module: 'queue', keywords: 'service requests active guest queue' },
+    { label: 'Orders', href: '/staff/dashboard/orders', icon: ClipboardList, module: 'orders', keywords: 'dining food drink bills receipts', badge: badgeCounts?.orders },
+    { label: 'Tables', href: '/staff/dashboard/tables', icon: Layers, module: 'tables', keywords: 'floor plan qr seating dining' },
+    { label: 'Kitchen', href: '/staff/dashboard/kitchen', icon: ChefHat, module: 'kitchen', keywords: 'kds tickets cooking prep' },
+    { label: 'Menu', href: '/staff/dashboard/menu', icon: UtensilsCrossed, module: 'menu', keywords: 'dishes drinks cafeteria cms' },
+    { label: 'Reservations', href: '/staff/dashboard/reservations', icon: CalendarDays, module: 'reservations', keywords: 'bookings folio check-in check-out stays' },
+    { label: 'Rooms', href: '/staff/dashboard/rooms', icon: BedDouble, module: 'rooms', keywords: 'suites inventory rates availability' },
+    { label: 'Gallery', href: '/staff/dashboard/gallery', icon: Camera, module: 'gallery', keywords: 'photos media resort showcase' },
+    { label: 'Receipts & Sales', href: '/staff/dashboard/receipts', icon: DollarSign, module: 'receipts', keywords: 'payments ledger revenue invoices' },
+    { label: 'Wellness & Spa', href: '/staff/dashboard/services', icon: Sparkles, module: 'spa', keywords: 'tule aqua pool steam amenities' },
+    { label: 'Housekeeping', href: '/staff/dashboard/housekeeping', icon: Sparkles, module: 'housekeeping', keywords: 'cleaning turnover inspection' },
+    { label: 'Maintenance', href: '/staff/dashboard/maintenance', icon: Wrench, module: 'maintenance', keywords: 'repairs engineering work orders' },
+    { label: 'Staff Management', href: '/admin/staff', icon: Users, module: 'staff_management', keywords: 'roles team accounts permissions' },
+    { label: 'Settings', href: '/staff/dashboard/settings', icon: Settings, module: 'settings', keywords: 'taxes service charge bank accounts config' },
   ];
 
   const visibleNavItems = ALL_NAV_ITEMS.filter((item) => {
     if (!profile?.allowedModules) return true;
     return profile.allowedModules.includes(item.module);
   });
+
+  const canAccessSettings =
+    !profile?.allowedModules || profile.allowedModules.includes('settings');
+
+  const trimmedSearch = searchQuery.trim().toLowerCase();
+  const quickJumpMatches = trimmedSearch
+    ? visibleNavItems.filter(
+        (item) =>
+          item.label.toLowerCase().includes(trimmedSearch) ||
+          (item.keywords && item.keywords.includes(trimmedSearch))
+      )
+    : [];
 
   return (
     <div className="flex min-h-screen bg-[#F5F0E6] text-[#26312D]">
@@ -251,9 +341,9 @@ export default function StaffShell({
             />
           </div>
           <div>
-            <h1 className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
+            <p className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
               Tule Resort
-            </h1>
+            </p>
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#C5A46D]">
               Staff & Operations
             </p>
@@ -261,7 +351,7 @@ export default function StaffShell({
         </Link>
 
         {/* Navigation Links */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-thin scrollbar-thumb-white/10">
+        <nav aria-label="Staff modules" className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-thin scrollbar-thumb-white/10">
           {visibleNavItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/staff/dashboard' && pathname.startsWith(item.href));
             const Icon = item.icon;
@@ -270,14 +360,15 @@ export default function StaffShell({
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? 'page' : undefined}
                 className={`group flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200 active:scale-98 ${
                   isActive
                     ? 'bg-gradient-to-r from-[#163D32] to-[#C5A46D] text-white shadow-md shadow-[#163D32]/30 border-l-4 border-[#C5A46D] translate-x-0.5'
-                    : 'text-[#94A3B8] hover:bg-white/5 hover:text-white hover:translate-x-1'
+                    : 'text-[#CBD5E1] hover:bg-white/5 hover:text-white hover:translate-x-1'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-white' : 'text-[#64748B] group-hover:text-white'}`} />
+                  <Icon className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-white' : 'text-[#94A3B8] group-hover:text-white'}`} />
                   <span>{item.label}</span>
                 </div>
                 {item.badge !== undefined && item.badge > 0 && (
@@ -302,21 +393,28 @@ export default function StaffShell({
             <Store className="h-4 w-4 text-[#C5A46D] shrink-0" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-white truncate">Tule Resort & Spa</p>
-              <p className="text-[10px] text-teal-200/50 truncate">Lake Hawassa • Main Property</p>
+              <p className="text-[10px] text-teal-100/75 truncate">Lake Hawassa • Main Property</p>
             </div>
           </div>
 
           <div className="flex items-center justify-between pt-1 text-xs">
-            <Link
-              href="/staff/dashboard/settings"
-              className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors"
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </Link>
+            {canAccessSettings ? (
+              <Link
+                href="/staff/dashboard/settings"
+                className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </Link>
+            ) : (
+              <span className="text-[11px] font-medium text-teal-100/70 capitalize">
+                {profile?.departmentName || profile?.role || 'Operations'}
+              </span>
+            )}
             <button
+              type="button"
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-red-400 hover:text-red-300 transition-colors"
+              className="flex items-center gap-1.5 text-red-300 hover:text-red-200 transition-colors"
             >
               <LogOut className="h-4 w-4" />
               Log Out
@@ -327,12 +425,17 @@ export default function StaffShell({
 
       {/* ─── MOBILE DRAWER OVERLAY ─── */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
+        <div
+          className="fixed inset-0 z-50 lg:hidden flex"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Staff navigation"
+        >
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="relative w-72 max-w-[80vw] bg-[#163D32] text-[#94A3B8] h-full flex flex-col z-10 shadow-2xl border-r border-[#163D32]">
+          <div className="relative w-72 max-w-[80vw] bg-[#163D32] text-[#CBD5E1] h-[100dvh] flex flex-col z-10 shadow-2xl border-r border-[#163D32]">
             <div className="p-5 flex items-center justify-between border-b border-[#163D32]">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-black/40 border border-white/10 overflow-hidden">
@@ -344,19 +447,21 @@ export default function StaffShell({
                   />
                 </div>
                 <div>
-                  <h1 className="text-sm font-black text-white">Tule Resort</h1>
+                  <p className="text-sm font-black text-white">Tule Resort</p>
                   <p className="text-[9px] font-bold uppercase tracking-wider text-[#C5A46D]">Staff Portal</p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-1 rounded-lg text-gray-400 hover:text-white"
+                aria-label="Close navigation menu"
+                className="p-1 rounded-lg text-gray-300 hover:text-white"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+            <nav aria-label="Mobile staff modules" className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
               {visibleNavItems.map((item) => {
                 const isActive = pathname === item.href || (item.href !== '/staff/dashboard' && pathname.startsWith(item.href));
                 const Icon = item.icon;
@@ -364,11 +469,12 @@ export default function StaffShell({
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-current={isActive ? 'page' : undefined}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
                       isActive
                         ? 'bg-gradient-to-r from-[#163D32] to-[#163D32] text-white shadow-md shadow-[#163D32]/30 border-l-4 border-[#C5A46D]'
-                        : 'text-[#94A3B8] hover:bg-white/5 hover:text-white'
+                        : 'text-[#CBD5E1] hover:bg-white/5 hover:text-white'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -376,7 +482,7 @@ export default function StaffShell({
                       <span>{item.label}</span>
                     </div>
                     {item.badge !== undefined && item.badge > 0 && (
-                      <span className="rounded-full bg-[#C5A46D]/20 text-[#C5A46D] px-2 py-0.5 text-xs font-bold">
+                      <span className="rounded-full bg-[#C5A46D]/20 text-[#D4B87D] px-2 py-0.5 text-xs font-bold">
                         {item.badge}
                       </span>
                     )}
@@ -387,8 +493,9 @@ export default function StaffShell({
 
             <div className="p-4 border-t border-[#163D32] bg-[#0F2D24]">
               <button
+                type="button"
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-500/10 px-4 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/20"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-500/15 px-4 py-2.5 text-xs font-bold text-red-200 hover:bg-red-500/25"
               >
                 <LogOut className="h-4 w-4" /> Sign out
               </button>
@@ -401,24 +508,76 @@ export default function StaffShell({
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 shadow-xs">
-          {/* Left: Mobile hamburger & Search bar */}
+          {/* Left: Mobile hamburger & Quick Jump Search */}
           <div className="flex items-center gap-3 sm:gap-4 flex-1 max-w-xl">
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open navigation menu"
+              aria-expanded={mobileMenuOpen}
               className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
             >
               <MenuIcon className="h-5 w-5" />
             </button>
 
-            <div className="relative w-full max-w-md">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <div ref={searchContainerRef} className="relative w-full max-w-md">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#52645D]" />
               <input
-                type="text"
-                placeholder="Search orders, tables, menu..."
+                type="search"
+                aria-label="Quick jump to staff module"
+                placeholder="Jump to module (orders, tables, rooms...)"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-[#F5F0E6] py-2 pl-10 pr-4 text-xs font-medium text-gray-800 placeholder-gray-400 focus:border-[#163D32] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#163D32]/20 transition-all"
+                onFocus={() => setSearchFocused(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSearchFocused(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && quickJumpMatches.length > 0) {
+                    e.preventDefault();
+                    router.push(quickJumpMatches[0].href);
+                    setSearchQuery('');
+                    setSearchFocused(false);
+                  }
+                }}
+                className="w-full rounded-xl border border-gray-200 bg-[#F5F0E6] py-2 pl-10 pr-4 text-xs font-medium text-[#26312D] placeholder-[#52645D] focus:border-[#163D32] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#163D32]/20 transition-all"
               />
+
+              {searchFocused && trimmedSearch.length > 0 && (
+                <div
+                  role="listbox"
+                  aria-label="Matching modules"
+                  className="absolute left-0 right-0 mt-1.5 rounded-2xl border border-[#E6DFD1] bg-white p-1.5 shadow-xl z-50 text-xs"
+                >
+                  {quickJumpMatches.length === 0 ? (
+                    <p className="px-3 py-2 text-[#52645D]">No matching modules available</p>
+                  ) : (
+                    quickJumpMatches.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.href}
+                          type="button"
+                          onClick={() => {
+                            router.push(item.href);
+                            setSearchQuery('');
+                            setSearchFocused(false);
+                          }}
+                          className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-left font-semibold text-[#26312D] hover:bg-[#F5F0E6] transition-colors"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <Icon className="h-4 w-4 text-[#163D32]" />
+                            {item.label}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A5A27]">
+                            Open
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -427,19 +586,23 @@ export default function StaffShell({
             {/* Live Clock / Date */}
             <div className="hidden md:block text-right">
               <p className="text-xs font-bold text-gray-800">{currentDateTime || 'Loading...'}</p>
-              <p className="text-[10px] font-semibold text-emerald-600">● Live Operations</p>
+              <p className="text-[10px] font-semibold text-emerald-700">● Live Operations</p>
             </div>
 
             {/* Notification Bell */}
-            <div className="relative">
+            <div ref={notificationsContainerRef} className="relative">
               <button
+                type="button"
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="relative rounded-xl p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+                aria-expanded={notificationsOpen}
+                aria-haspopup="true"
+                className="relative rounded-xl p-2 text-[#52645D] hover:bg-gray-100 hover:text-[#163D32] transition-colors"
                 title="Notifications"
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#C5A46D] px-1 text-[9px] font-black text-white ring-2 ring-white">
+                  <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#163D32] px-1 text-[9px] font-black text-white ring-2 ring-white">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -458,6 +621,7 @@ export default function StaffShell({
                     </div>
                     {unreadCount > 0 && (
                       <button
+                        type="button"
                         onClick={() => handleMarkAsRead()}
                         className="text-[11px] font-semibold text-[#163D32] hover:underline flex items-center gap-1"
                       >
@@ -469,8 +633,8 @@ export default function StaffShell({
 
                   <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
                     {notifications.length === 0 ? (
-                      <div className="py-6 text-center text-gray-400">
-                        <Bell className="h-6 w-6 mx-auto mb-1 text-gray-300" />
+                      <div className="py-6 text-center text-[#52645D]">
+                        <Bell className="h-6 w-6 mx-auto mb-1 text-[#7A5A27]" />
                         <p className="font-semibold">No notifications yet</p>
                         <p className="text-[10px]">Real-time operational alerts will show here</p>
                       </div>
@@ -493,15 +657,21 @@ export default function StaffShell({
                             : payload.event === 'status_changed'
                             ? `Status changed from #${payload.from_status_id} to #${payload.to_status_id}`
                             : 'Tap to view details');
-                        const mins = Math.max(
-                          0,
-                          Math.round((Date.now() - new Date(n.created_at).getTime()) / 60000)
-                        );
-                        const timeStr = mins === 0 ? 'Just now' : mins < 60 ? `${mins}m ago` : `${Math.round(mins / 60)}h ago`;
+                        const mins = nowMs
+                          ? Math.max(0, Math.round((nowMs - new Date(n.created_at).getTime()) / 60000))
+                          : 0;
+                        const timeStr = !nowMs
+                          ? 'Recent'
+                          : mins === 0
+                          ? 'Just now'
+                          : mins < 60
+                          ? `${mins}m ago`
+                          : `${Math.round(mins / 60)}h ago`;
 
                         return (
-                          <div
+                          <button
                             key={n.id}
+                            type="button"
                             onClick={() => {
                               if (!n.is_read) handleMarkAsRead(n.id);
                               setNotificationsOpen(false);
@@ -511,7 +681,7 @@ export default function StaffShell({
                                 router.push('/staff/dashboard/kitchen');
                               }
                             }}
-                            className={`p-2.5 rounded-xl transition-all cursor-pointer border ${
+                            className={`w-full text-left p-2.5 rounded-xl transition-all cursor-pointer border ${
                               !n.is_read
                                 ? 'bg-amber-50/60 border-amber-200/60 hover:bg-amber-100/60'
                                 : 'bg-gray-50/50 border-transparent hover:bg-gray-100/70'
@@ -521,12 +691,12 @@ export default function StaffShell({
                               <p className={`font-semibold ${!n.is_read ? 'text-gray-900 font-bold' : 'text-gray-700'}`}>
                                 {title}
                               </p>
-                              <span className="text-[9px] font-semibold text-gray-400 shrink-0">
+                              <span className="text-[10px] font-semibold text-[#52645D] shrink-0">
                                 {timeStr}
                               </span>
                             </div>
-                            <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">{subtitle}</p>
-                          </div>
+                            <p className="text-[11px] text-[#52645D] mt-0.5 line-clamp-1">{subtitle}</p>
+                          </button>
                         );
                       })
                     )}
@@ -536,55 +706,73 @@ export default function StaffShell({
             </div>
 
             {/* User Profile Pill & Dropdown */}
-            <div className="relative">
+            <div ref={profileContainerRef} className="relative">
               <button
+                type="button"
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                aria-label="Staff account menu"
+                aria-expanded={profileDropdownOpen}
+                aria-haspopup="menu"
                 className="flex items-center gap-2.5 rounded-full p-1 pr-3 hover:bg-gray-100 transition-all border border-gray-200"
               >
                 <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#0F2D24] to-[#C5A46D] text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
-                  {profile?.fullName ? profile.fullName.charAt(0) : 'A'}
+                  {profile?.fullName ? profile.fullName.charAt(0) : 'T'}
                 </div>
                 <div className="hidden sm:block text-left leading-tight">
                   <p className="text-xs font-bold text-gray-900 truncate max-w-[120px]">
-                    {profile?.fullName || 'Ahmed Hassan'}
+                    {profile?.fullName || 'Staff Member'}
                   </p>
-                  <p className="text-[10px] font-semibold text-gray-500 capitalize">
-                    {profile?.role === 'admin' ? 'Super Admin' : (profile?.departmentName || profile?.role || 'Restaurant Manager')}
+                  <p className="text-[10px] font-semibold text-[#52645D] capitalize">
+                    {profile?.role === 'admin' ? 'Super Admin' : (profile?.departmentName || profile?.role || 'Team Member')}
                   </p>
                 </div>
-                <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+                <ChevronDown className="h-3.5 w-3.5 text-[#52645D]" />
               </button>
 
               {/* Profile Dropdown */}
               {profileDropdownOpen && (
                 <div
+                  role="menu"
                   className="absolute right-0 mt-2 w-56 rounded-2xl bg-white p-2 shadow-2xl border border-gray-100 z-50 text-xs animate-in fade-in slide-in-from-top-2 duration-150"
-                  onClick={() => setProfileDropdownOpen(false)}
                 >
                   <div className="px-3 py-2 border-b border-gray-100">
                     <p className="font-bold text-gray-900">{profile?.fullName || 'Staff Member'}</p>
-                    <p className="text-gray-500 truncate">{profile?.email || 'staff@tuleresort.com'}</p>
+                    <p className="text-[#52645D] truncate">{profile?.email || 'Signed in staff session'}</p>
                   </div>
 
                   <button
-                    onClick={() => setIsPasswordModalOpen(true)}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setProfileDropdownOpen(false);
+                      setIsPasswordModalOpen(true);
+                    }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-left font-semibold text-gray-700 hover:bg-teal-50 hover:text-[#163D32] rounded-xl transition-colors mt-1"
                   >
                     <KeyRound className="h-4 w-4" />
                     Change Password
                   </button>
 
-                  <Link
-                    href="/staff/dashboard/settings"
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left font-semibold text-gray-700 hover:bg-gray-50 rounded-xl transition-colors"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </Link>
+                  {canAccessSettings && (
+                    <Link
+                      href="/staff/dashboard/settings"
+                      role="menuitem"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-left font-semibold text-gray-700 hover:bg-gray-50 rounded-xl transition-colors"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </Link>
+                  )}
 
                   <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors border-t border-gray-100 mt-1"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setProfileDropdownOpen(false);
+                      void handleLogout();
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left font-semibold text-red-700 hover:bg-red-50 rounded-xl transition-colors border-t border-gray-100 mt-1"
                   >
                     <LogOut className="h-4 w-4" />
                     Log Out
@@ -603,16 +791,26 @@ export default function StaffShell({
 
       {/* ─── CHANGE PASSWORD MODAL ─── */}
       {isPasswordModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={passwordModalTitleId}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsPasswordModalOpen(false);
+          }}
+        >
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-gray-100 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-              <div className="flex items-center gap-2 text-gray-900 font-bold text-base">
+              <div id={passwordModalTitleId} className="flex items-center gap-2 text-gray-900 font-bold text-base">
                 <KeyRound className="h-5 w-5 text-[#163D32]" />
                 Update Staff Password
               </div>
               <button
+                type="button"
                 onClick={() => setIsPasswordModalOpen(false)}
-                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"
+                aria-label="Close password modal"
+                className="rounded-lg p-1 text-[#52645D] hover:bg-gray-100"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -621,6 +819,7 @@ export default function StaffShell({
             <form onSubmit={handlePasswordChange} className="mt-4 space-y-4">
               {passwordMsg && (
                 <div
+                  role={passwordMsg.type === 'error' ? 'alert' : 'status'}
                   className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
                     passwordMsg.type === 'success'
                       ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
@@ -633,10 +832,11 @@ export default function StaffShell({
               )}
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
+                <label htmlFor={newPasswordId} className="block text-xs font-bold text-gray-700 mb-1">
                   New Password
                 </label>
                 <input
+                  id={newPasswordId}
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -647,10 +847,11 @@ export default function StaffShell({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
+                <label htmlFor={confirmPasswordId} className="block text-xs font-bold text-gray-700 mb-1">
                   Confirm Password
                 </label>
                 <input
+                  id={confirmPasswordId}
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -664,7 +865,7 @@ export default function StaffShell({
                 <button
                   type="button"
                   onClick={() => setIsPasswordModalOpen(false)}
-                  className="rounded-xl px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100"
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-[#52645D] hover:bg-gray-100"
                 >
                   Cancel
                 </button>

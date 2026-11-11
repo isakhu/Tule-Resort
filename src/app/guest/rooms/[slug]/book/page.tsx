@@ -2,11 +2,34 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import RoomBookingForm from '@/components/RoomBookingForm';
 import { getRoomBySlug } from '@/lib/rooms';
+import { getResortPricingSettings } from '@/lib/resortPricing';
+import { buildStaySearchQuery, parseRoomExploreFilters } from '@/lib/bookingParams';
 
-export default async function RoomBookPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export const dynamic = 'force-dynamic';
+
+export default async function RoomBookPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const [{ slug }, rawSearch] = await Promise.all([
+    params,
+    searchParams ?? Promise.resolve({}),
+  ]);
   const decodedSlug = decodeURIComponent(slug);
-  const room = await getRoomBySlug(decodedSlug);
+  const filters = parseRoomExploreFilters(rawSearch);
+  const [room, pricingSettings] = await Promise.all([
+    getRoomBySlug(decodedSlug),
+    getResortPricingSettings(),
+  ]);
+
+  const stayQuery = buildStaySearchQuery({
+    checkIn: filters.checkIn,
+    checkOut: filters.checkOut,
+    guests: filters.guests,
+  });
 
   if (!room) {
     return (
@@ -17,7 +40,7 @@ export default async function RoomBookPage({ params }: { params: Promise<{ slug:
             The requested room accommodation could not be found or is currently unavailable.
           </p>
           <Link
-            href="/guest/rooms"
+            href={stayQuery ? `/guest/rooms?${stayQuery}` : '/guest/rooms'}
             className="mt-6 inline-flex rounded-full bg-[#163D32] hover:bg-[#C5A46D] hover:text-[#163D32] px-6 py-2.5 text-xs font-bold text-[#F5F0E6] transition"
           >
             Back to Accommodations
@@ -29,7 +52,10 @@ export default async function RoomBookPage({ params }: { params: Promise<{ slug:
 
   const maxGuests = Number(room.maxOccupancy ?? room.capacity ?? 2);
   const price = Number(room.price ?? 0);
-  const currency = 'ETB';
+  const currency = pricingSettings.currency || 'ETB';
+  const clampedInitialGuests = filters.guests
+    ? Math.min(Math.max(1, filters.guests), maxGuests)
+    : undefined;
 
   return (
     <main className="min-h-screen bg-[#F5F0E6] text-[#26312D] pb-24">
@@ -37,7 +63,7 @@ export default async function RoomBookPage({ params }: { params: Promise<{ slug:
       <header className="sticky top-0 z-40 bg-[#163D32] text-[#F5F0E6] border-b border-[#C5A46D]/20 px-4 py-4 shadow-sm">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Link
-            href={`/guest/rooms/${encodeURIComponent(room.slug || room.id)}`}
+            href={`/guest/rooms/${encodeURIComponent(room.slug || room.id)}${stayQuery ? `?${stayQuery}` : ''}`}
             className="flex items-center justify-center h-9 w-9 rounded-full bg-white/10 text-[#F5F0E6] hover:bg-white/20 transition-colors"
             aria-label="Back to room details"
           >
@@ -59,6 +85,8 @@ export default async function RoomBookPage({ params }: { params: Promise<{ slug:
           roomName={room.name}
           price={price}
           currency={currency}
+          serviceChargePercent={pricingSettings.serviceChargePercent}
+          taxPercent={pricingSettings.taxPercent}
           maxGuests={maxGuests}
           imageUrl={room.imageUrl}
           roomType={room.type}
@@ -66,6 +94,9 @@ export default async function RoomBookPage({ params }: { params: Promise<{ slug:
           sizeSqm={room.sizeSqm}
           location="Hawassa, Sidama • Lake Shorefront"
           view={room.view}
+          initialCheckIn={filters.checkIn}
+          initialCheckOut={filters.checkOut}
+          initialGuests={clampedInitialGuests}
         />
       </div>
     </main>

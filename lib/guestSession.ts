@@ -1,3 +1,13 @@
+export interface GuestReservationSummary {
+  id: string;
+  booking_number?: string;
+  check_in: string;
+  check_out: string;
+  guests?: number;
+  payment_status?: string;
+  total_price?: number;
+}
+
 export interface GuestStay {
   id: string;
   booking_number: string;
@@ -66,7 +76,7 @@ export async function fetchCurrentGuestStay(): Promise<{ authenticated: boolean;
       return { authenticated: true, stay: json.stay };
     }
     return { authenticated: false };
-  } catch (err) {
+  } catch {
     return { authenticated: false, error: 'Network error checking guest session.' };
   }
 }
@@ -101,7 +111,7 @@ export async function fetchGuestActivity(stayId?: string): Promise<{
   success: boolean;
   orders: ActivityOrder[];
   requests: ActivityServiceRequest[];
-  reservation?: any;
+  reservation?: GuestReservationSummary | null;
   error?: string;
 }> {
   try {

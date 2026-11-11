@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getVerifiedGuestStay } from '@/lib/guestStayCookie';
+import { requireStaffOrAdmin } from '@/lib/staffAuth';
 
 type OrderItem = {
   menu_item_id?: string;
@@ -14,6 +16,8 @@ type OrderRequest = {
   items?: OrderItem[];
   table_token?: string;
   tableToken?: string;
+  guest_stay_id?: string | null;
+  guestStayId?: string | null;
   idempotency_key?: string;
   idempotencyKey?: string;
 };
@@ -98,9 +102,58 @@ export async function POST(request: Request) {
     const tableToken = body.table_token || body.tableToken;
     const effectiveIdempotencyKey = (body.idempotency_key || body.idempotencyKey || '').trim() || null;
 
-    // 3. Create the order via verified RPC
+    const authHeader = request.headers.get('authorization') || '';
+    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    let verifiedUserId: string | null = null;
+    if (bearerMatch) {
+      const { data: userData, error: userErr } = await supabase.auth.getUser(bearerMatch[1].trim());
+      if (userErr || !userData?.user) {
+        return NextResponse.json({ success: false, error: 'Invalid authorization token.' }, { status: 401 });
+      }
+      verifiedUserId = userData.user.id;
+    }
+
+    const verifiedStay = await getVerifiedGuestStay();
+    const requestedStayId =
+      typeof body.guest_stay_id === 'string' && body.guest_stay_id.trim()
+        ? body.guest_stay_id.trim()
+        : typeof body.guestStayId === 'string' && body.guestStayId.trim()
+          ? body.guestStayId.trim()
+          : null;
+
+    let effectiveStayId: string | null = verifiedStay?.id ?? null;
+
+    if (effectiveStayId) {
+      const { data: liveStay } = await supabase
+        .from('room_reservations')
+        .select('id')
+        .eq('id', effectiveStayId)
+        .eq('status', 'checked_in')
+        .maybeSingle();
+
+      if (!liveStay) {
+        effectiveStayId = null;
+      }
+    }
+
+    if (requestedStayId && requestedStayId !== effectiveStayId) {
+      const staffCheck = bearerMatch ? await requireStaffOrAdmin(request) : null;
+      if (staffCheck?.ok) {
+        effectiveStayId = requestedStayId;
+      } else {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Your checked-in stay session could not be verified or has expired. Please verify your room stay again.',
+          },
+          { status: effectiveStayId ? 403 : 401 },
+        );
+      }
+    }
+
+    // 3. Create the order via verified RPC (never trust client-supplied body.user_id)
     const { data: rpcResult, error: rpcError } = await supabase.rpc('create_guest_order', {
-      p_user_id: body.user_id ?? null,
+      p_user_id: verifiedUserId,
       p_department_id: resolvedDepartmentId,
       p_room_number: body.room_number?.trim() || null,
       p_guest_name: body.guest_name?.trim() || 'Guest',
@@ -108,7 +161,7 @@ export async function POST(request: Request) {
       p_items: normalizedItems,
       p_table_token: tableToken ? tableToken.trim() : null,
       p_session_token: null,
-      p_guest_stay_id: null,
+      p_guest_stay_id: effectiveStayId,
       p_idempotency_key: effectiveIdempotencyKey,
     });
 
@@ -118,14 +171,27 @@ export async function POST(request: Request) {
 
     const firstRow = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
     const orderId = firstRow?.order_id || (typeof rpcResult === 'string' ? rpcResult : null);
-    const totalAmount = firstRow?.total_amount != null ? Number(firstRow.total_amount) : undefined;
+    let totalAmount = firstRow?.total_amount != null ? Number(firstRow.total_amount) : undefined;
     const isDuplicate = Boolean(firstRow?.is_duplicate);
+
+    if (orderId && (totalAmount == null || !Number.isFinite(totalAmount))) {
+      const { data: orderRow } = await supabase
+        .from('orders')
+        .select('total')
+        .eq('id', orderId)
+        .maybeSingle();
+
+      if (orderRow?.total != null) {
+        totalAmount = Number(orderRow.total);
+      }
+    }
 
     return NextResponse.json({
       success: true,
       data: orderId,
       orderId,
       totalAmount,
+      guestStayId: effectiveStayId,
       isDuplicate,
     }, { status: 200 });
   } catch (error) {

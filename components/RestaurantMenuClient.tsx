@@ -1,9 +1,13 @@
 'use client';
 
 import { useMemo, useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Check, ChevronDown, Minus, Phone, Plus, Search, ShoppingBag, Sparkles, UtensilsCrossed } from 'lucide-react';
+import { ArrowRight, Check, Minus, Phone, Plus, Search, ShoppingBag, Sparkles, UtensilsCrossed } from 'lucide-react';
 import type { MenuItem } from '@/lib/menu';
+import { syncCartWithGuestStay, useGuestCart } from '@/lib/guestCart';
+import { fetchCurrentGuestStay } from '@/lib/guestSession';
+import { FALLBACK_FOOD_IMAGE, isOptimizableImageSrc } from '@/lib/imageSrc';
 
 function FlowerPriceBadge({ price }: { price: number }) {
   return (
@@ -19,44 +23,74 @@ function FlowerPriceBadge({ price }: { price: number }) {
   );
 }
 
-const CATEGORY_TABS = [
-  'All',
-  'Fast Food & Bowls',
+const PREFERRED_CATEGORY_ORDER = [
+  'Breakfast',
+  'Ethiopian',
   'Beef & Lamb',
   'Poultry & Fish',
+  'Mains',
+  'Main Course',
+  'Fish & Seafood',
   'Vegetarian & Vegan',
-  'Breakfast',
+  'Fast Food & Bowls',
+  'Pizza',
+  'Pasta',
+  'Pizza & Pasta',
+  'Burgers & Sandwiches',
+  'Burgers',
   'Modern & Intercontinental',
+  'Sides',
   'Sides & Appetizers',
+  'Starters',
+  'Appetizers',
+  'Desserts',
   'Desserts & Sweets',
+  'Dessert',
+  'Drinks',
   'Beverages',
-] as const;
+  'Coffee',
+  'Kids',
+  'Other',
+];
 
 export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAll, setShowAll] = useState(false);
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const [failedImgIds, setFailedImgIds] = useState<Record<string, boolean>>({});
+  const { cart, hydrated, changeQuantity } = useGuestCart();
   const isClickScrolling = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchCurrentGuestStay()
+      .then((res) => {
+        if (active && res.authenticated && res.stay?.id) {
+          syncCartWithGuestStay(res.stay.id);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Helper to generate section id
   const getCatId = (cat: string) => `cat-${cat.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
-  const changeQuantity = (id: string, delta: number) => {
-    setCart((current) => {
-      const next = { ...current };
-      const quantity = Math.max(0, (next[id] ?? 0) + delta);
-      if (quantity === 0) {
-        delete next[id];
-      } else {
-        next[id] = quantity;
-      }
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('tule-resort-cart', JSON.stringify(next));
-      }
-      return next;
+  const categoryTabs = useMemo(() => {
+    const uniqueCats = Array.from(
+      new Set(items.map((item) => (item.category || 'General').trim()).filter(Boolean)),
+    );
+    uniqueCats.sort((a, b) => {
+      const idxA = PREFERRED_CATEGORY_ORDER.findIndex((c) => c.toLowerCase() === a.toLowerCase());
+      const idxB = PREFERRED_CATEGORY_ORDER.findIndex((c) => c.toLowerCase() === b.toLowerCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
     });
-  };
+    return ['All', ...uniqueCats];
+  }, [items]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -75,29 +109,14 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
   // Group items by category for smooth jumping & section view
   const categorySections = useMemo(() => {
     const map = new Map<string, MenuItem[]>();
-    CATEGORY_TABS.filter((t) => t !== 'All').forEach((tab) => map.set(tab, []));
+    categoryTabs.filter((t) => t !== 'All').forEach((tab) => map.set(tab, []));
 
     filteredItems.forEach((item) => {
-      const cat = item.category;
-      if (map.has(cat)) {
-        map.get(cat)!.push(item);
-      } else {
-        // Fallback matching
-        let found = false;
-        for (const tab of CATEGORY_TABS) {
-          if (tab !== 'All' && item.category.toLowerCase().includes(tab.toLowerCase())) {
-            map.get(tab)!.push(item);
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          if (!map.has('Modern & Intercontinental')) {
-            map.set('Modern & Intercontinental', []);
-          }
-          map.get('Modern & Intercontinental')!.push(item);
-        }
+      const cat = (item.category || 'General').trim();
+      if (!map.has(cat)) {
+        map.set(cat, []);
       }
+      map.get(cat)!.push(item);
     });
 
     return Array.from(map.entries())
@@ -107,7 +126,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
         items: catItems,
       }))
       .filter((s) => s.items.length > 0);
-  }, [filteredItems]);
+  }, [filteredItems, categoryTabs]);
 
   const handleScrollToCategory = (cat: string) => {
     setActiveCategory(cat);
@@ -159,13 +178,16 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
     return () => observer.disconnect();
   }, [categorySections, searchQuery, isClickScrolling]);
 
-  const totalItems = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
+  const totalItems = hydrated
+    ? Object.values(cart).reduce((sum, quantity) => sum + quantity, 0)
+    : 0;
   const totalAmount = useMemo(() => {
+    if (!hydrated) return 0;
     return Object.entries(cart).reduce((sum, [id, qty]) => {
       const item = items.find((i) => i.id === id);
       return sum + (item ? item.price * qty : 0);
     }, 0);
-  }, [cart, items]);
+  }, [hydrated, cart, items]);
 
   return (
     <main id="menu" className="relative min-h-screen bg-[#F5F0E6] pb-28 pt-8 text-[#26312D]">
@@ -179,10 +201,11 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
             <div className="max-w-2xl space-y-3">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-black/20 border border-white/10 overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src="/tule-resort-logo.png"
                     alt="Tule Resort Logo"
+                    width={40}
+                    height={40}
                     className="h-full w-full object-contain"
                   />
                 </div>
@@ -218,18 +241,21 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
           {/* Search Bar inside banner */}
           <div className="relative mt-8">
             <div className="relative flex items-center">
-              <Search className="absolute left-5 h-5 w-5 text-[#8A9B83]" />
+              <Search className="pointer-events-none absolute left-5 h-5 w-5 text-[#52645D]" />
               <input
-                type="text"
+                type="search"
+                aria-label="Search restaurant dishes and drinks"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search across all dishes & drinks (e.g. Tibs, Tilapia, Kitfo, Boba, Pizza, Burger, Coffee...)"
-                className="w-full rounded-full border border-white/20 bg-white py-4 pl-14 pr-6 text-sm font-bold text-[#26312D] placeholder:text-[#8A9B83] shadow-lg outline-none transition focus:border-[#C5A46D] focus:ring-4 focus:ring-[#C5A46D]/20"
+                className="w-full rounded-full border border-white/20 bg-white py-4 pl-14 pr-16 text-sm font-bold text-[#26312D] placeholder:text-[#52645D] shadow-lg outline-none transition focus:border-[#C5A46D] focus:ring-4 focus:ring-[#C5A46D]/20"
               />
               {searchQuery && (
                 <button
+                  type="button"
+                  aria-label="Clear menu search"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-5 text-xs font-black uppercase text-[#8A9B83] hover:text-[#26312D]"
+                  className="absolute right-5 text-xs font-black uppercase text-[#52645D] hover:text-[#26312D]"
                 >
                   Clear
                 </button>
@@ -245,7 +271,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
         className="sticky top-0 z-30 mx-auto mt-6 max-w-7xl px-4 sm:px-6 lg:px-8 py-2.5 backdrop-blur-md bg-[#F5F0E6]/90 border-y border-[#163D32]/10 shadow-xs"
       >
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1">
-          {CATEGORY_TABS.map((tab) => {
+          {categoryTabs.map((tab) => {
             const isActive = activeCategory === tab;
             return (
               <button
@@ -317,7 +343,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
               {/* Items Grid */}
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {section.items.map((item, index) => {
-                  const quantity = cart[item.id] ?? 0;
+                  const quantity = hydrated ? (cart[item.id] ?? 0) : 0;
                   const isEven = index % 2 === 0;
 
                   return (
@@ -332,7 +358,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                             {item.category}
                           </span>
                           {item.amharicName && (
-                            <span className="rounded-full bg-[#163D32]/5 px-2.5 py-0.5 text-[11px] font-display font-medium text-[#C5A46D]">
+                            <span className="rounded-full bg-[#163D32]/5 px-2.5 py-0.5 text-[11px] font-display font-medium text-[#7A5A27]">
                               {item.amharicName}
                             </span>
                           )}
@@ -341,15 +367,17 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                         {/* Alternating Layout */}
                         <div className={`mt-4 flex items-center gap-4 ${isEven ? 'flex-row' : 'flex-row-reverse'}`}>
                           {/* Circular Food Plate Image */}
-                          <div className="relative shrink-0">
-                            <img
-                              src={item.imageUrl}
+                          <div className="relative h-28 w-28 sm:h-32 sm:w-32 shrink-0 overflow-hidden rounded-full shadow-[0_12px_24px_rgba(0,0,0,0.15)] ring-4 ring-[#F5F0E6]">
+                            <Image
+                              src={failedImgIds[item.id] ? FALLBACK_FOOD_IMAGE : item.imageUrl}
                               alt={item.name}
-                              className="h-28 w-28 sm:h-32 sm:w-32 rounded-full object-cover shadow-[0_12px_24px_rgba(0,0,0,0.15)] ring-4 ring-[#F5F0E6] transition-transform duration-500 group-hover:scale-105"
-                              loading="lazy"
-                              onError={(e) => {
-                                e.currentTarget.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80';
-                              }}
+                              fill
+                              sizes="128px"
+                              unoptimized={!isOptimizableImageSrc(failedImgIds[item.id] ? FALLBACK_FOOD_IMAGE : item.imageUrl)}
+                              className="object-cover transition-transform duration-500 group-hover:scale-105"
+                              onError={() =>
+                                setFailedImgIds((prev) => (prev[item.id] ? prev : { ...prev, [item.id]: true }))
+                              }
                             />
                           </div>
 
@@ -366,7 +394,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                         </div>
 
                         {/* Description */}
-                        <p className="mt-4 text-xs leading-relaxed text-[#8A9B83] line-clamp-2">
+                        <p className="mt-4 text-xs leading-relaxed text-[#52645D] line-clamp-2">
                           {item.description}
                         </p>
                       </div>

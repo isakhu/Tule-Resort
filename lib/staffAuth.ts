@@ -74,7 +74,7 @@ export async function requireStaffOrAdmin(req: Request): Promise<StaffAuthResult
       .select('name')
       .in('id', deptIds);
     if (deptRows) {
-      departmentNames = deptRows.map((d: any) => d.name);
+      departmentNames = (deptRows as Array<{ name: string }>).map((d) => d.name);
     }
   }
 

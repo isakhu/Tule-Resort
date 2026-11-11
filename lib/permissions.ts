@@ -11,6 +11,7 @@ export type DashboardModule =
   | 'spa'
   | 'housekeeping'
   | 'maintenance'
+  | 'gallery'
   | 'staff_management'
   | 'settings';
 
@@ -27,6 +28,7 @@ export const ALL_MODULES: DashboardModule[] = [
   'spa',
   'housekeeping',
   'maintenance',
+  'gallery',
   'staff_management',
   'settings',
 ];
@@ -40,8 +42,8 @@ export const DEPARTMENT_MODULE_MAP: Record<string, DashboardModule[]> = {
   kitchen: ['dashboard', 'queue', 'kitchen', 'orders', 'tables'],
   restaurant: ['dashboard', 'queue', 'kitchen', 'orders', 'tables', 'menu'],
   cafeteria: ['dashboard', 'queue', 'kitchen', 'orders', 'tables', 'menu'],
-  'front desk': ['dashboard', 'queue', 'reservations', 'rooms', 'receipts', 'orders'],
-  reception: ['dashboard', 'queue', 'reservations', 'rooms', 'receipts', 'orders'],
+  'front desk': ['dashboard', 'queue', 'reservations', 'rooms', 'receipts', 'orders', 'gallery'],
+  reception: ['dashboard', 'queue', 'reservations', 'rooms', 'receipts', 'orders', 'gallery'],
   housekeeping: ['dashboard', 'queue', 'housekeeping', 'rooms'],
   spa: ['dashboard', 'queue', 'spa', 'orders'],
   wellness: ['dashboard', 'queue', 'spa', 'orders'],
@@ -63,6 +65,7 @@ export const ROUTE_TO_MODULE_MAP: Record<string, DashboardModule> = {
   '/staff/dashboard/services': 'spa',
   '/staff/dashboard/housekeeping': 'housekeeping',
   '/staff/dashboard/maintenance': 'maintenance',
+  '/staff/dashboard/gallery': 'gallery',
   '/staff/dashboard/settings': 'settings',
   '/admin/staff': 'staff_management',
 };

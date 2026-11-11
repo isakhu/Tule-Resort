@@ -1,8 +1,10 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Dumbbell, Heart, Hotel, Sparkles, Users, Waves } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Dumbbell, Heart, Hotel, Sparkles, Users, Waves } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { isOptimizableImageSrc } from '@/lib/imageSrc';
 
 export type ExperienceItem = {
   id: string;
@@ -30,7 +32,7 @@ const categoryMeta = {
 function ExperienceCard({ item, liked, onLike }: { item: ExperienceItem; liked: boolean; onLike: () => void }) {
   return (
     <article className="snap-center shrink-0 w-[min(86vw,420px)] md:w-[420px] h-[72vh] min-h-[560px] max-h-[780px] overflow-hidden rounded-[2.2rem] relative bg-[#163D32] shadow-[0_28px_70px_rgba(22,61,50,.25)] border border-[#C5A46D]/20">
-      <img src={item.imageUrl} alt={`${item.name} at Tule Resort`} className="absolute inset-0 h-full w-full object-cover transition duration-700 hover:scale-105" loading="lazy" />
+      <Image src={item.imageUrl} alt={`${item.name} at Tule Resort`} fill sizes="(max-width: 768px) 86vw, 420px" unoptimized={!isOptimizableImageSrc(item.imageUrl)} className="object-cover transition duration-700 hover:scale-105" />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(22,61,50,.08)_0%,rgba(22,61,50,.2)_30%,rgba(22,61,50,.78)_68%,rgba(22,61,50,.96)_100%)]" />
       <div className="absolute left-5 right-5 top-5 flex items-center justify-between">
         <span className="rounded-full border border-[#C5A46D]/30 bg-[#163D32]/85 px-3.5 py-1.5 text-[9px] font-black uppercase tracking-[.2em] text-[#F5F0E6] backdrop-blur-md">{item.category}</span>
@@ -68,7 +70,7 @@ export default function ResortExperienceMenu({ items }: { items: ExperienceItem[
       <header className="sticky top-0 z-40 border-b border-[#C5A46D]/20 bg-[#163D32]/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-6">
           <Link href="/guest" className="inline-flex items-center gap-2 text-sm font-bold text-[#F5F0E6]/75 hover:text-[#C5A46D] transition"><ArrowLeft className="h-4 w-4" /> Guest services</Link>
-          <Link href="/guest" className="hidden md:flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><img src="/tule-resort-logo.png" alt="Tule Resort logo" className="h-8 w-8 rounded-lg object-contain" /><span className="text-xs font-black uppercase tracking-[.16em] text-[#F5F0E6]">Tule Resort • Hawassa</span></Link>
+          <Link href="/guest" className="hidden md:flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-1.5"><Image src="/tule-resort-logo.png" alt="Tule Resort logo" width={32} height={32} className="h-8 w-8 rounded-lg object-contain" /><span className="text-xs font-black uppercase tracking-[.16em] text-[#F5F0E6]">Tule Resort • Hawassa</span></Link>
           <Link href="/guest/rooms" className="rounded-full border border-[#C5A46D]/30 bg-[#0F2D24] px-4 py-2 text-[10px] font-black uppercase tracking-[.12em] text-[#C5A46D] hover:border-[#C5A46D] transition">Room details</Link>
         </div>
       </header>
@@ -100,7 +102,7 @@ export default function ResortExperienceMenu({ items }: { items: ExperienceItem[
         </section>
       </main>
 
-      <footer className="border-t border-white/10 bg-[#0F2D24]"><div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-6 md:px-6"><div className="flex items-center gap-3"><img src="/tule-resort-logo.png" alt="Tule Resort logo" className="h-10 w-10 rounded-lg object-contain bg-black/20 border border-white/10" /><div><p className="font-display text-sm font-semibold text-[#F5F0E6]">Tule Resort</p><p className="text-[8px] uppercase tracking-[.24em] text-[#C5A46D]">Hawassa • Ethiopia</p></div></div><p className="text-[10px] uppercase tracking-[.18em] text-[#F5F0E6]/50">Relax. Enjoy. Remember.</p></div></footer>
+      <footer className="border-t border-white/10 bg-[#0F2D24]"><div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-6 md:px-6"><div className="flex items-center gap-3"><Image src="/tule-resort-logo.png" alt="Tule Resort logo" width={40} height={40} className="h-10 w-10 rounded-lg object-contain bg-black/20 border border-white/10" /><div><p className="font-display text-sm font-semibold text-[#F5F0E6]">Tule Resort</p><p className="text-[8px] uppercase tracking-[.24em] text-[#C5A46D]">Hawassa • Ethiopia</p></div></div><p className="text-[10px] uppercase tracking-[.18em] text-[#F5F0E6]/50">Relax. Enjoy. Remember.</p></div></footer>
     </div>
   );
 }

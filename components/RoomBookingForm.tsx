@@ -1,7 +1,10 @@
 'use client';
 
-import React, { FormEvent, useMemo, useState } from 'react';
+import React, { FormEvent, useId, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { calculateResortPricingBreakdown } from '@/lib/pricing';
+import { RESORT_BANK_ACCOUNTS } from '@/lib/resortAccounts';
 import {
   CalendarDays,
   Lock,
@@ -9,13 +12,9 @@ import {
   CheckCircle2,
   Users,
   BedDouble,
-  ChevronRight,
-  Sparkles,
   CreditCard,
   Building,
-  Smartphone,
   MapPin,
-  Star,
   Check,
   Clock,
   Loader2,
@@ -29,6 +28,8 @@ interface RoomBookingFormProps {
   roomName: string;
   price: number;
   currency?: string;
+  serviceChargePercent?: number;
+  taxPercent?: number;
   maxGuests: number;
   imageUrl?: string;
   roomType?: string;
@@ -36,11 +37,19 @@ interface RoomBookingFormProps {
   sizeSqm?: number;
   location?: string;
   view?: string;
+  initialCheckIn?: string;
+  initialCheckOut?: string;
+  initialGuests?: number;
 }
 
 type ReservationResponse = {
   success?: boolean;
   bookingNumber?: string;
+  subtotal?: number;
+  serviceChargePercent?: number;
+  serviceCharge?: number;
+  taxPercent?: number;
+  tax?: number;
   totalPrice?: number;
   currency?: string;
   error?: string;
@@ -51,6 +60,8 @@ export default function RoomBookingForm({
   roomName,
   price,
   currency = 'ETB',
+  serviceChargePercent = 0,
+  taxPercent = 0,
   maxGuests,
   imageUrl,
   roomType,
@@ -58,22 +69,48 @@ export default function RoomBookingForm({
   sizeSqm,
   location = 'Hawassa, Sidama • Lake Shorefront',
   view = 'Panoramic Lake View',
+  initialCheckIn,
+  initialCheckOut,
+  initialGuests,
 }: RoomBookingFormProps) {
   const router = useRouter();
 
-  // Tomorrow as default check-in, +3 days check-out
+  // Tomorrow as default check-in, +3 days check-out (overridden by valid query params)
+  const formatDateInput = (d: Date) => d.toISOString().split('T')[0];
   const today = new Date();
+  const todayStr = formatDateInput(today);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const defaultOut = new Date(tomorrow);
   defaultOut.setDate(defaultOut.getDate() + 3);
 
-  const formatDateInput = (d: Date) => d.toISOString().split('T')[0];
+  const validInitialCheckIn =
+    initialCheckIn && /^\d{4}-\d{2}-\d{2}$/.test(initialCheckIn) && initialCheckIn >= todayStr
+      ? initialCheckIn
+      : formatDateInput(tomorrow);
+
+  let resolvedInitialCheckOut = formatDateInput(defaultOut);
+  if (
+    initialCheckOut &&
+    /^\d{4}-\d{2}-\d{2}$/.test(initialCheckOut) &&
+    initialCheckOut > validInitialCheckIn
+  ) {
+    resolvedInitialCheckOut = initialCheckOut;
+  } else if (validInitialCheckIn >= resolvedInitialCheckOut) {
+    const fallbackOut = new Date(`${validInitialCheckIn}T00:00:00Z`);
+    fallbackOut.setUTCDate(fallbackOut.getUTCDate() + 3);
+    resolvedInitialCheckOut = formatDateInput(fallbackOut);
+  }
+
+  const resolvedInitialGuests =
+    typeof initialGuests === 'number' && Number.isInteger(initialGuests) && initialGuests >= 1
+      ? Math.min(initialGuests, maxGuests)
+      : Math.min(2, maxGuests);
 
   const [form, setForm] = useState({
-    checkIn: formatDateInput(tomorrow),
-    checkOut: formatDateInput(defaultOut),
-    guests: Math.min(2, maxGuests),
+    checkIn: validInitialCheckIn,
+    checkOut: resolvedInitialCheckOut,
+    guests: resolvedInitialGuests,
     name: '',
     phone: '',
     email: '',
@@ -106,6 +143,25 @@ export default function RoomBookingForm({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState<ReservationResponse & { paymentStatus?: string; paymentReference?: string | null; isVerified?: boolean } | null>(null);
 
+  const checkInId = useId();
+  const checkOutId = useId();
+  const guestsId = useId();
+  const guestNameId = useId();
+  const guestPhoneId = useId();
+  const guestEmailId = useId();
+  const guestSpecialId = useId();
+  const paymentRefId = useId();
+
+  const telebirrAccount = RESORT_BANK_ACCOUNTS.telebirr;
+  const cbeBirrAccount = RESORT_BANK_ACCOUNTS.cbe_birr;
+  const transferAccounts = [
+    RESORT_BANK_ACCOUNTS.cbe,
+    RESORT_BANK_ACCOUNTS.boa,
+    RESORT_BANK_ACCOUNTS.awash,
+    RESORT_BANK_ACCOUNTS.mpesa,
+  ];
+  const beneficiaryName = telebirrAccount.accountHolder;
+
   // Nights calculation
   const nights = useMemo(() => {
     if (!form.checkIn || !form.checkOut) return 0;
@@ -115,10 +171,20 @@ export default function RoomBookingForm({
     return diff > 0 ? Math.round(diff / (1000 * 60 * 60 * 24)) : 0;
   }, [form.checkIn, form.checkOut]);
 
-  // Price calculations
-  const roomCost = nights * Number(price || 0);
-  const taxAndFees = Math.round(roomCost * 0.1); // 10% taxes and service
-  const grandTotal = roomCost + taxAndFees;
+  // Unified price breakdown matching server resort_settings & folio rules
+  const pricing = useMemo(
+    () =>
+      calculateResortPricingBreakdown(
+        nights * Number(price || 0),
+        serviceChargePercent,
+        taxPercent,
+      ),
+    [nights, price, serviceChargePercent, taxPercent],
+  );
+  const roomCost = pricing.subtotal;
+  const serviceCharge = pricing.serviceCharge;
+  const taxAmount = pricing.tax;
+  const grandTotal = pricing.grandTotal;
 
   const formatDateDisplay = (dateStr: string) => {
     if (!dateStr) return 'Select date';
@@ -249,171 +315,193 @@ export default function RoomBookingForm({
   // ─── BOOKING SUCCESS SCREEN ───
   if (success) {
     return (
-      <div className="rounded-3xl bg-white p-8 text-center shadow-xl border border-[#163D32]/15 max-w-lg mx-auto space-y-5 animate-in zoom-in-95">
-        <div className="h-16 w-16 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center shadow-inner">
-          <CheckCircle2 className="h-8 w-8" />
+      <div className="rounded-3xl bg-white p-8 text-center shadow-xl border border-[#E6DFD1] max-w-lg mx-auto space-y-5 animate-in zoom-in-95">
+        <div className="h-16 w-16 rounded-full bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center shadow-inner">
+          <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
         </div>
 
         <div className="space-y-1">
-          <span className="rounded-full bg-[#163D32]/8 px-3 py-1 text-[11px] font-black text-[#163D32] uppercase tracking-wider">
+          <span className="inline-block rounded-full bg-[#163D32]/10 px-3 py-1 text-[11px] font-bold text-[#163D32] uppercase tracking-wider">
             Booking Confirmed
           </span>
-          <h2 className="text-2xl font-black text-gray-900 pt-1">
+          <h2 className="font-display text-2xl font-semibold text-[#163D32] pt-1">
             Reservation Confirmed!
           </h2>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-[#52645D]">
             Booking Reference:{' '}
-            <strong className="text-[#C5A46D] font-mono text-sm">
+            <strong className="text-[#7A5A27] font-mono text-sm">
               {success.bookingNumber || 'TR-RESERVATION'}
             </strong>
           </p>
         </div>
 
-        <div className="rounded-2xl bg-[#F5F0E6] p-4 text-left text-xs border border-gray-100 space-y-2.5">
+        <div className="rounded-2xl bg-[#F5F0E6] p-4 text-left text-xs border border-[#E6DFD1] space-y-2.5">
           <div className="flex justify-between">
-            <span className="text-gray-500">Room:</span>
-            <span className="font-bold text-gray-900">{roomName}</span>
+            <span className="text-[#52645D]">Room:</span>
+            <span className="font-bold text-[#163D32]">{roomName}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">Dates:</span>
-            <span className="font-bold text-gray-900">
+            <span className="text-[#52645D]">Dates:</span>
+            <span className="font-bold text-[#163D32]">
               {formatDateDisplay(form.checkIn)} – {formatDateDisplay(form.checkOut)} ({nights} nights)
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">Guests:</span>
-            <span className="font-bold text-gray-900">{form.guests} guests</span>
+            <span className="text-[#52645D]">Guests:</span>
+            <span className="font-bold text-[#163D32]">{form.guests} guests</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">Payment:</span>
-            <span className="font-bold text-gray-900 capitalize">{paymentMethod.replace('_', ' ')}</span>
+            <span className="text-[#52645D]">Payment:</span>
+            <span className="font-bold text-[#163D32] capitalize">{paymentMethod.replace(/_/g, ' ')}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">Payment Status:</span>
+            <span className="text-[#52645D]">Payment Status:</span>
             <span className={`font-bold uppercase tracking-wider text-[11px] px-2 py-0.5 rounded-md ${
               success.paymentStatus === 'paid'
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border border-amber-200'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-amber-50 text-amber-800 border border-amber-200'
             }`}>
               {success.paymentStatus === 'paid' ? '✓ Paid & Verified via Verify.ET' : 'Pending (Pay at Check-in)'}
             </span>
           </div>
           {success.paymentReference && (
             <div className="flex justify-between">
-              <span className="text-gray-500">Transaction Ref:</span>
-              <span className="font-mono font-bold text-gray-900">{success.paymentReference}</span>
+              <span className="text-[#52645D]">Transaction Ref:</span>
+              <span className="font-mono font-bold text-[#163D32]">{success.paymentReference}</span>
             </div>
           )}
-          <div className="pt-2 border-t border-gray-200 flex justify-between font-black text-sm text-gray-900">
+          <div className="pt-2 border-t border-[#E6DFD1] flex justify-between font-black text-sm text-[#163D32]">
             <span>Total:</span>
-            <span className="text-[#C5A46D]">
-              {(success.totalPrice || grandTotal).toLocaleString()} {currency}
+            <span className="text-[#7A5A27]">
+              {(success.totalPrice ?? grandTotal).toLocaleString()} {success.currency || currency}
             </span>
           </div>
         </div>
 
-        <p className="text-[11px] text-gray-500">
-          A confirmation SMS has been prepared for {form.phone}. Our lakeside reception concierge is ready to welcome you.
+        <p className="text-xs text-[#52645D]">
+          Save your Booking Reference above to track your stay, order dining, or view your folio once checked in.
         </p>
 
-        <button
-          onClick={() => router.push('/guest/rooms')}
-          className="w-full rounded-2xl bg-[#163D32] py-3 text-xs font-bold text-white shadow-md hover:bg-[#0F2D24] transition-all"
-        >
-          Return to Accommodations
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          <Link
+            href="/guest/my-activity"
+            className="flex-1 rounded-2xl border border-[#163D32]/20 bg-[#F5F0E6] py-3 text-xs font-bold text-[#163D32] hover:bg-[#E6DFD1]/60 transition-all text-center"
+          >
+            View My Stay &amp; Billing
+          </Link>
+          <button
+            type="button"
+            onClick={() => router.push('/guest/rooms')}
+            className="flex-1 rounded-2xl bg-[#163D32] py-3 text-xs font-bold text-[#C5A46D] shadow-md hover:bg-[#0F2D24] transition-all"
+          >
+            Return to Accommodations
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <form onSubmit={submit} className="max-w-2xl mx-auto space-y-4">
-      {/* ─── CARD 1: ROOM SUMMARY (Image 3 Top Card) ─── */}
-      <div className="rounded-3xl bg-white p-4 sm:p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+      {/* ─── CARD 1: ROOM SUMMARY ─── */}
+      <div className="rounded-3xl bg-white p-4 sm:p-5 shadow-sm border border-[#E6DFD1] flex items-center gap-4">
         <div
-          className="h-20 w-24 sm:h-24 sm:w-28 rounded-2xl bg-gray-100 bg-cover bg-center shrink-0 border border-gray-200 shadow-inner"
+          className="h-20 w-24 sm:h-24 sm:w-28 rounded-2xl bg-[#F5F0E6] bg-cover bg-center shrink-0 border border-[#E6DFD1] shadow-inner"
           style={{
             backgroundImage: `url(${imageUrl || 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=400&q=80'})`,
           }}
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-amber-500">
-            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-            <span className="text-xs font-black text-gray-800">5.0</span>
-            <span className="text-[10px] text-gray-400 font-semibold">(2.4k reviews)</span>
-          </div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-[#7A5A27]">
+            {roomType || 'Lakefront Accommodation'} • {view}
+          </p>
 
-          <h3 className="text-base sm:text-lg font-black text-gray-900 truncate mt-0.5">
+          <h3 className="font-display text-lg sm:text-xl font-semibold text-[#163D32] truncate mt-0.5">
             {roomName}
           </h3>
 
-          <p className="text-xs text-gray-500 flex items-center gap-1 truncate mt-0.5">
-            <MapPin className="h-3.5 w-3.5 text-[#163D32] shrink-0" />
+          <p className="text-xs text-[#52645D] flex items-center gap-1 truncate mt-0.5">
+            <MapPin className="h-3.5 w-3.5 text-[#163D32] shrink-0" aria-hidden="true" />
             {location}
           </p>
         </div>
       </div>
 
-      {/* ─── CARD 2: CHECK-IN / CHECK-OUT DATES (Image 3 Date Card) ─── */}
-      <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+      {/* ─── CARD 2: CHECK-IN / CHECK-OUT DATES ─── */}
+      <div className="rounded-3xl bg-white p-5 shadow-sm border border-[#E6DFD1] grid grid-cols-1 sm:grid-cols-2 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-[#E6DFD1]">
         {/* Check-In */}
         <div className="space-y-1 sm:pr-4">
-          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-gray-400">
-            <CalendarDays className="h-4 w-4 text-[#C5A46D]" />
+          <label htmlFor={checkInId} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#52645D]">
+            <CalendarDays className="h-4 w-4 text-[#7A5A27]" aria-hidden="true" />
             Check-in
-          </div>
-          <p className="text-sm font-black text-gray-900">
+          </label>
+          <p className="text-sm font-black text-[#163D32]">
             {formatDateDisplay(form.checkIn)}
           </p>
-          <p className="text-[11px] text-gray-500 flex items-center gap-1">
-            <Clock className="h-3 w-3 text-gray-400" />
+          <p className="text-xs text-[#52645D] flex items-center gap-1">
+            <Clock className="h-3 w-3 text-[#7A5A27]" aria-hidden="true" />
             {getDayOfWeek(form.checkIn)} • 3:00 PM
           </p>
           <input
+            id={checkInId}
             type="date"
             required
+            min={todayStr}
             value={form.checkIn}
-            onChange={(e) => setForm({ ...form, checkIn: e.target.value })}
-            className="w-full mt-2 rounded-xl border border-gray-200 bg-[#F5F0E6] px-3 py-1.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:outline-none"
+            onChange={(e) => {
+              const nextIn = e.target.value;
+              setForm((prev) => {
+                let nextOut = prev.checkOut;
+                if (nextIn && (!nextOut || nextOut <= nextIn)) {
+                  const d = new Date(`${nextIn}T00:00:00Z`);
+                  d.setUTCDate(d.getUTCDate() + 1);
+                  nextOut = formatDateInput(d);
+                }
+                return { ...prev, checkIn: nextIn, checkOut: nextOut };
+              });
+            }}
+            className="w-full mt-2 rounded-xl border border-[#E6DFD1] bg-[#F5F0E6]/70 px-3 py-2 text-xs font-semibold text-[#163D32] focus:border-[#C5A46D] focus:bg-white focus:outline-none"
           />
         </div>
 
         {/* Check-Out */}
         <div className="space-y-1 pt-3 sm:pt-0 sm:pl-4">
-          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-gray-400">
-            <CalendarDays className="h-4 w-4 text-[#C5A46D]" />
+          <label htmlFor={checkOutId} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#52645D]">
+            <CalendarDays className="h-4 w-4 text-[#7A5A27]" aria-hidden="true" />
             Check-out
-          </div>
-          <p className="text-sm font-black text-gray-900">
+          </label>
+          <p className="text-sm font-black text-[#163D32]">
             {formatDateDisplay(form.checkOut)}
           </p>
-          <p className="text-[11px] text-gray-500 flex items-center gap-1">
-            <Clock className="h-3 w-3 text-gray-400" />
+          <p className="text-xs text-[#52645D] flex items-center gap-1">
+            <Clock className="h-3 w-3 text-[#7A5A27]" aria-hidden="true" />
             {getDayOfWeek(form.checkOut)} • 12:00 PM
           </p>
           <input
+            id={checkOutId}
             type="date"
             required
+            min={form.checkIn || todayStr}
             value={form.checkOut}
             onChange={(e) => setForm({ ...form, checkOut: e.target.value })}
-            className="w-full mt-2 rounded-xl border border-gray-200 bg-[#F5F0E6] px-3 py-1.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:outline-none"
+            className="w-full mt-2 rounded-xl border border-[#E6DFD1] bg-[#F5F0E6]/70 px-3 py-2 text-xs font-semibold text-[#163D32] focus:border-[#C5A46D] focus:bg-white focus:outline-none"
           />
         </div>
       </div>
 
-      {/* ─── CARD 3: ROOM DETAILS CARD (Image 3) ─── */}
-      <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100 flex items-center justify-between">
+      {/* ─── CARD 3: ROOM DETAILS CARD ─── */}
+      <div className="rounded-3xl bg-white p-5 shadow-sm border border-[#E6DFD1] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
-          <div className="h-12 w-12 rounded-2xl bg-[#163D32]/8 text-[#163D32] flex items-center justify-center font-bold shrink-0">
-            <BedDouble className="h-6 w-6" />
+          <div className="h-12 w-12 rounded-2xl bg-[#163D32]/10 text-[#163D32] flex items-center justify-center font-bold shrink-0">
+            <BedDouble className="h-6 w-6" aria-hidden="true" />
           </div>
           <div>
-            <h4 className="text-sm font-black text-gray-900">{roomType || 'Deluxe Luxury Suite'}</h4>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-0.5">
+            <h4 className="text-sm font-black text-[#163D32]">{roomType || 'Deluxe Luxury Suite'}</h4>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-[#52645D] mt-0.5">
               <span>{bedType || '1 King Bed'} • {sizeSqm || 42} m²</span>
               <span>•</span>
               <span className="flex items-center gap-1 font-semibold text-[#163D32]">
-                <Users className="h-3.5 w-3.5" />
+                <Users className="h-3.5 w-3.5" aria-hidden="true" />
                 Max {maxGuests} guests
               </span>
             </div>
@@ -422,11 +510,12 @@ export default function RoomBookingForm({
 
         {/* Guests selector */}
         <div className="flex items-center gap-2">
-          <label className="text-[10px] font-bold text-gray-400 uppercase">Guests</label>
+          <label htmlFor={guestsId} className="text-xs font-bold text-[#52645D] uppercase">Guests</label>
           <select
+            id={guestsId}
             value={form.guests}
             onChange={(e) => setForm({ ...form, guests: Number(e.target.value) })}
-            className="rounded-xl border border-gray-200 bg-[#F5F0E6] px-3 py-1.5 text-xs font-bold text-gray-800 focus:border-[#C5A46D] focus:outline-none"
+            className="rounded-xl border border-[#E6DFD1] bg-[#F5F0E6]/70 px-3 py-2 text-xs font-bold text-[#163D32] focus:border-[#C5A46D] focus:bg-white focus:outline-none"
           >
             {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
               <option key={n} value={n}>
@@ -438,189 +527,237 @@ export default function RoomBookingForm({
       </div>
 
       {/* ─── CARD 4: GUEST INFORMATION ─── */}
-      <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100 space-y-3">
-        <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">
+      <div className="rounded-3xl bg-white p-5 shadow-sm border border-[#E6DFD1] space-y-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#7A5A27]">
           Primary Guest Information
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-gray-700 mb-1">
+            <label htmlFor={guestNameId} className="block text-xs font-bold text-[#163D32] mb-1">
               Full Legal Name *
             </label>
             <input
+              id={guestNameId}
               type="text"
               required
-              placeholder="e.g. Dawit Haile"
+              placeholder="e.g. Dawit Tadesse"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 bg-[#F5F0E6] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-[#E6DFD1] bg-[#F5F0E6]/60 px-3.5 py-2.5 text-xs text-[#1A1A1A] focus:border-[#C5A46D] focus:bg-white focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-700 mb-1">
+            <label htmlFor={guestPhoneId} className="block text-xs font-bold text-[#163D32] mb-1">
               Phone Number *
             </label>
             <input
+              id={guestPhoneId}
               type="tel"
               required
               placeholder="+251 911 000 000"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 bg-[#F5F0E6] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-[#E6DFD1] bg-[#F5F0E6]/60 px-3.5 py-2.5 text-xs text-[#1A1A1A] focus:border-[#C5A46D] focus:bg-white focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-700 mb-1">
+            <label htmlFor={guestEmailId} className="block text-xs font-bold text-[#163D32] mb-1">
               Email Address (Optional)
             </label>
             <input
+              id={guestEmailId}
               type="email"
               placeholder="guest@example.com"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 bg-[#F5F0E6] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-[#E6DFD1] bg-[#F5F0E6]/60 px-3.5 py-2.5 text-xs text-[#1A1A1A] focus:border-[#C5A46D] focus:bg-white focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-gray-700 mb-1">
+            <label htmlFor={guestSpecialId} className="block text-xs font-bold text-[#163D32] mb-1">
               Special Requests (Optional)
             </label>
             <input
+              id={guestSpecialId}
               type="text"
               placeholder="High floor, late arrival..."
               value={form.special}
               onChange={(e) => setForm({ ...form, special: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 bg-[#F5F0E6] px-3.5 py-2.5 text-xs text-gray-800 focus:border-[#C5A46D] focus:bg-white focus:outline-none"
+              className="w-full rounded-xl border border-[#E6DFD1] bg-[#F5F0E6]/60 px-3.5 py-2.5 text-xs text-[#1A1A1A] focus:border-[#C5A46D] focus:bg-white focus:outline-none"
             />
           </div>
         </div>
       </div>
 
-      {/* ─── CARD 5: PRICE SUMMARY (Image 3 Price Summary) ─── */}
-      <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100 space-y-3">
-        <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">
+      {/* ─── CARD 5: PRICE SUMMARY ─── */}
+      <div className="rounded-3xl bg-white p-5 shadow-sm border border-[#E6DFD1] space-y-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#7A5A27]">
           Price Summary
         </h4>
 
         <div className="space-y-2 text-xs">
-          <div className="flex items-center justify-between text-gray-600">
+          <div className="flex items-center justify-between text-[#52645D]">
             <span>Room ({nights} {nights === 1 ? 'night' : 'nights'} × {price.toLocaleString()} {currency})</span>
-            <span className="font-bold text-gray-900">{roomCost.toLocaleString()} {currency}</span>
+            <span className="font-bold text-[#163D32]">{roomCost.toLocaleString()} {currency}</span>
           </div>
 
-          <div className="flex items-center justify-between text-gray-600">
-            <span>Resort Service &amp; Taxes (10%)</span>
-            <span className="font-bold text-gray-900">{taxAndFees.toLocaleString()} {currency}</span>
-          </div>
+          {pricing.serviceChargePercent > 0 && (
+            <div className="flex items-center justify-between text-[#52645D]">
+              <span>Resort Service Charge ({pricing.serviceChargePercent}%)</span>
+              <span className="font-bold text-[#163D32]">{serviceCharge.toLocaleString()} {currency}</span>
+            </div>
+          )}
 
-          <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-sm font-black text-gray-900">Total Price</span>
-            <span className="text-xl font-black text-[#C5A46D]">
+          {pricing.taxPercent > 0 && (
+            <div className="flex items-center justify-between text-[#52645D]">
+              <span>Government Tax / VAT ({pricing.taxPercent}%)</span>
+              <span className="font-bold text-[#163D32]">{taxAmount.toLocaleString()} {currency}</span>
+            </div>
+          )}
+
+          {pricing.serviceChargePercent === 0 && pricing.taxPercent === 0 && (
+            <div className="flex items-center justify-between text-[#52645D]">
+              <span>Taxes &amp; Service Fees (0%)</span>
+              <span className="font-bold text-[#163D32]">0 {currency}</span>
+            </div>
+          )}
+
+          <div className="pt-3 border-t border-[#E6DFD1] flex items-center justify-between">
+            <span className="text-sm font-black text-[#163D32]">Total Price</span>
+            <span className="text-xl font-black text-[#7A5A27]">
               {grandTotal.toLocaleString()} {currency}
             </span>
           </div>
         </div>
       </div>
 
-      {/* ─── CARD 6: PAYMENT METHOD (Image 3 Payment Method) ─── */}
-      <div className="rounded-3xl bg-white p-5 shadow-sm border border-gray-100 space-y-3">
-        <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">
+      {/* ─── CARD 6: PAYMENT METHOD ─── */}
+      <div className="rounded-3xl bg-white p-5 shadow-sm border border-[#E6DFD1] space-y-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#7A5A27]">
           Payment Method
         </h4>
 
-        <div className="space-y-2">
+        <div className="space-y-2" role="radiogroup" aria-label="Select payment method">
           {/* Telebirr */}
           <label
-            onClick={() => setPaymentMethod('telebirr')}
-            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
+            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all focus-within:ring-2 focus-within:ring-[#163D32]/30 ${
               paymentMethod === 'telebirr'
-                ? 'border-[#C5A46D] bg-[#C5A46D]/10/30 ring-1 ring-[#C5A46D]'
-                : 'border-gray-200 hover:bg-gray-50'
+                ? 'border-[#C5A46D] bg-[#F5F0E6]/75 ring-1 ring-[#C5A46D]'
+                : 'border-[#E6DFD1] hover:bg-[#F5F0E6]/40'
             }`}
           >
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="telebirr"
+              checked={paymentMethod === 'telebirr'}
+              onChange={() => setPaymentMethod('telebirr')}
+              className="sr-only"
+            />
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm">
+              <div className="h-9 w-9 rounded-xl bg-[#0172BB] text-white flex items-center justify-center font-black text-xs shadow-sm">
                 Tb
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-900">Telebirr</p>
-                <p className="text-[10px] text-gray-400">Instant Ethio Telecom mobile pay</p>
+                <p className="text-xs font-bold text-[#163D32]">Telebirr</p>
+                <p className="text-[11px] text-[#52645D]">Instant Ethio Telecom mobile pay</p>
               </div>
             </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'telebirr' ? 'border-[#C5A46D] bg-[#C5A46D]' : 'border-gray-300'}`}>
-              {paymentMethod === 'telebirr' && <Check className="h-3 w-3 text-white" />}
+            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'telebirr' ? 'border-[#163D32] bg-[#163D32]' : 'border-[#E6DFD1]'}`}>
+              {paymentMethod === 'telebirr' && <Check className="h-3 w-3 text-[#C5A46D]" aria-hidden="true" />}
             </div>
           </label>
 
           {/* CBE Birr */}
           <label
-            onClick={() => setPaymentMethod('cbe_birr')}
-            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
+            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all focus-within:ring-2 focus-within:ring-[#163D32]/30 ${
               paymentMethod === 'cbe_birr'
-                ? 'border-[#C5A46D] bg-[#C5A46D]/10/30 ring-1 ring-[#C5A46D]'
-                : 'border-gray-200 hover:bg-gray-50'
+                ? 'border-[#C5A46D] bg-[#F5F0E6]/75 ring-1 ring-[#C5A46D]'
+                : 'border-[#E6DFD1] hover:bg-[#F5F0E6]/40'
             }`}
           >
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="cbe_birr"
+              checked={paymentMethod === 'cbe_birr'}
+              onChange={() => setPaymentMethod('cbe_birr')}
+              className="sr-only"
+            />
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black text-xs shadow-sm">
+              <div className="h-9 w-9 rounded-xl bg-[#8C2D85] text-white flex items-center justify-center font-black text-xs shadow-sm">
                 CBE
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-900">CBE Birr</p>
-                <p className="text-[10px] text-gray-400">Commercial Bank of Ethiopia mobile</p>
+                <p className="text-xs font-bold text-[#163D32]">CBE Birr</p>
+                <p className="text-[11px] text-[#52645D]">Commercial Bank of Ethiopia mobile</p>
               </div>
             </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'cbe_birr' ? 'border-[#C5A46D] bg-[#C5A46D]' : 'border-gray-300'}`}>
-              {paymentMethod === 'cbe_birr' && <Check className="h-3 w-3 text-white" />}
+            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'cbe_birr' ? 'border-[#163D32] bg-[#163D32]' : 'border-[#E6DFD1]'}`}>
+              {paymentMethod === 'cbe_birr' && <Check className="h-3 w-3 text-[#C5A46D]" aria-hidden="true" />}
             </div>
           </label>
 
           {/* Bank Transfer */}
           <label
-            onClick={() => setPaymentMethod('bank_transfer')}
-            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
+            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all focus-within:ring-2 focus-within:ring-[#163D32]/30 ${
               paymentMethod === 'bank_transfer'
-                ? 'border-[#C5A46D] bg-[#C5A46D]/10/30 ring-1 ring-[#C5A46D]'
-                : 'border-gray-200 hover:bg-gray-50'
+                ? 'border-[#C5A46D] bg-[#F5F0E6]/75 ring-1 ring-[#C5A46D]'
+                : 'border-[#E6DFD1] hover:bg-[#F5F0E6]/40'
             }`}
           >
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="bank_transfer"
+              checked={paymentMethod === 'bank_transfer'}
+              onChange={() => setPaymentMethod('bank_transfer')}
+              className="sr-only"
+            />
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
-                <Building className="h-4 w-4" />
+              <div className="h-9 w-9 rounded-xl bg-[#0F2D24] text-[#C5A46D] flex items-center justify-center shadow-sm">
+                <Building className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-900">Direct Bank Transfer</p>
-                <p className="text-[10px] text-gray-400">Awash, CBE, Dashen, Bank of Abyssinia</p>
+                <p className="text-xs font-bold text-[#163D32]">Direct Bank Transfer</p>
+                <p className="text-[11px] text-[#52645D]">CBE, Bank of Abyssinia, Awash, Safaricom M-Pesa</p>
               </div>
             </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'bank_transfer' ? 'border-[#C5A46D] bg-[#C5A46D]' : 'border-gray-300'}`}>
-              {paymentMethod === 'bank_transfer' && <Check className="h-3 w-3 text-white" />}
+            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'bank_transfer' ? 'border-[#163D32] bg-[#163D32]' : 'border-[#E6DFD1]'}`}>
+              {paymentMethod === 'bank_transfer' && <Check className="h-3 w-3 text-[#C5A46D]" aria-hidden="true" />}
             </div>
           </label>
 
           {/* Pay at Resort */}
           <label
-            onClick={() => setPaymentMethod('pay_at_resort')}
-            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all ${
+            className={`flex items-center justify-between rounded-2xl border p-3.5 cursor-pointer transition-all focus-within:ring-2 focus-within:ring-[#163D32]/30 ${
               paymentMethod === 'pay_at_resort'
-                ? 'border-[#C5A46D] bg-[#C5A46D]/10/30 ring-1 ring-[#C5A46D]'
-                : 'border-gray-200 hover:bg-gray-50'
+                ? 'border-[#C5A46D] bg-[#F5F0E6]/75 ring-1 ring-[#C5A46D]'
+                : 'border-[#E6DFD1] hover:bg-[#F5F0E6]/40'
             }`}
           >
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="pay_at_resort"
+              checked={paymentMethod === 'pay_at_resort'}
+              onChange={() => setPaymentMethod('pay_at_resort')}
+              className="sr-only"
+            />
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-[#163D32] text-white flex items-center justify-center shadow-sm">
-                <CreditCard className="h-4 w-4" />
+              <div className="h-9 w-9 rounded-xl bg-[#163D32] text-[#C5A46D] flex items-center justify-center shadow-sm">
+                <CreditCard className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-900">Pay at Resort Check-in</p>
-                <p className="text-[10px] text-gray-400">Pay cash or card at our front desk</p>
+                <p className="text-xs font-bold text-[#163D32]">Pay at Resort Check-in</p>
+                <p className="text-[11px] text-[#52645D]">Pay cash or card at our front desk</p>
               </div>
             </div>
-            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'pay_at_resort' ? 'border-[#C5A46D] bg-[#C5A46D]' : 'border-gray-300'}`}>
-              {paymentMethod === 'pay_at_resort' && <Check className="h-3 w-3 text-white" />}
+            <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${paymentMethod === 'pay_at_resort' ? 'border-[#163D32] bg-[#163D32]' : 'border-[#E6DFD1]'}`}>
+              {paymentMethod === 'pay_at_resort' && <Check className="h-3 w-3 text-[#C5A46D]" aria-hidden="true" />}
             </div>
           </label>
         </div>
@@ -628,60 +765,60 @@ export default function RoomBookingForm({
         {/* ─── VERIFY.ET REAL-TIME DIGITAL PAYMENT VERIFICATION PANEL ─── */}
         {paymentMethod !== 'pay_at_resort' && (
           <div className="mt-4 rounded-2xl border border-[#163D32]/15 bg-[#F5F0E6] p-4 space-y-3.5">
-            <div className="flex items-center justify-between border-b border-teal-200/60 pb-2">
+            <div className="flex items-center justify-between border-b border-[#E6DFD1] pb-2">
               <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#007042] text-[10px] font-black text-white">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#163D32] text-[10px] font-black text-[#C5A46D]">
                   ✓
                 </span>
-                <span className="text-xs font-black text-[#0F2D24]">
+                <span className="text-xs font-black text-[#163D32]">
                   Verify.ET Automated Bank Check
                 </span>
               </div>
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-[#52645D] uppercase tracking-wider">
                 Non-Custodial
               </span>
             </div>
 
             {/* Official Resort Settlement Account Info */}
-            <div className="rounded-xl bg-white p-3.5 text-xs border border-gray-100 space-y-2.5">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+            <div className="rounded-xl bg-white p-3.5 text-xs border border-[#E6DFD1] space-y-2.5">
+              <div className="flex items-center justify-between border-b border-[#E6DFD1] pb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#52645D]">
                   Account Holder / Beneficiary:
                 </span>
-                <span className="font-extrabold text-[#0F2D24] bg-[#EAF4F7] px-2.5 py-0.5 rounded-md text-[11px]">
-                  Yishak Tule Karesso
+                <span className="font-extrabold text-[#163D32] bg-[#F5F0E6] border border-[#E6DFD1] px-2.5 py-0.5 rounded-md text-xs">
+                  {beneficiaryName}
                 </span>
               </div>
 
               {paymentMethod === 'telebirr' && (
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#C5A46D]/10/60 border border-orange-100 font-mono">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#F5F0E6]/75 border border-[#E6DFD1] font-mono">
                   <div>
-                    <span className="text-[10px] text-gray-500 block font-sans font-bold">Telebirr Account Number</span>
-                    <span className="font-black text-sm text-[#C5A46D]">0995781422</span>
+                    <span className="text-[11px] text-[#52645D] block font-sans font-bold">{telebirrAccount.name} Account</span>
+                    <span className="font-black text-sm text-[#163D32]">{telebirrAccount.accountNumber}</span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => copyToClipboard('0995781422', 'telebirr')}
-                    className="flex items-center gap-1 text-[11px] font-bold text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer shadow-xs"
+                    onClick={() => copyToClipboard(telebirrAccount.accountNumber, 'telebirr')}
+                    className="flex items-center gap-1 text-[11px] font-bold text-[#163D32] bg-white border border-[#E6DFD1] px-3 py-1.5 rounded-lg hover:bg-[#F5F0E6] cursor-pointer shadow-xs"
                   >
-                    {copiedKey === 'telebirr' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-gray-500" />}
+                    {copiedKey === 'telebirr' ? <Check className="h-3.5 w-3.5 text-emerald-700" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5 text-[#52645D]" aria-hidden="true" />}
                     {copiedKey === 'telebirr' ? 'Copied' : 'Copy'}
                   </button>
                 </div>
               )}
 
               {paymentMethod === 'cbe_birr' && (
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-purple-50/60 border border-purple-100 font-mono">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#F5F0E6]/75 border border-[#E6DFD1] font-mono">
                   <div>
-                    <span className="text-[10px] text-gray-500 block font-sans font-bold">CBE Birr Account Number</span>
-                    <span className="font-black text-sm text-purple-700">0995781422</span>
+                    <span className="text-[11px] text-[#52645D] block font-sans font-bold">{cbeBirrAccount.name} Account</span>
+                    <span className="font-black text-sm text-[#163D32]">{cbeBirrAccount.accountNumber}</span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => copyToClipboard('0995781422', 'cbe_birr')}
-                    className="flex items-center gap-1 text-[11px] font-bold text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer shadow-xs"
+                    onClick={() => copyToClipboard(cbeBirrAccount.accountNumber, 'cbe_birr')}
+                    className="flex items-center gap-1 text-[11px] font-bold text-[#163D32] bg-white border border-[#E6DFD1] px-3 py-1.5 rounded-lg hover:bg-[#F5F0E6] cursor-pointer shadow-xs"
                   >
-                    {copiedKey === 'cbe_birr' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-gray-500" />}
+                    {copiedKey === 'cbe_birr' ? <Check className="h-3.5 w-3.5 text-emerald-700" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5 text-[#52645D]" aria-hidden="true" />}
                     {copiedKey === 'cbe_birr' ? 'Copied' : 'Copy'}
                   </button>
                 </div>
@@ -689,84 +826,38 @@ export default function RoomBookingForm({
 
               {paymentMethod === 'bank_transfer' && (
                 <div className="space-y-2 pt-0.5">
-                  {/* Commercial Bank of Ethiopia */}
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 font-mono">
-                    <div>
-                      <span className="text-[10px] text-gray-500 block font-sans font-bold">Commercial Bank of Ethiopia (CBE)</span>
-                      <span className="font-black text-xs text-gray-900">1000575458711</span>
+                  {transferAccounts.map((acc) => (
+                    <div key={acc.code} className="flex items-center justify-between p-2 rounded-xl bg-[#F5F0E6]/65 border border-[#E6DFD1] font-mono">
+                      <div>
+                        <span className="text-[11px] text-[#52645D] block font-sans font-bold">{acc.name}</span>
+                        <span className="font-black text-xs text-[#163D32]">{acc.accountNumber}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(acc.accountNumber, acc.code)}
+                        className="flex items-center gap-1 text-[11px] font-bold text-[#163D32] bg-white border border-[#E6DFD1] px-2.5 py-1 rounded-md hover:bg-[#F5F0E6] cursor-pointer shadow-xs"
+                      >
+                        {copiedKey === acc.code ? <Check className="h-3 w-3 text-emerald-700" aria-hidden="true" /> : <Copy className="h-3 w-3 text-[#52645D]" aria-hidden="true" />}
+                        {copiedKey === acc.code ? 'Copied' : 'Copy'}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard('1000575458711', 'cbe')}
-                      className="flex items-center gap-1 text-[10px] font-bold text-gray-700 bg-white border border-gray-200 px-2.5 py-1 rounded-md hover:bg-gray-50 cursor-pointer shadow-xs"
-                    >
-                      {copiedKey === 'cbe' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-gray-500" />}
-                      {copiedKey === 'cbe' ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-
-                  {/* Bank of Abyssinia */}
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 font-mono">
-                    <div>
-                      <span className="text-[10px] text-gray-500 block font-sans font-bold">Bank of Abyssinia (BOA)</span>
-                      <span className="font-black text-xs text-gray-900">138186512</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard('138186512', 'boa')}
-                      className="flex items-center gap-1 text-[10px] font-bold text-gray-700 bg-white border border-gray-200 px-2.5 py-1 rounded-md hover:bg-gray-50 cursor-pointer shadow-xs"
-                    >
-                      {copiedKey === 'boa' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-gray-500" />}
-                      {copiedKey === 'boa' ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-
-                  {/* Awash Bank */}
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 font-mono">
-                    <div>
-                      <span className="text-[10px] text-gray-500 block font-sans font-bold">Awash Bank</span>
-                      <span className="font-black text-xs text-gray-900">01320687351800</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard('01320687351800', 'awash')}
-                      className="flex items-center gap-1 text-[10px] font-bold text-gray-700 bg-white border border-gray-200 px-2.5 py-1 rounded-md hover:bg-gray-50 cursor-pointer shadow-xs"
-                    >
-                      {copiedKey === 'awash' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-gray-500" />}
-                      {copiedKey === 'awash' ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-
-                  {/* Safaricom M-Pesa */}
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-100 font-mono">
-                    <div>
-                      <span className="text-[10px] text-gray-500 block font-sans font-bold">Safaricom M-Pesa</span>
-                      <span className="font-black text-xs text-emerald-700">0710028022</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard('0710028022', 'mpesa')}
-                      className="flex items-center gap-1 text-[10px] font-bold text-gray-700 bg-white border border-gray-200 px-2.5 py-1 rounded-md hover:bg-gray-50 cursor-pointer shadow-xs"
-                    >
-                      {copiedKey === 'mpesa' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-gray-500" />}
-                      {copiedKey === 'mpesa' ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
+                  ))}
                 </div>
               )}
 
-              <p className="text-[10px] text-gray-400 pt-1">
-                Please transfer exactly <strong className="text-gray-700">{grandTotal.toLocaleString()} {currency}</strong> to any of the above accounts under <strong className="text-[#0F2D24]">Yishak Tule Karesso</strong>, then enter your transaction number below.
+              <p className="text-[11px] text-[#52645D] pt-1">
+                Please transfer exactly <strong className="text-[#163D32]">{grandTotal.toLocaleString()} {currency}</strong> to any of the above accounts under <strong className="text-[#163D32]">{beneficiaryName}</strong>, then enter your transaction number below.
               </p>
             </div>
 
             {/* Reference Input & Verify Button */}
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-gray-700">
+              <label htmlFor={paymentRefId} className="block text-xs font-bold text-[#163D32]">
                 Transaction Reference / FT Number / SMS Code:
               </label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
+                  id={paymentRefId}
                   type="text"
                   placeholder={paymentMethod === 'telebirr' ? 'e.g. 5HB892JKS1 or Telebirr code' : 'e.g. FT26144SG2ST'}
                   value={paymentReference}
@@ -774,22 +865,22 @@ export default function RoomBookingForm({
                     setPaymentReference(e.target.value);
                     if (verificationResult) setVerificationResult(null);
                   }}
-                  className="flex-1 rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs font-mono font-bold text-gray-900 placeholder:font-sans placeholder:font-normal placeholder:text-gray-400 focus:border-[#007042] focus:outline-none focus:ring-1 focus:ring-[#007042]"
+                  className="flex-1 rounded-xl border border-[#E6DFD1] bg-white px-3.5 py-2.5 text-xs font-mono font-bold text-[#163D32] placeholder:font-sans placeholder:font-normal placeholder:text-[#52645D]/70 focus:border-[#163D32] focus:outline-none focus:ring-1 focus:ring-[#163D32]"
                 />
                 <button
                   type="button"
                   onClick={handleVerifyPayment}
                   disabled={verifyingPayment || !paymentReference.trim()}
-                  className="rounded-xl bg-[#007042] hover:bg-[#005a35] px-4 py-2.5 text-xs font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
+                  className="rounded-xl bg-[#163D32] hover:bg-[#0F2D24] px-4 py-2.5 text-xs font-bold text-[#C5A46D] transition disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
                 >
                   {verifyingPayment ? (
                     <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                       Checking with Bank...
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="h-3.5 w-3.5" />
+                      <CheckCircle className="h-3.5 w-3.5" aria-hidden="true" />
                       Verify Payment
                     </>
                   )}
@@ -800,6 +891,7 @@ export default function RoomBookingForm({
             {/* Verification Live Feedback Card */}
             {verificationResult && (
               <div
+                role="status"
                 className={`rounded-xl p-3 text-xs border animate-in fade-in-50 duration-200 ${
                   verificationResult.verified
                     ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
@@ -808,9 +900,9 @@ export default function RoomBookingForm({
               >
                 <div className="flex items-start gap-2">
                   {verificationResult.verified ? (
-                    <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircle className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" aria-hidden="true" />
                   ) : (
-                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <AlertTriangle className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
                   )}
                   <div className="space-y-1 flex-1">
                     <p className="font-bold">
@@ -818,25 +910,25 @@ export default function RoomBookingForm({
                         ? 'Payment Authenticated via Verify.ET'
                         : 'Verification Pending or Not Found'}
                     </p>
-                    <p className="text-[11px] leading-relaxed opacity-90">
+                    <p className="text-xs leading-relaxed opacity-90">
                       {verificationResult.message}
                     </p>
 
                     {verificationResult.verified && (
-                      <div className="mt-2 pt-2 border-t border-emerald-200/60 grid grid-cols-2 gap-2 text-[10px]">
+                      <div className="mt-2 pt-2 border-t border-emerald-200/60 grid grid-cols-2 gap-2 text-[11px]">
                         <div>
-                          <span className="text-emerald-700/80 block">Bank Provider:</span>
+                          <span className="text-emerald-800/80 block">Bank Provider:</span>
                           <span className="font-bold">{verificationResult.bankName}</span>
                         </div>
                         <div>
-                          <span className="text-emerald-700/80 block">Verified Amount:</span>
+                          <span className="text-emerald-800/80 block">Verified Amount:</span>
                           <span className="font-bold">
                             {verificationResult.amount?.toLocaleString()} {verificationResult.currency}
                           </span>
                         </div>
                         {verificationResult.payerName && (
                           <div className="col-span-2">
-                            <span className="text-emerald-700/80 block">Account Holder / Payer:</span>
+                            <span className="text-emerald-800/80 block">Account Holder / Payer:</span>
                             <span className="font-bold">{verificationResult.payerName}</span>
                           </div>
                         )}
@@ -852,24 +944,28 @@ export default function RoomBookingForm({
 
       {/* Error display */}
       {error && (
-        <div className="rounded-2xl bg-red-50 p-3.5 text-xs font-bold text-red-700 border border-red-200 text-center">
+        <div role="alert" className="rounded-2xl bg-rose-50 p-3.5 text-xs font-bold text-rose-800 border border-rose-200 text-center">
           {error}
         </div>
       )}
 
-      {/* ─── PRIMARY STICKY / BOTTOM CTA (Image 3 Bottom Button) ─── */}
+      {/* ─── PRIMARY BOTTOM CTA ─── */}
       <div className="pt-2">
         <button
           type="submit"
           disabled={loading || nights <= 0}
-          className="w-full rounded-2xl bg-gradient-to-r from-[#163D32] via-[#0F2D24] to-[#163D32] hover:from-[#C5A46D] hover:to-[#E85D04] py-4 text-xs font-black uppercase tracking-wider text-white shadow-xl shadow-teal-900/20 hover:shadow-orange-500/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full rounded-2xl bg-gradient-to-r from-[#163D32] via-[#0F2D24] to-[#163D32] hover:brightness-110 py-4 text-xs font-extrabold uppercase tracking-wider text-[#C5A46D] border border-[#C5A46D]/30 shadow-xl shadow-[#163D32]/25 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
-          <Lock className="h-4 w-4" />
-          {loading ? 'Confirming Reservation...' : `Pay & Confirm Booking (${grandTotal.toLocaleString()} ${currency})`}
+          <Lock className="h-4 w-4 text-[#C5A46D]" aria-hidden="true" />
+          {loading
+            ? 'Confirming Reservation...'
+            : paymentMethod === 'pay_at_resort'
+              ? `Confirm Reservation — Pay at Check-in (${grandTotal.toLocaleString()} ${currency})`
+              : `Pay & Confirm Booking (${grandTotal.toLocaleString()} ${currency})`}
         </button>
 
-        <p className="mt-2 text-center text-[10px] text-gray-400 flex items-center justify-center gap-1">
-          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+        <p className="mt-2 text-center text-[11px] text-[#52645D] flex items-center justify-center gap-1">
+          <ShieldCheck className="h-3.5 w-3.5 text-emerald-700" aria-hidden="true" />
           Your booking and payment request are secure and encrypted
         </p>
       </div>

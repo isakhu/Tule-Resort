@@ -107,14 +107,20 @@ export async function POST(req: Request) {
         }, { status: 409 });
       }
 
-      if (verifyRes.verified) {
+      if (
+        verifyRes.verified &&
+        verifyRes.amountMatches !== false &&
+        verifyRes.receiverMatches !== false
+      ) {
         finalPaymentStatus = 'paid';
         isVerified = true;
+        verificationNote = verifyRes.message;
+      } else {
         verificationNote = verifyRes.message;
       }
     }
 
-    // Persist payment information and auto-confirm if verified
+    // Persist payment information and auto-confirm ONLY if fully verified
     if (reservation.id && (paymentMethod !== 'pay_at_resort' || normalizedRef)) {
       await supabaseServer
         .from('room_reservations')
@@ -127,7 +133,7 @@ export async function POST(req: Request) {
         })
         .eq('id', reservation.id);
 
-      if (normalizedRef) {
+      if (isVerified && normalizedRef) {
         await supabaseServer.rpc('register_payment_reference', {
           p_reference: normalizedRef,
           p_entity_type: 'reservation',
@@ -141,6 +147,16 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       bookingNumber: reservation.booking_number,
+      subtotal: reservation.subtotal != null ? Number(reservation.subtotal) : undefined,
+      serviceChargePercent:
+        reservation.service_charge_percent != null
+          ? Number(reservation.service_charge_percent)
+          : undefined,
+      serviceCharge:
+        reservation.service_charge != null ? Number(reservation.service_charge) : undefined,
+      taxPercent:
+        reservation.tax_percent != null ? Number(reservation.tax_percent) : undefined,
+      tax: reservation.tax != null ? Number(reservation.tax) : undefined,
       totalPrice: Number(reservation.total_price ?? 0),
       currency: reservation.currency || 'ETB',
       status: finalPaymentStatus === 'paid' ? 'confirmed' : (reservation.status || 'pending'),

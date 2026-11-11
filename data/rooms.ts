@@ -324,9 +324,9 @@ export const FALLBACK_ROOMS: Room[] = [
   },
   {
     id: "rm-112",
-    slug: "haile-presidential-suite",
-    name: "Haile Presidential Suite",
-    nameAm: "ኃይሌ ፕሬዚዳንሻል ስዊት",
+    slug: "tule-presidential-suite",
+    name: "Tule Presidential Suite",
+    nameAm: "ቱሌ ፕሬዚዳንሻል ስዊት",
     type: "Presidential Suite",
     view: "Full Lake Hawassa 180° View",
     price: 65000,

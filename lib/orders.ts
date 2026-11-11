@@ -12,6 +12,8 @@ export interface CreateOrderInput {
   guest_name?: string;
   room_number?: string;
   table_token?: string;
+  guest_stay_id?: string | null;
+  guestStayId?: string | null;
   items: OrderItemInput[];
   service_type?: string;
   special_instructions?: string;
@@ -39,23 +41,45 @@ export async function createOrder(orderData: CreateOrderInput) {
   }
 
   const { data: sessionData } = await supabase.auth.getSession();
-  const userId = sessionData.session?.user.id ?? null;
+  const accessToken = sessionData.session?.access_token;
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  const requestedStayId =
+    typeof orderData.guest_stay_id === 'string' && orderData.guest_stay_id.trim()
+      ? orderData.guest_stay_id.trim()
+      : typeof orderData.guestStayId === 'string' && orderData.guestStayId.trim()
+        ? orderData.guestStayId.trim()
+        : null;
 
   const response = await fetch('/api/orders', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    headers,
     body: JSON.stringify({
       guest_name: orderData.guest_name,
       room_number: orderData.room_number,
       table_token: orderData.table_token,
+      guest_stay_id: requestedStayId,
+      guestStayId: requestedStayId,
       notes: orderData.special_instructions ?? orderData.notes ?? null,
-      user_id: userId,
       items,
       idempotency_key: orderData.idempotency_key.trim(),
     }),
   });
 
-  let payload: { success?: boolean; data?: unknown; orderId?: string; totalAmount?: number; isDuplicate?: boolean; error?: string } = {};
+  let payload: {
+    success?: boolean;
+    data?: unknown;
+    orderId?: string;
+    totalAmount?: number;
+    guestStayId?: string | null;
+    isDuplicate?: boolean;
+    error?: string;
+  } = {};
   try {
     payload = await response.json();
   } catch {
@@ -71,13 +95,25 @@ export async function createOrder(orderData: CreateOrderInput) {
     data: payload.data ?? payload.orderId,
     orderId: payload.orderId,
     totalAmount: payload.totalAmount,
+    guestStayId: payload.guestStayId ?? null,
     isDuplicate: payload.isDuplicate,
   };
 }
 
+export type OrderStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'accepted'
+  | 'preparing'
+  | 'in progress'
+  | 'ready'
+  | 'delivered'
+  | 'completed'
+  | 'cancelled';
+
 export async function updateOrderStatus(
   orderId: string,
-  status: 'pending' | 'accepted' | 'preparing' | 'in progress' | 'ready' | 'delivered' | 'completed' | 'cancelled' | string,
+  status: OrderStatus | string,
   notes?: string,
   expectedStatusId?: number
 ) {

@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import supabaseServer from '@/lib/supabaseServer';
-
-const COOKIE_NAME = 'tule_guest_stay';
+import { getVerifiedGuestStay } from '@/lib/guestStayCookie';
 
 export async function POST(req: Request) {
   try {
@@ -17,19 +15,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'entityId is required.' }, { status: 400 });
     }
 
-    const cookieStore = await cookies();
-    const rawCookie = cookieStore.get(COOKIE_NAME)?.value;
-    let stayId: string | null = null;
-    let roomName: string | null = null;
+    const verifiedStay = await getVerifiedGuestStay();
+    const stayId = verifiedStay?.id ?? null;
+    const roomName = verifiedStay?.room_name ?? null;
+    const trimmedSessionToken =
+      sessionToken && typeof sessionToken === 'string' && sessionToken.trim()
+        ? sessionToken.trim()
+        : null;
 
-    if (rawCookie) {
-      try {
-        const parsed = JSON.parse(rawCookie);
-        stayId = parsed.id;
-        roomName = parsed.room_name;
-      } catch {
-        // ignore
-      }
+    if (!stayId && !trimmedSessionToken) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication or active table session is required to cancel an item.' },
+        { status: 401 },
+      );
     }
 
     const { data, error } = await supabaseServer.rpc('cancel_guest_item', {
@@ -38,7 +36,7 @@ export async function POST(req: Request) {
       p_guest_stay_id: stayId,
       p_room_number: roomName,
       p_reason: reason || 'Cancelled by guest online',
-      p_session_token: sessionToken && typeof sessionToken === 'string' ? sessionToken.trim() : null,
+      p_session_token: trimmedSessionToken,
     });
 
     if (error) {

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import supabaseServer from '@/lib/supabaseServer';
+import { requireStaffOrAdmin } from '@/lib/staffAuth';
+import { getVerifiedGuestStay } from '@/lib/guestStayCookie';
 
 export async function POST(req: Request) {
   try {
@@ -22,11 +24,14 @@ export async function POST(req: Request) {
     }
 
     // Strip client prices or totals entirely. Accept strictly menu_item_id, quantity, notes.
-    const normalizedItems = items.map((item: any) => ({
-      menu_item_id: typeof item?.menuItemId === 'string' ? item.menuItemId.trim() : String(item?.menu_item_id ?? '').trim(),
-      quantity: Number(item?.quantity),
-      notes: typeof item?.notes === 'string' ? item.notes.trim() : undefined,
-    }));
+    const normalizedItems = items.map((rawItem: unknown) => {
+      const item = (rawItem && typeof rawItem === 'object' ? rawItem : {}) as Record<string, unknown>;
+      return {
+        menu_item_id: typeof item.menuItemId === 'string' ? item.menuItemId.trim() : String(item.menu_item_id ?? '').trim(),
+        quantity: Number(item.quantity),
+        notes: typeof item.notes === 'string' ? item.notes.trim() : undefined,
+      };
+    });
 
     if (normalizedItems.some((item) => !item.menu_item_id || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 50)) {
       return NextResponse.json({ error: 'One or more order items are invalid.' }, { status: 400 });
@@ -64,22 +69,22 @@ export async function POST(req: Request) {
     let userId: string | null = null;
     const match = authHeader.match(/^Bearer\s+(.+)$/i);
     if (match) {
-      const { data: authData } = await supabaseServer.auth.getUser(match[1]);
-      userId = authData?.user?.id ?? null;
+      const { data: authData, error: authErr } = await supabaseServer.auth.getUser(match[1].trim());
+      if (authErr || !authData?.user) {
+        return NextResponse.json({ error: 'Invalid authorization token.' }, { status: 401 });
+      }
+      userId = authData.user.id;
     }
 
-    // Check for guest stay cookie if not explicitly passed
-    let effectiveStayId = guestStayId ?? null;
-    if (!effectiveStayId) {
-      const cookieHeader = req.headers.get('cookie') || '';
-      const stayMatch = cookieHeader.match(/tule_guest_stay=([^;]+)/);
-      if (stayMatch) {
-        try {
-          const parsedStay = JSON.parse(decodeURIComponent(stayMatch[1]));
-          effectiveStayId = parsedStay?.id ?? null;
-        } catch {
-          // ignore
-        }
+    // Derive guest_stay_id ONLY from HMAC-signed guest cookie, or from explicit body
+    // field only when the caller is verified staff/admin.
+    const verifiedStay = await getVerifiedGuestStay();
+    let effectiveStayId: string | null = verifiedStay?.id ?? null;
+
+    if (!effectiveStayId && typeof guestStayId === 'string' && guestStayId.trim()) {
+      const staffCheck = match ? await requireStaffOrAdmin(req) : null;
+      if (staffCheck?.ok) {
+        effectiveStayId = guestStayId.trim();
       }
     }
 
@@ -109,14 +114,57 @@ export async function POST(req: Request) {
     // Handle TABLE return from upgraded RPC or fallback UUID
     const firstRow = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
     const orderId = firstRow?.order_id || (typeof rpcResult === 'string' ? rpcResult : null);
-    const totalAmount = firstRow?.total_amount != null ? Number(firstRow.total_amount) : undefined;
+    let totalAmount = firstRow?.total_amount != null ? Number(firstRow.total_amount) : undefined;
     const isDuplicate = Boolean(firstRow?.is_duplicate);
+
+    if (orderId && (totalAmount == null || !Number.isFinite(totalAmount))) {
+      const { data: orderRow } = await supabaseServer
+        .from('orders')
+        .select('total')
+        .eq('id', orderId)
+        .maybeSingle();
+
+      if (orderRow?.total != null) {
+        totalAmount = Number(orderRow.total);
+      }
+    }
+
+    let resolvedSessionToken: string | null =
+      sessionToken && typeof sessionToken === 'string' && sessionToken.trim()
+        ? sessionToken.trim()
+        : null;
+    let resolvedTableSessionId: string | null = null;
+
+    if (orderId && tableToken && typeof tableToken === 'string' && tableToken.trim()) {
+      const { data: orderRow } = await supabaseServer
+        .from('orders')
+        .select('table_session_id, table_session:table_sessions(id, session_token)')
+        .eq('id', orderId)
+        .maybeSingle();
+
+      if (orderRow?.table_session_id) {
+        resolvedTableSessionId = orderRow.table_session_id;
+      }
+
+      const rawTableSession = orderRow?.table_session as
+        | { id?: string; session_token?: string | null }
+        | { id?: string; session_token?: string | null }[]
+        | null
+        | undefined;
+      const joinedSession = Array.isArray(rawTableSession) ? rawTableSession[0] : rawTableSession;
+      if (joinedSession?.session_token) {
+        resolvedSessionToken = joinedSession.session_token;
+      }
+    }
 
     return NextResponse.json({
       success: true,
       orderId,
       totalAmount,
+      guestStayId: effectiveStayId,
       isDuplicate,
+      sessionToken: resolvedSessionToken,
+      tableSessionId: resolvedTableSessionId,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to submit the order.';

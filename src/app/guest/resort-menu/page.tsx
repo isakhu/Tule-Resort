@@ -1,9 +1,16 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getResortServices } from '@/lib/resortServices';
 import { getRooms } from '@/lib/rooms';
 import ResortExperienceMenu, { type ExperienceItem } from '@/components/ResortExperienceMenu';
 import type { ResortService } from '@/data/resort-services';
 import type { Room } from '@/data/rooms';
+
+export const metadata: Metadata = {
+  title: 'Resort Experience Menu',
+  description:
+    'Browse visual guides for suites, dining, wellness, swimming, events, and leisure packages at Tule Resort Hawassa.',
+};
 
 const servicePresentation: Record<string, Omit<ExperienceItem, 'id' | 'name' | 'description' | 'imageUrl' | 'features'>> = {
   restaurant: { amharicName: 'ሬስቶራንት እና ባር', category: 'DINING', price: 500, unit: 'starting / guest', accent: '#F2B84B', href: '/guest/restaurant', actionLabel: 'Explore dining' },

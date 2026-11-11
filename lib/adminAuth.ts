@@ -25,11 +25,12 @@ export async function requireAdmin(req: Request) {
 
     // Resolve role names for admin/manager
     const { data: roles } = await supabaseServer.from('roles').select('id,name').in('name', ['admin','manager']);
-    const roleIds = (roles || []).map((r: any) => r.id);
+    const roleIds = ((roles as Array<{ id: number }> | null) || []).map((r) => r.id);
     if (roleIds.includes(data.role_id)) return { ok: true, method: 'session', userId: uid };
 
     return { ok: false, status: 403, error: 'Insufficient permissions' };
-  } catch (err: any) {
-    return { ok: false, status: 500, error: String(err?.message ?? err) };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, status: 500, error: message };
   }
 }

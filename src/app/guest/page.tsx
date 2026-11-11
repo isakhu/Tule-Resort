@@ -1,8 +1,15 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowLeft, Clock3, MapPin, Sparkles, Utensils, BedDouble, Waves } from 'lucide-react';
+import { ArrowLeft, Clock3, MapPin, Sparkles, Utensils, BedDouble } from 'lucide-react';
 import ResortServiceCard from '@/components/ResortServiceCard';
 import { getResortServices } from '@/lib/resortServices';
+
+export const metadata: Metadata = {
+  title: 'Guest Portal & Services',
+  description:
+    'Access luxury suites, lakeside dining, Tule Aqua pool passes, wellness experiences, and instant guest requests at Tule Resort.',
+};
 
 export default async function GuestServicesPage() {
   const services = await getResortServices();

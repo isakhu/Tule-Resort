@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
+import { isOptimizableImageSrc } from '@/lib/imageSrc';
 import {
   ArrowDown,
   ArrowRight,
@@ -12,22 +14,17 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Compass,
-  Eye,
   Fish,
   Globe,
-  Heart,
   Lock,
   Mail,
   MapPin,
   Maximize2,
   Menu,
   Phone,
-  Play,
   QrCode,
   Sparkles,
-  Star,
   Sun,
   Users,
   UtensilsCrossed,
@@ -47,6 +44,27 @@ interface LuxuryHomeClientProps {
   initialServices: ResortService[];
   initialMenuItems: MenuItem[];
   initialGalleryItems: GalleryItem[];
+  defaultTableToken?: string | null;
+}
+
+function readLanguagePreference(): TuleLanguage {
+  if (typeof window === 'undefined') return 'en';
+  try {
+    return window.localStorage.getItem('tule-language') === 'am' ? 'am' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+function subscribeLanguagePreference(callback: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const handler = () => callback();
+  window.addEventListener('tule-language-change', handler);
+  window.addEventListener('storage', handler);
+  return () => {
+    window.removeEventListener('tule-language-change', handler);
+    window.removeEventListener('storage', handler);
+  };
 }
 
 export default function LuxuryHomeClient({
@@ -54,11 +72,19 @@ export default function LuxuryHomeClient({
   initialServices,
   initialMenuItems,
   initialGalleryItems,
+  defaultTableToken,
 }: LuxuryHomeClientProps) {
+  const tableQrHref = defaultTableToken
+    ? `/guest/table/${encodeURIComponent(defaultTableToken)}`
+    : '/guest/table';
   // ─── State Management ───
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [language, setLanguage] = useState<TuleLanguage>('en');
+  const language = useSyncExternalStore(
+    subscribeLanguagePreference,
+    readLanguagePreference,
+    (): TuleLanguage => 'en',
+  );
   const copy = tuleCopy[language];
 
   // Quick reservation bar state
@@ -81,6 +107,20 @@ export default function LuxuryHomeClient({
   // Story modal state
   const [activeStory, setActiveStory] = useState<number | null>(null);
 
+  // Banner full-view lightbox, hero choreography, and non-intrusive welcome pop-up
+  const [heroReady, setHeroReady] = useState(false);
+  const [bannerLightboxOpen, setBannerLightboxOpen] = useState(false);
+  const [welcomePopupVisible, setWelcomePopupVisible] = useState(false);
+
+  const dismissWelcomePopup = useCallback(() => {
+    setWelcomePopupVisible(false);
+    try {
+      window.sessionStorage.setItem('tule_welcome_dismissed', '1');
+    } catch {
+      // Ignore storage errors in restricted browsing contexts
+    }
+  }, []);
+
   // ─── Scroll & Animation Observers ───
   useEffect(() => {
     const handleScroll = () => {
@@ -89,44 +129,70 @@ export default function LuxuryHomeClient({
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
 
-    const onLangChange = (event: Event) => {
-      setLanguage((event as CustomEvent<TuleLanguage>).detail);
-    };
-    window.addEventListener('tule-language-change', onLangChange);
+    // Sync hero pop-up entrance with SplashScreen exit
+    const win = window as Window & { __tuleSplashDone?: boolean };
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let heroFallbackTimer: ReturnType<typeof setTimeout> | undefined;
+    let rafId: number | undefined;
+
+    const triggerHeroReady = () => setHeroReady(true);
+
+    if (win.__tuleSplashDone || reduceMotion) {
+      rafId = window.requestAnimationFrame(triggerHeroReady);
+    } else {
+      window.addEventListener('tule-splash-exit', triggerHeroReady, { once: true });
+      heroFallbackTimer = setTimeout(triggerHeroReady, 2050);
+    }
 
     // Scroll reveal observer
     const elements = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    let observer: IntersectionObserver | undefined;
     if (reduceMotion || !('IntersectionObserver' in window)) {
       elements.forEach((el) => el.classList.add('is-visible'));
     } else {
-      const observer = new IntersectionObserver(
+      observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
             if (entry.isIntersecting) {
               entry.target.classList.add('is-visible');
-              observer.unobserve(entry.target);
+              observer?.unobserve(entry.target);
             }
           });
         },
         { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
       );
-      elements.forEach((el) => observer.observe(el));
-      return () => {
-        observer.disconnect();
-        window.removeEventListener('scroll', handleScroll);
-        window.removeEventListener('tule-language-change', onLangChange);
-      };
+      elements.forEach((el) => observer?.observe(el));
     }
 
     return () => {
+      observer?.disconnect();
+      if (heroFallbackTimer) clearTimeout(heroFallbackTimer);
+      if (rafId) window.cancelAnimationFrame(rafId);
+      window.removeEventListener('tule-splash-exit', triggerHeroReady);
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('tule-language-change', onLangChange);
     };
   }, []);
 
-  // ─── Keyboard Listener for Lightbox ───
+  // Trigger non-blocking welcome privilege pop-up once per session after hero enters
+  useEffect(() => {
+    if (!heroReady) return;
+    let dismissed = false;
+    try {
+      dismissed = window.sessionStorage.getItem('tule_welcome_dismissed') === '1';
+    } catch {
+      dismissed = false;
+    }
+    if (dismissed) return;
+
+    const timer = setTimeout(() => {
+      setWelcomePopupVisible(true);
+    }, 3200);
+
+    return () => clearTimeout(timer);
+  }, [heroReady]);
+
+  // ─── Keyboard Listeners for Lightboxes & Modals ───
   const filteredGallery = useMemo(() => {
     if (galleryFilter === 'All') return initialGalleryItems;
     return initialGalleryItems.filter(
@@ -149,15 +215,28 @@ export default function LuxuryHomeClient({
   }, []);
 
   useEffect(() => {
-    if (lightboxIndex === null) return;
+    if (lightboxIndex === null && activeStory === null && !bannerLightboxOpen && !mobileMenuOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleCloseLightbox();
-      if (e.key === 'ArrowRight') handleNextPhoto();
-      if (e.key === 'ArrowLeft') handlePrevPhoto();
+      if (e.key === 'Escape') {
+        handleCloseLightbox();
+        setActiveStory(null);
+        setBannerLightboxOpen(false);
+        setMobileMenuOpen(false);
+      }
+      if (lightboxIndex !== null) {
+        if (e.key === 'ArrowRight') handleNextPhoto();
+        if (e.key === 'ArrowLeft') handlePrevPhoto();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lightboxIndex, handleCloseLightbox, handleNextPhoto, handlePrevPhoto]);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [lightboxIndex, activeStory, bannerLightboxOpen, mobileMenuOpen, handleCloseLightbox, handleNextPhoto, handlePrevPhoto]);
 
   // ─── Filtered Rooms ───
   const filteredRooms = useMemo(() => {
@@ -190,17 +269,22 @@ export default function LuxuryHomeClient({
     return initialRooms;
   }, [roomFilter, initialRooms]);
 
-  // Spotlight Suite (first lake view or premier suite)
+  // Spotlight Suite (prefer available suites matching active filter)
   const spotlightRoom = useMemo(() => {
+    const activePool =
+      filteredRooms.filter((r) => r.isAvailable !== false).length > 0
+        ? filteredRooms.filter((r) => r.isAvailable !== false)
+        : initialRooms.filter((r) => r.isAvailable !== false);
+    const pool = activePool.length > 0 ? activePool : filteredRooms;
     return (
-      initialRooms.find(
+      pool.find(
         (r) =>
           r.slug.includes('deluxe-one-bedroom-suite') ||
           r.slug.includes('executive-lakefront-villa') ||
           r.name.toLowerCase().includes('deluxe one-bedroom')
-      ) || initialRooms[0]
+      ) || pool[0]
     );
-  }, [initialRooms]);
+  }, [filteredRooms, initialRooms]);
 
   const companionRooms = useMemo(() => {
     return filteredRooms.filter((r) => r.id !== spotlightRoom?.id).slice(0, 3);
@@ -268,10 +352,12 @@ export default function LuxuryHomeClient({
             className="group flex shrink-0 items-center gap-3"
           >
             <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-[#C5A46D]/40 bg-[#0F2D24]/80 transition-transform duration-500 group-hover:scale-105 sm:h-12 sm:w-12 shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="/tule-resort-logo.png"
                 alt="Tule Resort"
+                width={48}
+                height={48}
+                priority
                 className="h-full w-full object-contain p-1 drop-shadow-[0_2px_8px_rgba(197,164,109,.3)]"
               />
             </span>
@@ -291,25 +377,25 @@ export default function LuxuryHomeClient({
             className="hidden items-center gap-7 xl:gap-8 text-[11px] font-bold uppercase tracking-[.18em] text-[#F5F0E6]/80 lg:flex"
           >
             <a href="#about" className="transition-colors hover:text-[#C5A46D]">
-              About
+              {copy.navAbout}
             </a>
             <a href="#accommodations" className="transition-colors hover:text-[#C5A46D]">
-              Accommodation
+              {copy.navAccommodation}
             </a>
             <a href="#experiences" className="transition-colors hover:text-[#C5A46D]">
-              Experiences
+              {copy.navExperiences}
             </a>
             <a href="#lake-hawassa" className="transition-colors hover:text-[#C5A46D]">
-              Lake Hawassa
+              {copy.navLake}
             </a>
             <a href="#dining" className="transition-colors hover:text-[#C5A46D]">
-              Dining
+              {copy.navDining}
             </a>
             <a href="#gallery" className="transition-colors hover:text-[#C5A46D]">
-              Gallery
+              {copy.navGallery}
             </a>
             <a href="#contact" className="transition-colors hover:text-[#C5A46D]">
-              Contact
+              {copy.navContact}
             </a>
           </nav>
 
@@ -326,7 +412,7 @@ export default function LuxuryHomeClient({
 
             <Link
               href="/guest/booking"
-              className="group inline-flex items-center gap-2 rounded-full bg-[#C5A46D] px-5 py-2.5 text-[10px] font-black uppercase tracking-[.15em] text-[#163D32] shadow-[0_4px_20px_rgba(197,164,109,.28)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#B8955E] hover:shadow-[0_8px_25px_rgba(197,164,109,.4)] sm:px-6"
+              className="group inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-[#C5A46D] px-3.5 py-2.5 text-[10px] font-black uppercase tracking-[.15em] text-[#163D32] shadow-[0_4px_20px_rgba(197,164,109,.28)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#B8955E] hover:shadow-[0_8px_25px_rgba(197,164,109,.4)] sm:px-6"
             >
               <span>{copy.book}</span>
               <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
@@ -334,6 +420,7 @@ export default function LuxuryHomeClient({
 
             {/* Mobile Menu Toggle Button */}
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle navigation menu"
               aria-expanded={mobileMenuOpen}
@@ -347,7 +434,12 @@ export default function LuxuryHomeClient({
 
       {/* ─── Mobile Navigation Drawer ─── */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 flex flex-col bg-[#163D32]/98 backdrop-blur-2xl px-6 pt-24 pb-8 text-[#F5F0E6] lg:hidden animate-fade-in-up">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mobile navigation"
+          className="fixed inset-0 z-40 flex flex-col overflow-y-auto overscroll-contain bg-[#163D32]/98 backdrop-blur-2xl px-6 pt-24 pb-8 text-[#F5F0E6] lg:hidden animate-fade-in-up"
+        >
           <div className="flex flex-col gap-6 text-sm font-bold uppercase tracking-[.2em] border-b border-[#C5A46D]/20 pb-8">
             <a
               href="#about"
@@ -417,6 +509,14 @@ export default function LuxuryHomeClient({
               Browse All Suites
             </Link>
 
+            <Link
+              href="/staff/login"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-black/20 py-3 text-xs font-bold uppercase tracking-[.16em] text-[#F5F0E6]/85 hover:border-[#C5A46D]/50 hover:text-[#C5A46D] transition"
+            >
+              <Lock className="h-3.5 w-3.5 text-[#C5A46D]" /> Staff Portal Login
+            </Link>
+
             <div className="mt-4 flex items-center justify-between text-xs text-[#F5F0E6]/60 border-t border-white/10 pt-4">
               <span className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-[#C5A46D]" /> Hawassa, Ethiopia
@@ -482,7 +582,11 @@ export default function LuxuryHomeClient({
             {/* Left Column: Grand Tule Resort Banner */}
             <div className="max-w-3xl">
               {/* Eyebrow Label with Coordinates */}
-              <div className="inline-flex flex-wrap items-center gap-2.5 rounded-full border border-[#C5A46D]/40 bg-[#163D32]/85 px-4 py-2 text-[10px] font-extrabold uppercase tracking-[.24em] text-[#F5F0E6] shadow-lg backdrop-blur-md">
+              <div
+                className={`inline-flex flex-wrap items-center gap-2.5 rounded-full border border-[#C5A46D]/40 bg-[#163D32]/85 px-4 py-2 text-[10px] font-extrabold uppercase tracking-[.24em] text-[#F5F0E6] shadow-lg backdrop-blur-md transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                  heroReady ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'
+                }`}
+              >
                 <span className="flex h-2 w-2 rounded-full bg-[#C5A46D] shadow-[0_0_8px_#C5A46D] animate-pulse" />
                 <MapPin className="h-3 w-3 text-[#C5A46D]" />
                 <span className="text-[#C5A46D]">Hawassa · Ethiopia</span>
@@ -492,43 +596,66 @@ export default function LuxuryHomeClient({
                 <span className="hidden sm:inline text-[#F5F0E6]/80">Lakefront Sanctuary</span>
               </div>
 
-              {/* MAIN HERO BANNER — TULE RESORT */}
-              <div className="mt-5 mb-5 max-w-xl overflow-hidden rounded-[2.2rem] border-2 border-[#C5A46D]/60 shadow-[0_24px_70px_rgba(0,0,0,0.55)] backdrop-blur-md group relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+              {/* MAIN HERO BANNER — TULE RESORT (Spring Pop-Up + Click-to-Expand Modal) */}
+              <button
+                type="button"
+                onClick={() => setBannerLightboxOpen(true)}
+                aria-label="View Tule Resort main banner in full screen"
+                className={`tule-banner-sheen mt-5 mb-5 block w-full max-w-xl text-left overflow-hidden rounded-[2.2rem] border-2 border-[#C5A46D]/60 shadow-[0_24px_70px_rgba(0,0,0,0.55)] backdrop-blur-md group relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A46D] transition-all duration-[850ms] delay-100 ease-[cubic-bezier(0.22,1.22,0.36,1)] ${
+                  heroReady ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-[0.91]'
+                }`}
+              >
+                <Image
                   src="/tule-resort-main-banner.jpg"
                   alt="Tule Resort — Hawassa, Ethiopia Main Banner"
+                  width={1024}
+                  height={682}
+                  sizes="(max-width: 768px) 100vw, 576px"
+                  priority
                   className="w-full h-auto object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#163D32]/35 via-transparent to-transparent pointer-events-none" />
                 <div className="absolute inset-0 ring-1 ring-inset ring-white/20 pointer-events-none rounded-[2.2rem]" />
-              </div>
+                <span className="absolute bottom-3.5 right-3.5 inline-flex items-center gap-1.5 rounded-full border border-[#C5A46D]/40 bg-[#163D32]/85 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[.16em] text-[#F5F0E6] opacity-0 translate-y-1 backdrop-blur-md transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+                  <Maximize2 className="h-3 w-3 text-[#C5A46D]" /> Expand
+                </span>
+              </button>
 
-              {/* Sub-headline & Geographical Anchor */}
-              <div className="mt-2 flex items-center gap-3">
-                <span className="h-px w-10 bg-[#C5A46D]/70" />
-                <p className="text-xs sm:text-sm font-bold uppercase tracking-[.36em] text-[#C5A46D]">
-                  HAWASSA · ETHIOPIA
+              {/* Sub-headline & Editorial Copy */}
+              <div
+                className={`transition-all duration-700 delay-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                  heroReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+                }`}
+              >
+                <div className="mt-2 flex items-center gap-3">
+                  <span className="h-px w-10 bg-[#C5A46D]/70" />
+                  <p className="text-xs sm:text-sm font-bold uppercase tracking-[.36em] text-[#C5A46D]">
+                    {copy.homeEyebrow}
+                  </p>
+                </div>
+
+                {/* Editorial Headline */}
+                <h1 className="mt-3 font-display text-3xl sm:text-4xl lg:text-5xl font-light text-[#F5F0E6] leading-tight">
+                  {copy.heroHeadlineStart} <span className="italic font-normal text-[#C5A46D]">{copy.heroHeadlineAccent}</span>
+                </h1>
+
+                {/* Short Emotional Description */}
+                <p className="mt-3.5 max-w-2xl text-sm leading-relaxed text-[#F5F0E6]/85 sm:text-base font-sans">
+                  {copy.homeDescription}
                 </p>
               </div>
 
-              {/* Editorial Headline */}
-              <h1 className="mt-3 font-display text-3xl sm:text-4xl lg:text-5xl font-light text-[#F5F0E6] leading-tight">
-                A Lakeside Escape. <span className="italic font-normal text-[#C5A46D]">A World of Its Own.</span>
-              </h1>
-
-              {/* Short Emotional Description */}
-              <p className="mt-3.5 max-w-2xl text-sm leading-relaxed text-[#F5F0E6]/85 sm:text-base font-sans">
-                Discover the beauty of Lake Hawassa through exceptional hospitality, peaceful surroundings, and memorable experiences at Tule Resort.
-              </p>
-
               {/* Action Buttons */}
-              <div className="mt-8 flex flex-wrap items-center gap-3.5 sm:mt-9">
+              <div
+                className={`mt-8 flex flex-wrap items-center gap-3.5 sm:mt-9 transition-all duration-700 delay-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                  heroReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+                }`}
+              >
                 <a
                   href="#accommodations"
-                  className="group inline-flex items-center gap-3 rounded-full bg-[#C5A46D] px-7 py-4 text-[11px] font-black uppercase tracking-[.15em] text-[#163D32] shadow-[0_10px_35px_rgba(197,164,109,.3)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#B8955E] hover:shadow-[0_15px_45px_rgba(197,164,109,.4)] active:scale-95"
+                  className="tule-btn-shimmer group inline-flex items-center gap-3 rounded-full bg-[#C5A46D] px-7 py-4 text-[11px] font-black uppercase tracking-[.15em] text-[#163D32] shadow-[0_10px_35px_rgba(197,164,109,.3)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#B8955E] hover:shadow-[0_15px_45px_rgba(197,164,109,.4)] active:scale-95"
                 >
-                  DISCOVER OUR ROOMS
+                  {copy.discoverRooms}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </a>
 
@@ -536,31 +663,39 @@ export default function LuxuryHomeClient({
                   href="/guest/booking"
                   className="inline-flex items-center gap-2.5 rounded-full border border-[#C5A46D]/50 bg-[#163D32]/70 px-7 py-4 text-[11px] font-bold uppercase tracking-[.15em] text-[#F5F0E6] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[#C5A46D] hover:bg-[#163D32] active:scale-95"
                 >
-                  BOOK YOUR STAY
+                  {copy.book}
                 </Link>
 
                 <Link
                   href="/guest/restaurant"
                   className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-5 py-4 text-[11px] font-bold uppercase tracking-[.14em] text-[#F5F0E6]/80 backdrop-blur-md transition hover:text-white hover:border-white/40"
                 >
-                  <UtensilsCrossed className="h-4 w-4 text-[#C5A46D]" /> Dining Menu
+                  <UtensilsCrossed className="h-4 w-4 text-[#C5A46D]" /> {copy.diningMenu}
                 </Link>
               </div>
 
               {/* Metadata Strip */}
-              <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#C5A46D]/20 pt-5 text-[9px] font-bold uppercase tracking-[.18em] text-[#F5F0E6]/65 sm:mt-10 sm:pt-6">
+              <div
+                className={`mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#C5A46D]/20 pt-5 text-[9px] font-bold uppercase tracking-[.18em] text-[#F5F0E6]/65 sm:mt-10 sm:pt-6 transition-all duration-700 delay-[380ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                  heroReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                }`}
+              >
                 <span className="inline-flex items-center gap-2 text-[#F5F0E6]">
                   <MapPin className="h-3.5 w-3.5 text-[#C5A46D]" /> Lake Hawassa Shore, Sidama, Ethiopia
                 </span>
                 <span className="hidden h-1 w-1 rounded-full bg-[#C5A46D] sm:block" />
                 <span className="text-[#C5A46D]">Elevation 1,685m</span>
                 <span className="hidden h-1 w-1 rounded-full bg-[#C5A46D] sm:block" />
-                <span className="text-[#C5A46D]">Relax. Enjoy. Remember.</span>
+                <span className="text-[#C5A46D]">{copy.homeTagline}</span>
               </div>
             </div>
 
-            {/* Right Column: Direct Reservations Card */}
-            <div className="relative mx-auto w-full max-w-[460px] lg:max-w-none">
+            {/* Right Column: Direct Reservations Card (Spring Pop-Up Entrance) */}
+            <div
+              className={`relative mx-auto w-full max-w-[460px] lg:max-w-none transition-all duration-[850ms] delay-200 ease-[cubic-bezier(0.22,1.18,0.36,1)] ${
+                heroReady ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-[0.93]'
+              }`}
+            >
               <div className="rounded-[2.4rem] border border-[#C5A46D]/35 bg-[#163D32]/92 p-6 sm:p-8 shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
                 <div className="flex items-center justify-between border-b border-[#C5A46D]/20 pb-4">
                   <div>
@@ -1066,7 +1201,19 @@ export default function LuxuryHomeClient({
 
                   <div className="mt-6 border-t border-[#C5A46D]/20 pt-4 flex items-center justify-between">
                     <Link
-                      href={service.id === 'restaurant' ? '/guest/restaurant' : service.id === 'pool-passes' ? '/guest/tule-aqua' : `/guest/${service.id}`}
+                      href={
+                        service.id === 'rooms'
+                          ? '/guest/rooms'
+                          : service.id === 'restaurant'
+                          ? '/guest/restaurant'
+                          : service.id === 'cafeteria'
+                          ? '/guest/cafeteria'
+                          : service.id === 'pool-passes' || service.id === 'tule-aqua'
+                          ? '/guest/tule-aqua'
+                          : service.id === 'experiences'
+                          ? '/guest/services'
+                          : `/guest/${encodeURIComponent(service.id)}`
+                      }
                       className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[.16em] text-[#C5A46D] group-hover:text-white transition"
                     >
                       <span>Explore Experience</span>
@@ -1244,7 +1391,7 @@ export default function LuxuryHomeClient({
                 View Full Menu <ArrowRight className="h-3.5 w-3.5 text-[#C5A46D]" />
               </Link>
               <Link
-                href="/guest/table/tule-tbl-01-lakeview"
+                href={tableQrHref}
                 className="inline-flex items-center gap-2 rounded-full border border-[#C5A46D]/40 bg-white px-5 py-3 text-[10px] font-bold uppercase tracking-[.13em] text-[#163D32] hover:bg-[#EDE8DC] transition"
               >
                 <QrCode className="h-3.5 w-3.5 text-[#C5A46D]" /> Table QR Order
@@ -1419,9 +1566,20 @@ export default function LuxuryHomeClient({
 
           {/* Story Full Modal */}
           {activeStory !== null && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-              <div className="relative max-w-2xl rounded-[2.5rem] bg-[#F5F0E6] p-7 sm:p-10 text-[#26312D] shadow-2xl border border-[#C5A46D]/30 max-h-[90vh] overflow-y-auto">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Resort story"
+              onClick={() => setActiveStory(null)}
+              className="tule-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="tule-modal-pop relative max-w-2xl rounded-[2.5rem] bg-[#F5F0E6] p-7 sm:p-10 text-[#26312D] shadow-2xl border border-[#C5A46D]/30 max-h-[90vh] overflow-y-auto"
+              >
                 <button
+                  type="button"
+                  aria-label="Close story"
                   onClick={() => setActiveStory(null)}
                   className="absolute top-5 right-5 flex h-9 w-9 items-center justify-center rounded-full bg-[#163D32] text-white hover:bg-[#0F2D24] transition"
                 >
@@ -1439,9 +1597,15 @@ export default function LuxuryHomeClient({
                       <h3 className="mt-2 font-display text-3xl sm:text-4xl text-[#163D32]">
                         {s.title}
                       </h3>
-                      <div className="mt-5 aspect-video w-full overflow-hidden rounded-2xl bg-[#163D32]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={s.image} alt={s.title} className="h-full w-full object-cover" />
+                      <div className="mt-5 relative aspect-video w-full overflow-hidden rounded-2xl bg-[#163D32]">
+                        <Image
+                          src={s.image}
+                          alt={s.title}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 720px"
+                          unoptimized={!isOptimizableImageSrc(s.image)}
+                          className="object-cover"
+                        />
                       </div>
                       <p className="mt-6 text-sm leading-relaxed text-[#26312D]/85 sm:text-base">
                         {s.content}
@@ -1503,11 +1667,13 @@ export default function LuxuryHomeClient({
           {/* Gallery Grid */}
           <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 sm:gap-5">
             {filteredGallery.map((item, index) => (
-              <div
+              <button
+                type="button"
                 key={item.id}
                 data-reveal
                 onClick={() => setLightboxIndex(index)}
-                className="tule-reveal group relative aspect-square overflow-hidden rounded-2xl bg-[#163D32] cursor-pointer shadow-sm hover:shadow-xl transition-all duration-300"
+                aria-label={`Open gallery image: ${item.title}`}
+                className="tule-reveal tule-card-interactive group relative aspect-square w-full overflow-hidden rounded-2xl bg-[#163D32] text-left cursor-pointer shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A46D]"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -1526,7 +1692,7 @@ export default function LuxuryHomeClient({
                     {item.title}
                   </p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -1545,9 +1711,19 @@ export default function LuxuryHomeClient({
 
       {/* ─── Gallery Lightbox Modal ─── */}
       {lightboxIndex !== null && filteredGallery[lightboxIndex] && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#163D32]/95 backdrop-blur-2xl p-4 sm:p-8 animate-fade-in-up">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={filteredGallery[lightboxIndex].title}
+          onClick={handleCloseLightbox}
+          className="tule-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[#163D32]/95 backdrop-blur-2xl p-4 sm:p-8"
+        >
           <button
-            onClick={handleCloseLightbox}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCloseLightbox();
+            }}
             aria-label="Close Lightbox"
             className="absolute top-6 right-6 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition"
           >
@@ -1555,7 +1731,11 @@ export default function LuxuryHomeClient({
           </button>
 
           <button
-            onClick={handlePrevPhoto}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePrevPhoto();
+            }}
             aria-label="Previous Photo"
             className="absolute left-4 top-1/2 -translate-y-1/2 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 transition"
           >
@@ -1563,14 +1743,22 @@ export default function LuxuryHomeClient({
           </button>
 
           <button
-            onClick={handleNextPhoto}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNextPhoto();
+            }}
             aria-label="Next Photo"
             className="absolute right-4 top-1/2 -translate-y-1/2 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 transition"
           >
             <ChevronRight className="h-7 w-7" />
           </button>
 
-          <div className="relative max-h-[85vh] max-w-5xl overflow-hidden rounded-[2rem] bg-black shadow-2xl border border-[#C5A46D]/30 flex flex-col items-center">
+          <div
+            key={filteredGallery[lightboxIndex].id}
+            onClick={(e) => e.stopPropagation()}
+            className="tule-modal-pop relative max-h-[85vh] max-w-5xl overflow-hidden rounded-[2rem] bg-black shadow-2xl border border-[#C5A46D]/30 flex flex-col items-center"
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={filteredGallery[lightboxIndex].image_url}
@@ -1767,7 +1955,7 @@ export default function LuxuryHomeClient({
                   </Link>
                 </li>
                 <li>
-                  <Link href="/guest/table/tule-tbl-01-lakeview" className="hover:text-white transition">
+                  <Link href={tableQrHref} className="hover:text-white transition">
                     Table QR Ordering
                   </Link>
                 </li>
@@ -1841,6 +2029,121 @@ export default function LuxuryHomeClient({
           </div>
         </div>
       </footer>
+
+      {/* ─── Tule Resort Main Banner Full-View Pop-Up Modal ─── */}
+      {bannerLightboxOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Tule Resort Main Banner"
+          onClick={() => setBannerLightboxOpen(false)}
+          className="tule-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[#163D32]/95 backdrop-blur-2xl p-4 sm:p-8"
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setBannerLightboxOpen(false);
+            }}
+            aria-label="Close Banner Preview"
+            className="absolute top-6 right-6 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition"
+          >
+            <X className="h-6 w-6" />
+          </button>
+
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="tule-modal-pop relative max-w-4xl w-full overflow-hidden rounded-[2.2rem] bg-[#0F2D24] shadow-2xl border-2 border-[#C5A46D]/50"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/tule-resort-main-banner.jpg"
+              alt="Tule Resort — Hawassa, Ethiopia"
+              className="w-full max-h-[75vh] object-cover"
+            />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#163D32] px-6 py-5 text-[#F5F0E6] border-t border-[#C5A46D]/25">
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-[.24em] text-[#C5A46D]">
+                  Tule Resort · Lake Hawassa
+                </span>
+                <p className="mt-1 font-display text-2xl text-[#F5F0E6]">
+                  Relax. Enjoy. Remember.
+                </p>
+              </div>
+              <Link
+                href="/guest/booking"
+                onClick={() => setBannerLightboxOpen(false)}
+                className="tule-btn-shimmer inline-flex items-center justify-center gap-2 rounded-full bg-[#C5A46D] px-6 py-3 text-[10px] font-black uppercase tracking-[.16em] text-[#163D32] hover:bg-[#B8955E] transition"
+              >
+                <span>Plan Your Stay</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Non-Blocking Floating Welcome Privilege Pop-Up ─── */}
+      {welcomePopupVisible &&
+        lightboxIndex === null &&
+        activeStory === null &&
+        !bannerLightboxOpen &&
+        !mobileMenuOpen && (
+          <aside
+            aria-label="Direct Booking Privilege"
+            className="tule-modal-pop fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 sm:w-[370px] z-40 rounded-[1.8rem] border border-[#C5A46D]/50 bg-[#163D32]/95 p-4 text-[#F5F0E6] shadow-[0_24px_65px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
+          >
+            <button
+              type="button"
+              onClick={dismissWelcomePopup}
+              aria-label="Dismiss welcome message"
+              className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-[#F5F0E6]/80 hover:bg-white/20 hover:text-white transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="flex items-center gap-3.5 pr-6">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-[#C5A46D]/40 bg-[#0F2D24]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/tule-resort-main-banner.jpg"
+                  alt="Tule Resort Welcome"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+
+              <div className="min-w-0">
+                <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[.22em] text-[#C5A46D]">
+                  <Sparkles className="h-2.5 w-2.5" /> Direct Lakeside Stay
+                </span>
+                <p className="mt-0.5 font-display text-lg leading-tight text-[#F5F0E6]">
+                  Welcome to Tule Resort
+                </p>
+                <p className="mt-0.5 text-[11px] leading-snug text-[#F5F0E6]/75">
+                  Enjoy complimentary buffet breakfast &amp; pool access on direct bookings.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3.5 flex items-center gap-2 border-t border-[#C5A46D]/20 pt-3">
+              <Link
+                href="/guest/booking"
+                onClick={dismissWelcomePopup}
+                className="tule-btn-shimmer flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#C5A46D] px-4 py-2.5 text-[10px] font-black uppercase tracking-[.15em] text-[#163D32] hover:bg-[#B8955E] transition"
+              >
+                <span>Book Your Stay</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+              <button
+                type="button"
+                onClick={dismissWelcomePopup}
+                className="rounded-xl border border-white/15 px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-[#F5F0E6]/75 hover:bg-white/10 hover:text-white transition"
+              >
+                Later
+              </button>
+            </div>
+          </aside>
+        )}
     </div>
   );
 }

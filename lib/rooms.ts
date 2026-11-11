@@ -79,8 +79,9 @@ export async function getRooms(): Promise<Room[]> {
 }
 
 export async function getRoomBySlug(slug: string): Promise<Room | undefined> {
+  const normalizedSlug = slug === 'haile-presidential-suite' ? 'tule-presidential-suite' : slug;
   const rooms = await getRooms();
-  const found = rooms.find((room) => room.slug === slug || room.id === slug);
+  const found = rooms.find((room) => room.slug === normalizedSlug || room.slug === slug || room.id === slug);
   if (found) return found;
-  return FALLBACK_ROOMS.find((room) => room.slug === slug || room.id === slug);
+  return FALLBACK_ROOMS.find((room) => room.slug === normalizedSlug || room.slug === slug || room.id === slug);
 }

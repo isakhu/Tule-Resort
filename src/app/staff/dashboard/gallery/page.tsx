@@ -1,9 +1,12 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ImagePlus, Pencil, Save, Star, Trash2, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { isOptimizableImageSrc, isRenderableImageSrc } from '@/lib/imageSrc';
 
 type GalleryItem = {
   id: string;
@@ -28,6 +31,11 @@ type FormState = {
   displayOrder: string;
 };
 
+type FeedbackState = {
+  type: 'success' | 'error';
+  text: string;
+} | null;
+
 const emptyForm: FormState = {
   title: '',
   caption: '',
@@ -45,8 +53,27 @@ export default function GalleryManagerPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [pendingDeleteItem, setPendingDeleteItem] = useState<GalleryItem | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [query, setQuery] = useState('');
+
+  const previewObjectUrlRef = useRef<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const imageInputId = useId();
+  const titleInputId = useId();
+  const categoryInputId = useId();
+  const orderInputId = useId();
+  const captionInputId = useId();
+  const searchInputId = useId();
+
+  function revokePreviewUrl() {
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
+  }
 
   async function loadItems() {
     setLoading(true);
@@ -56,26 +83,57 @@ export default function GalleryManagerPage() {
       .order('is_featured', { ascending: false })
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
-    if (error) setMessage(error.message);
+    if (error) setFeedback({ type: 'error', text: error.message });
     else setItems((data ?? []) as GalleryItem[]);
     setLoading(false);
   }
 
-  useEffect(() => { void loadItems(); }, []);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data, error } = await supabase
+        .from('gallery')
+        .select('*')
+        .order('is_featured', { ascending: false })
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false });
+      if (!active) return;
+      if (error) setFeedback({ type: 'error', text: error.message });
+      else setItems((data ?? []) as GalleryItem[]);
+      setLoading(false);
+    })();
+
+    return () => {
+      active = false;
+      revokePreviewUrl();
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
-    return items.filter((item) => `${item.title} ${item.caption ?? ''} ${item.category}`.toLowerCase().includes(q));
+    return items.filter((item) =>
+      `${item.title} ${item.caption ?? ''} ${item.category}`.toLowerCase().includes(q)
+    );
   }, [items, query]);
 
   function reset() {
+    revokePreviewUrl();
     setEditingId(null);
     setForm(emptyForm);
     setImageFile(null);
-    setMessage('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setFeedback(null);
+  }
+
+  function handleClearImage() {
+    revokePreviewUrl();
+    setImageFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setForm((current) => ({ ...current, imageUrl: '' }));
   }
 
   function edit(item: GalleryItem) {
+    revokePreviewUrl();
     setEditingId(item.id);
     setForm({
       title: item.title,
@@ -87,7 +145,8 @@ export default function GalleryManagerPage() {
       displayOrder: String(item.display_order ?? 0),
     });
     setImageFile(null);
-    setMessage('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setFeedback(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -107,11 +166,13 @@ export default function GalleryManagerPage() {
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
-    setMessage('');
+    setFeedback(null);
     try {
       if (!form.title.trim()) throw new Error('Title is required.');
       let imageUrl = form.imageUrl.trim();
-      let storagePath: string | null = editingId ? items.find((item) => item.id === editingId)?.storage_path ?? null : null;
+      let storagePath: string | null = editingId
+        ? items.find((item) => item.id === editingId)?.storage_path ?? null
+        : null;
 
       if (imageFile) {
         const uploaded = await uploadImage(imageFile);
@@ -137,78 +198,363 @@ export default function GalleryManagerPage() {
         : await supabase.from('gallery').insert(payload).select().single();
 
       if (result.error) throw result.error;
-      setMessage(editingId ? 'Gallery item updated.' : 'Gallery item published.');
+      const savedText = editingId ? 'Gallery item updated.' : 'Gallery item published.';
       reset();
+      setFeedback({ type: 'success', text: savedText });
       await loadItems();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not save gallery item.');
+      setFeedback({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Could not save gallery item.',
+      });
     } finally {
       setSaving(false);
     }
   }
 
-  async function remove(item: GalleryItem) {
-    if (!window.confirm(`Delete “${item.title}”?`)) return;
-    const { error } = await supabase.from('gallery').delete().eq('id', item.id);
+  async function confirmRemove() {
+    if (!pendingDeleteItem) return;
+    setDeleting(true);
+    const target = pendingDeleteItem;
+    const { error } = await supabase.from('gallery').delete().eq('id', target.id);
     if (error) {
-      setMessage(error.message);
+      setDeleting(false);
+      setPendingDeleteItem(null);
+      setFeedback({ type: 'error', text: error.message });
       return;
     }
-    if (item.storage_path) {
-      await supabase.storage.from('resort-media').remove([item.storage_path]);
+    if (target.storage_path) {
+      await supabase.storage.from('resort-media').remove([target.storage_path]);
     }
-    setMessage('Gallery item deleted.');
+    setDeleting(false);
+    setPendingDeleteItem(null);
+    if (editingId === target.id) {
+      reset();
+    }
+    setFeedback({ type: 'success', text: `"${target.title}" deleted.` });
     await loadItems();
   }
 
   return (
-    <main className="min-h-screen bg-[#F8F5EE] text-[#182326]">
-      <header className="border-b border-white/10 bg-[#0B3D4A] text-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 md:px-6">
-          <div className="flex items-center gap-3">
-            <Link href="/staff/dashboard" className="rounded-xl bg-white/10 p-2 text-white/80 hover:text-white"><ArrowLeft className="h-5 w-5" /></Link>
-            <div><p className="font-display text-2xl">Gallery</p><p className="text-[10px] font-bold uppercase tracking-[.2em] text-white/50">Tule Resort · Manager</p></div>
+    <div className="min-h-screen bg-[#F5F0E6] text-[#1A1A1A]">
+      <div className="mx-auto max-w-7xl px-4 py-7 md:px-6 md:py-10">
+        <div className="mb-8 flex flex-col gap-4 border-b border-[#E6DFD1] pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#7A5A27]">
+              Tule Resort · Visual CMS
+            </p>
+            <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-[#163D32] md:text-5xl">
+              Gallery CMS
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-[#52645D]">
+              Curate resort, poolside, dining, and lakeside imagery visible across the guest gallery.
+            </p>
           </div>
-          <span className="rounded-full bg-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-[.15em]">Visual CMS</span>
+          <Link
+            href="/staff/dashboard"
+            className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#163D32]/15 bg-white px-4 py-2.5 text-xs font-semibold text-[#163D32] transition-colors hover:bg-[#163D32]/5"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Back to Dashboard
+          </Link>
         </div>
-      </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-7 md:px-6">
         <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-          <form onSubmit={save} className="rounded-[2rem] border border-[#0B3D4A]/10 bg-white p-5 shadow-sm md:p-7">
+          <form onSubmit={save} className="rounded-[2rem] border border-[#E6DFD1] bg-white p-5 shadow-sm md:p-7">
             <div className="flex items-center justify-between gap-4">
-              <div><p className="text-[9px] font-black uppercase tracking-[.25em] text-[#C8A15A]">Gallery CMS</p><h1 className="mt-1 text-2xl font-black text-[#0B3D4A]">{editingId ? 'Edit gallery item' : 'Add gallery image'}</h1></div>
-              {editingId && <button type="button" onClick={reset} className="rounded-full border border-[#0B3D4A]/10 p-2 text-[#0B3D4A]/50 hover:text-[#0B3D4A]"><X className="h-4 w-4" /></button>}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#7A5A27]">Gallery Editor</p>
+                <h2 className="mt-1 font-display text-2xl font-semibold text-[#163D32]">
+                  {editingId ? 'Edit gallery item' : 'Add gallery image'}
+                </h2>
+              </div>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={reset}
+                  aria-label="Cancel editing gallery item"
+                  className="rounded-full border border-[#E6DFD1] p-2 text-[#52645D] transition-colors hover:bg-[#F5F0E6] hover:text-[#163D32]"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <label className="space-y-2 md:col-span-2"><span className="text-xs font-black uppercase tracking-wider text-black/45">Image</span><input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0] ?? null; setImageFile(file); if (file) setForm((current) => ({ ...current, imageUrl: URL.createObjectURL(file) })); }} className="block w-full rounded-2xl border border-dashed border-[#0B3D4A]/15 bg-[#F8F5EE] p-4 text-xs text-black/55 file:mr-4 file:rounded-full file:border-0 file:bg-[#C8A15A] file:px-4 file:py-2 file:text-xs file:font-black file:text-white" /></label>
-              <label className="space-y-2 md:col-span-2"><span className="text-xs font-black uppercase tracking-wider text-black/45">Title *</span><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded-xl border border-[#0B4F6C]/15 bg-white px-4 py-3 outline-none focus:border-[#C9A227]" placeholder="Lake view at sunset" /></label>
-              <label className="space-y-2"><span className="text-xs font-black uppercase tracking-wider text-black/45">Category</span><input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full rounded-xl border border-[#0B4F6C]/15 bg-white px-4 py-3 outline-none focus:border-[#C9A227]" placeholder="Resort" /></label>
-              <label className="space-y-2"><span className="text-xs font-black uppercase tracking-wider text-black/45">Display order</span><input type="number" value={form.displayOrder} onChange={(e) => setForm({ ...form, displayOrder: e.target.value })} className="w-full rounded-xl border border-[#0B4F6C]/15 bg-white px-4 py-3 outline-none focus:border-[#C9A227]" /></label>
-              <label className="space-y-2 md:col-span-2"><span className="text-xs font-black uppercase tracking-wider text-black/45">Caption</span><textarea value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })} className="min-h-24 w-full rounded-xl border border-[#0B4F6C]/15 bg-white px-4 py-3 outline-none focus:border-[#C9A227]" placeholder="A calm evening overlooking Lake Hawassa." /></label>
-              <label className="flex items-center gap-3 rounded-xl bg-[#F8F5EE] p-4 text-sm font-bold"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /> Visible to guests</label>
-              <label className="flex items-center gap-3 rounded-xl bg-[#F8F5EE] p-4 text-sm font-bold"><input type="checkbox" checked={form.isFeatured} onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })} /> Featured image</label>
+              <div className="space-y-2 md:col-span-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor={imageInputId} className="text-xs font-bold uppercase tracking-wider text-[#52645D]">
+                    Image *
+                  </label>
+                  {form.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={handleClearImage}
+                      className="text-xs font-semibold text-rose-700 hover:underline"
+                    >
+                      Remove image
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  id={imageInputId}
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    revokePreviewUrl();
+                    setImageFile(file);
+                    if (file) {
+                      const objectUrl = URL.createObjectURL(file);
+                      previewObjectUrlRef.current = objectUrl;
+                      setForm((current) => ({ ...current, imageUrl: objectUrl }));
+                    }
+                  }}
+                  className="block w-full rounded-2xl border border-dashed border-[#163D32]/20 bg-[#F5F0E6]/60 p-4 text-xs text-[#52645D] file:mr-4 file:rounded-full file:border-0 file:bg-[#163D32] file:px-4 file:py-2 file:text-xs file:font-bold file:text-white hover:file:bg-[#0F2D24]"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label htmlFor={titleInputId} className="text-xs font-bold uppercase tracking-wider text-[#52645D]">
+                  Title *
+                </label>
+                <input
+                  id={titleInputId}
+                  required
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  className="w-full rounded-xl border border-[#163D32]/15 bg-white px-4 py-3 text-sm text-[#1A1A1A] outline-none transition focus:border-[#C5A46D] focus:ring-2 focus:ring-[#C5A46D]/20"
+                  placeholder="Lake view at sunset"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor={categoryInputId} className="text-xs font-bold uppercase tracking-wider text-[#52645D]">
+                  Category
+                </label>
+                <input
+                  id={categoryInputId}
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  className="w-full rounded-xl border border-[#163D32]/15 bg-white px-4 py-3 text-sm text-[#1A1A1A] outline-none transition focus:border-[#C5A46D] focus:ring-2 focus:ring-[#C5A46D]/20"
+                  placeholder="Resort"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor={orderInputId} className="text-xs font-bold uppercase tracking-wider text-[#52645D]">
+                  Display order
+                </label>
+                <input
+                  id={orderInputId}
+                  type="number"
+                  value={form.displayOrder}
+                  onChange={(e) => setForm({ ...form, displayOrder: e.target.value })}
+                  className="w-full rounded-xl border border-[#163D32]/15 bg-white px-4 py-3 text-sm text-[#1A1A1A] outline-none transition focus:border-[#C5A46D] focus:ring-2 focus:ring-[#C5A46D]/20"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label htmlFor={captionInputId} className="text-xs font-bold uppercase tracking-wider text-[#52645D]">
+                  Caption
+                </label>
+                <textarea
+                  id={captionInputId}
+                  value={form.caption}
+                  onChange={(e) => setForm({ ...form, caption: e.target.value })}
+                  className="min-h-24 w-full rounded-xl border border-[#163D32]/15 bg-white px-4 py-3 text-sm text-[#1A1A1A] outline-none transition focus:border-[#C5A46D] focus:ring-2 focus:ring-[#C5A46D]/20"
+                  placeholder="A calm evening overlooking the lakeside gardens."
+                />
+              </div>
+
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E6DFD1] bg-[#F5F0E6]/60 p-4 text-sm font-semibold text-[#163D32]">
+                <input
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                  className="h-4 w-4 accent-[#163D32]"
+                />
+                Visible to guests
+              </label>
+
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E6DFD1] bg-[#F5F0E6]/60 p-4 text-sm font-semibold text-[#163D32]">
+                <input
+                  type="checkbox"
+                  checked={form.isFeatured}
+                  onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })}
+                  className="h-4 w-4 accent-[#163D32]"
+                />
+                Featured image
+              </label>
             </div>
 
-            {message && <div className="mt-5 rounded-xl bg-[#EAF4F7] p-3 text-sm text-[#0B3D4A]">{message}</div>}
-            <div className="mt-6 flex flex-wrap gap-3"><button disabled={saving} className="inline-flex items-center gap-2 rounded-full bg-[#0B3D4A] px-5 py-3 text-xs font-black uppercase tracking-wider text-white disabled:opacity-50"><Save className="h-4 w-4" />{saving ? 'Saving…' : editingId ? 'Save changes' : 'Publish image'}</button>{!editingId && <button type="button" onClick={reset} className="rounded-full border border-[#0B3D4A]/10 px-5 py-3 text-xs font-black uppercase tracking-wider text-[#0B3D4A]/60">Clear</button>}</div>
+            {feedback && (
+              <div
+                role={feedback.type === 'error' ? 'alert' : 'status'}
+                className={`mt-5 rounded-xl border px-4 py-3 text-sm font-medium ${
+                  feedback.type === 'error'
+                    ? 'border-rose-200 bg-rose-50 text-rose-800'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                }`}
+              >
+                {feedback.text}
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-full bg-[#163D32] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#0F2D24] disabled:opacity-50"
+              >
+                <Save className="h-4 w-4" aria-hidden="true" />
+                {saving ? 'Saving…' : editingId ? 'Save changes' : 'Publish image'}
+              </button>
+              {!editingId && (
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="rounded-full border border-[#163D32]/15 bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#52645D] transition-colors hover:bg-[#F5F0E6] hover:text-[#163D32]"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </form>
 
-          <div className="rounded-[2rem] border border-[#0B3D4A]/10 bg-white p-5 shadow-sm md:p-7 xl:sticky xl:top-6 xl:self-start">
-            <p className="text-[9px] font-black uppercase tracking-[.25em] text-black/35">Preview</p>
-            <div className="mt-4 overflow-hidden rounded-2xl bg-[#0B3D4A]">
-              {form.imageUrl ? <img src={form.imageUrl} alt={form.title || 'Preview'} className="aspect-[4/3] w-full object-cover" /> : <div className="flex aspect-[4/3] items-center justify-center text-white/30"><ImagePlus className="h-12 w-12" /></div>}
-              <div className="p-4 text-white"><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#C8A15A]">{form.category}</p><h2 className="mt-1 text-xl font-black">{form.title || 'Gallery image'}</h2><p className="mt-2 text-sm text-white/55">{form.caption || 'Your gallery caption will appear here.'}</p></div>
+          <div className="rounded-[2rem] border border-[#E6DFD1] bg-white p-5 shadow-sm md:p-7 xl:sticky xl:top-6 xl:self-start">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#52645D]">Live Preview</p>
+            <div className="mt-4 overflow-hidden rounded-2xl bg-[#163D32]">
+              {isRenderableImageSrc(form.imageUrl) ? (
+                <div className="relative aspect-[4/3] w-full overflow-hidden">
+                  <Image
+                    src={form.imageUrl.trim()}
+                    alt={form.title || 'Preview'}
+                    fill
+                    sizes="(max-width: 1280px) 100vw, 480px"
+                    unoptimized={!isOptimizableImageSrc(form.imageUrl)}
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="flex aspect-[4/3] items-center justify-center text-[#F5F0E6]/35">
+                  <ImagePlus className="h-12 w-12" aria-hidden="true" />
+                </div>
+              )}
+              <div className="p-4 text-white">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C5A46D]">{form.category}</p>
+                <h3 className="mt-1 font-display text-xl font-semibold">{form.title || 'Gallery image'}</h3>
+                <p className="mt-2 text-sm text-[#F5F0E6]/80">
+                  {form.caption || 'Your gallery caption will appear here.'}
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <section className="mt-8 rounded-[2rem] border border-[#0B3D4A]/10 bg-white p-5 shadow-sm md:p-7">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.25em] text-black/35">Published gallery</p><h2 className="mt-1 text-2xl font-black text-[#0B3D4A]">Gallery images</h2></div><input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full max-w-sm rounded-xl border border-[#0B4F6C]/15 bg-white px-4 py-3 outline-none focus:border-[#C9A227]" placeholder="Search gallery…" /></div>
-          {loading ? <p className="mt-6 text-sm text-black/45">Loading gallery…</p> : filtered.length === 0 ? <div className="mt-6 rounded-2xl bg-[#F8F5EE] p-6 text-sm text-black/45">No gallery images yet.</div> : <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{filtered.map((item) => <article key={item.id} className="overflow-hidden rounded-2xl border border-[#0B3D4A]/10 bg-[#F8F5EE]"><div className="relative aspect-[4/3] overflow-hidden bg-black/5"><img src={item.image_url} alt={item.title} className="h-full w-full object-cover" />{item.is_featured && <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-[#C8A15A] px-3 py-1 text-[9px] font-black uppercase text-white"><Star className="h-3 w-3" /> Featured</span>} {!item.is_active && <span className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1 text-[9px] font-black uppercase text-white">Hidden</span>}</div><div className="p-4"><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#C8A15A]">{item.category}</p><h3 className="mt-1 font-black text-[#0B3D4A]">{item.title}</h3>{item.caption && <p className="mt-1 line-clamp-2 text-sm text-black/50">{item.caption}</p>}<div className="mt-4 flex gap-2"><button type="button" onClick={() => edit(item)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-black text-[#0B3D4A] shadow-sm"><Pencil className="h-4 w-4" /> Edit</button><button type="button" onClick={() => void remove(item)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-black text-red-700"><Trash2 className="h-4 w-4" /> Delete</button></div></div></article>)}</div>}
+        <section className="mt-8 rounded-[2rem] border border-[#E6DFD1] bg-white p-5 shadow-sm md:p-7">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#7A5A27]">Published Gallery</p>
+              <h2 className="mt-1 font-display text-2xl font-semibold text-[#163D32]">Gallery Images</h2>
+            </div>
+            <div className="w-full max-w-sm">
+              <label htmlFor={searchInputId} className="sr-only">
+                Search gallery images
+              </label>
+              <input
+                id={searchInputId}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full rounded-xl border border-[#163D32]/15 bg-[#F5F0E6]/40 px-4 py-3 text-sm text-[#1A1A1A] outline-none transition focus:border-[#C5A46D] focus:bg-white focus:ring-2 focus:ring-[#C5A46D]/20"
+                placeholder="Search gallery…"
+              />
+            </div>
+          </div>
+
+          {loading ? (
+            <p className="mt-6 text-sm text-[#52645D]">Loading gallery…</p>
+          ) : filtered.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-[#E6DFD1] bg-[#F5F0E6]/60 p-6 text-sm text-[#52645D]">
+              No gallery images yet.
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((item) => (
+                <article
+                  key={item.id}
+                  className="overflow-hidden rounded-2xl border border-[#E6DFD1] bg-[#F5F0E6]/55"
+                >
+                  <div className="relative aspect-[4/3] overflow-hidden bg-[#163D32]/10">
+                    {isRenderableImageSrc(item.image_url) ? (
+                      <Image
+                        src={item.image_url.trim()}
+                        alt={item.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        unoptimized={!isOptimizableImageSrc(item.image_url)}
+                        className="object-cover"
+                      />
+                    ) : null}
+                    {item.is_featured && (
+                      <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-[#C5A46D] px-3 py-1 text-[10px] font-bold uppercase text-[#0F2D24]">
+                        <Star className="h-3 w-3" aria-hidden="true" /> Featured
+                      </span>
+                    )}
+                    {!item.is_active && (
+                      <span className="absolute right-3 top-3 rounded-full bg-[#163D32] px-3 py-1 text-[10px] font-bold uppercase text-white">
+                        Hidden
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7A5A27]">
+                      {item.category}
+                    </p>
+                    <h3 className="mt-1 font-semibold text-[#163D32]">{item.title}</h3>
+                    {item.caption && (
+                      <p className="mt-1 line-clamp-2 text-sm text-[#52645D]">{item.caption}</p>
+                    )}
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => edit(item)}
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-[#E6DFD1] bg-white px-3 py-2 text-xs font-bold text-[#163D32] shadow-sm transition-colors hover:bg-[#163D32]/5"
+                      >
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPendingDeleteItem(item)}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Delete
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       </div>
-    </main>
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteItem)}
+        title="Delete Gallery Image?"
+        description={
+          pendingDeleteItem
+            ? `Permanently delete "${pendingDeleteItem.title}" from the resort gallery?`
+            : ''
+        }
+        confirmLabel="Delete Image"
+        tone="danger"
+        busy={deleting}
+        onConfirm={() => void confirmRemove()}
+        onCancel={() => {
+          if (!deleting) setPendingDeleteItem(null);
+        }}
+      />
+    </div>
   );
 }

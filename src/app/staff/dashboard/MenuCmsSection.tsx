@@ -1,14 +1,36 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, LayoutDashboard, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, UtensilsCrossed } from 'lucide-react';
 import MenuItemEditor from '@/components/manager/MenuItemEditor';
 
 export default function MenuCmsSection() {
   return (
-    <div className="min-h-screen bg-[#0C0B09] text-white">
-      <header className="border-b border-white/10 bg-[#15130F]/95 backdrop-blur-xl"><div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 md:px-6"><div className="flex items-center gap-3"><img src="/tule-resort-logo.png" alt="Tule Resort" className="h-11 w-11 rounded-lg object-contain bg-black/40 border border-white/10" /><div><p className="text-sm font-black uppercase tracking-[.16em] text-[#F2C866]">Tule Resort</p><p className="text-[8px] font-bold uppercase tracking-[.25em] text-white/35">Manager CMS</p></div></div><Link href="/staff/dashboard" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white/60 hover:text-white"><ArrowLeft className="h-4 w-4" />Dashboard</Link></div></header>
-      <main className="mx-auto max-w-7xl px-4 py-7 md:px-6 md:py-10"><div className="mb-8"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.25em] text-[#F2B84B]"><UtensilsCrossed className="h-4 w-4" />Content management</div><h1 className="mt-2 text-4xl md:text-6xl font-black tracking-[-.05em]">FOOD MENU</h1><p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/50">Add an image, name, Amharic name, price and description. Tule Resort automatically turns the information into the same customer-facing visual card.</p></div><MenuItemEditor /></main>
+    <div className="min-h-screen bg-[#F5F0E6] text-[#1A1A1A]">
+      <div className="mx-auto max-w-7xl px-4 py-7 md:px-6 md:py-10">
+        <div className="mb-8 flex flex-col gap-4 border-b border-[#E6DFD1] pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#7A5A27]">
+              <UtensilsCrossed className="h-4 w-4" aria-hidden="true" />
+              Content Management
+            </div>
+            <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-[#163D32] md:text-5xl">
+              Food Menu CMS
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#52645D]">
+              Add an image, name, Amharic name, price, and description. Tule Resort renders each item directly into the guest dining menu and QR ordering cards.
+            </p>
+          </div>
+          <Link
+            href="/staff/dashboard"
+            className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#163D32]/15 bg-white px-4 py-2.5 text-xs font-semibold text-[#163D32] transition-colors hover:bg-[#163D32]/5"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Back to Dashboard
+          </Link>
+        </div>
+        <MenuItemEditor />
+      </div>
     </div>
   );
 }

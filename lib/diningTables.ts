@@ -46,13 +46,22 @@ export async function getDiningTables(): Promise<DiningTable[]> {
   return (data ?? []) as DiningTable[];
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getDiningTableByToken(token: string): Promise<DiningTable | null> {
-  const clean = token.trim();
-  const { data, error } = await supabase
+  const clean = token.trim().replace(/[(),*]/g, '');
+  if (!clean) return null;
+
+  let query = supabase
     .from('dining_tables')
     .select('*')
-    .or(`qr_token.eq.${clean},id.eq.${clean}`)
-    .eq('is_active', true)
+    .eq('is_active', true);
+
+  query = UUID_REGEX.test(clean)
+    ? query.or(`qr_token.eq.${clean},id.eq.${clean}`)
+    : query.eq('qr_token', clean);
+
+  const { data, error } = await query
     .limit(1)
     .maybeSingle();
 

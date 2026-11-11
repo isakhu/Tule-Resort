@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       .from('roles')
       .select('id, name');
 
-    const roleAllowlist = (validRoles ?? []).map((r: any) => r.id);
+    const roleAllowlist = ((validRoles as Array<{ id: number }> | null) ?? []).map((r) => r.id);
     if (!roleAllowlist.includes(parsedRoleId)) {
       return NextResponse.json({ error: 'The selected role is invalid or not allowed.' }, { status: 400 });
     }
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
         .select('id, is_active')
         .eq('is_active', true);
 
-      const deptAllowlist = (validDepts ?? []).map((d: any) => d.id);
+      const deptAllowlist = ((validDepts as Array<{ id: number }> | null) ?? []).map((d) => d.id);
       if (!deptAllowlist.includes(parsedDeptId)) {
         return NextResponse.json({ error: 'The selected department is inactive or does not exist.' }, { status: 400 });
       }
@@ -93,7 +93,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, user: userRow });
-  } catch (err: any) {
-    return NextResponse.json({ error: String(err?.message ?? err) }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,25 +1,28 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Clock,
-  CheckCircle2,
   AlertCircle,
-  Play,
-  Check,
-  X,
-  RefreshCw,
   Building2,
-  Calendar,
-  Sparkles,
-  Utensils,
-  Dumbbell,
-  Waves,
+  Check,
+  CheckCircle2,
+  Clock,
   Filter,
+  Play,
+  RefreshCw,
   User,
-  ArrowRight
+  X,
 } from 'lucide-react';
 import supabase from '@/lib/supabaseClient';
+import {
+  isAcceptedOrConfirmedStatus,
+  isCancelledStatus,
+  isCompletedStatus,
+  isDeliveredStatus,
+  isPreparingOrInProgressStatus,
+  isReadyStatus,
+  ORDER_STATUS_ID,
+} from '@/lib/orderStatuses';
 
 interface QueueItem {
   id: string;
@@ -37,231 +40,328 @@ interface QueueItem {
   statusId: number;
   statusName: string;
   statusStep: 'pending' | 'accepted' | 'in_progress' | 'ready' | 'completed' | 'cancelled';
+  createdAtMs: number;
   elapsedMinutes: number;
   notes?: string | null;
+}
+
+interface DepartmentOrderRow {
+  id: string;
+  department_id?: number | null;
+  dining_table_id?: string | null;
+  guest_name?: string | null;
+  room_number?: string | null;
+  notes?: string | null;
+  total?: number | string | null;
+  status_id?: number | null;
+  created_at?: string | null;
+}
+
+interface OrderItemLookupRow {
+  order_id: string;
+  quantity?: number | null;
+  menu_item?:
+    | { name?: string | null; category?: string | null }
+    | Array<{ name?: string | null; category?: string | null }>
+    | null;
+}
+
+interface ServiceRequestApiRow {
+  id: string;
+  department_id: number;
+  requested_date: string;
+  requested_time?: string | null;
+  party_size?: number | null;
+  guest_name: string;
+  guest_phone?: string | null;
+  room_number?: string | null;
+  notes?: string | null;
+  price?: number | string | null;
+  status_id?: number | null;
+  created_at?: string | null;
+  status?: { id?: number; name?: string | null } | null;
+  department?: { id?: number; name?: string | null } | null;
+  service?: { name?: string | null } | null;
+}
+
+function mapStatusToQueueStep(
+  statusId?: number | null,
+  statusName?: string | null
+): QueueItem['statusStep'] {
+  if (isCancelledStatus(statusId, statusName)) return 'cancelled';
+  if (isCompletedStatus(statusId, statusName) || isDeliveredStatus(statusId, statusName)) {
+    return 'completed';
+  }
+  if (isReadyStatus(statusId, statusName)) return 'ready';
+  if (isPreparingOrInProgressStatus(statusId, statusName)) return 'in_progress';
+  if (isAcceptedOrConfirmedStatus(statusId, statusName)) return 'accepted';
+  return 'pending';
 }
 
 export default function DepartmentQueuePage() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'accepted' | 'in_progress' | 'ready' | 'completed'>('active');
+  const [activeTab, setActiveTab] = useState<
+    'active' | 'pending' | 'accepted' | 'in_progress' | 'ready' | 'completed'
+  >('active');
   const [deptFilter, setDeptFilter] = useState<string>('All');
   const [userDepts, setUserDepts] = useState<{ id: number; name: string }[]>([]);
-  const [userRole, setUserRole] = useState<string>('staff');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'live' | 'reconnecting'>('live');
 
-  // 1. Fetch user permissions and departments
-  const loadUserContext = useCallback(async () => {
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) return;
+  const lookupsLoadedRef = useRef(false);
+  const statusMapRef = useRef<Map<number, string>>(new Map());
+  const tableMapRef = useRef<Map<string, string>>(new Map());
+  const deptMapRef = useRef<Map<number, string>>(new Map());
+  const inFlightRef = useRef(false);
 
-      const res = await fetch('/api/staff/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setUserRole(json.profile?.role || 'staff');
-
-        const deptNames = json.profile?.departmentNames || [];
-        const deptIds = json.profile?.departmentIds || [];
-        const combined = deptIds.map((id: number, idx: number) => ({
-          id,
-          name: deptNames[idx] || `Department ${id}`,
-        }));
-        setUserDepts(combined);
-      }
-    } catch {
-      // fallback
-    }
+  const ensureLookupCaches = useCallback(async () => {
+    if (lookupsLoadedRef.current) return;
+    const [statusRes, tableRes, deptRes] = await Promise.all([
+      supabase.from('order_statuses').select('id, name'),
+      supabase.from('dining_tables').select('id, table_number'),
+      supabase.from('departments').select('id, name'),
+    ]);
+    statusMapRef.current = new Map((statusRes.data || []).map((s) => [s.id, s.name]));
+    tableMapRef.current = new Map((tableRes.data || []).map((t) => [t.id, t.table_number]));
+    deptMapRef.current = new Map((deptRes.data || []).map((d) => [d.id, d.name]));
+    lookupsLoadedRef.current = true;
   }, []);
 
-  // 2. Fetch live queue items (both orders and service_requests)
-  const fetchQueue = useCallback(async (isSilent: boolean = false) => {
-    if (!isSilent) {
-      setLoading(true);
-      setErrorMsg(null);
-    }
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+  const selectedDepartmentId = useMemo(() => {
+    if (deptFilter === 'All') return undefined;
+    const fromUser = userDepts.find((d) => d.name === deptFilter);
+    if (fromUser) return fromUser.id;
+    const fromItems = items.find((i) => i.departmentName === deptFilter);
+    if (fromItems) return fromItems.departmentId;
+    return undefined;
+  }, [deptFilter, userDepts, items]);
 
-      // Parallel fetch: department orders & service requests
-      const [ordersRes, requestsRes] = await Promise.all([
-        fetch('/api/orders/department', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          cache: 'no-store',
-        }),
-        fetch('/api/service-requests', { cache: 'no-store' }),
-      ]);
+  const fetchQueue = useCallback(
+    async (isSilent: boolean = false) => {
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
 
-      const queueList: QueueItem[] = [];
+      if (!isSilent) {
+        setErrorMsg(null);
+      }
 
-      // Process food orders
-      if (ordersRes.ok) {
-        const json = await ordersRes.json();
-        const orders = json.orders || [];
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
 
-        // For orders with items, query order items relational details
-        if (orders.length > 0) {
-          const orderIds = orders.map((o: any) => o.id);
-          const { data: orderItemsData } = await supabase
-            .from('order_items')
-            .select('order_id, quantity, price, menu_item:menu_items(name, category)')
-            .in('order_id', orderIds);
+        const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+        const serviceRequestsUrl = selectedDepartmentId
+          ? `/api/service-requests?departmentId=${encodeURIComponent(String(selectedDepartmentId))}`
+          : '/api/service-requests';
 
-          const itemsByOrderId = new Map<string, any[]>();
-          (orderItemsData || []).forEach((it) => {
-            const arr = itemsByOrderId.get(it.order_id) || [];
-            arr.push(it);
-            itemsByOrderId.set(it.order_id, arr);
-          });
+        const [ordersRes, requestsRes] = await Promise.all([
+          fetch('/api/orders/department', {
+            headers: authHeaders,
+            cache: 'no-store',
+          }),
+          fetch(serviceRequestsUrl, {
+            headers: authHeaders,
+            cache: 'no-store',
+          }),
+        ]);
 
-          // Fetch status names map
-          const { data: statuses } = await supabase.from('order_statuses').select('id, name');
-          const statusMap = new Map((statuses || []).map((s) => [s.id, s.name]));
+        const queueList: QueueItem[] = [];
+        const fetchErrors: string[] = [];
 
-          // Fetch dining tables for table labels
-          const { data: tables } = await supabase.from('dining_tables').select('id, table_number');
-          const tableMap = new Map((tables || []).map((t) => [t.id, t.table_number]));
+        if (ordersRes.ok) {
+          const json = (await ordersRes.json()) as { orders?: DepartmentOrderRow[] };
+          const orders = json.orders || [];
 
-          // Fetch departments
-          const { data: depts } = await supabase.from('departments').select('id, name');
-          const deptMap = new Map((depts || []).map((d) => [d.id, d.name]));
+          if (orders.length > 0) {
+            await ensureLookupCaches();
 
-          orders.forEach((o: any) => {
-            const rawStatus = (statusMap.get(o.status_id) || 'Pending').toLowerCase();
-            let step: QueueItem['statusStep'] = 'pending';
-            if (rawStatus.includes('cancel')) step = 'cancelled';
-            else if (rawStatus.includes('complete')) step = 'completed';
-            else if (rawStatus.includes('ready')) step = 'ready';
-            else if (rawStatus.includes('prep') || rawStatus.includes('progress')) step = 'in_progress';
-            else if (rawStatus.includes('accept') || rawStatus.includes('confirm')) step = 'accepted';
-            else step = 'pending';
+            const orderIds = Array.from(new Set(orders.map((o) => o.id)));
+            const { data: orderItemsData } = await supabase
+              .from('order_items')
+              .select('order_id, quantity, price, menu_item:menu_items(name, category)')
+              .in('order_id', orderIds);
 
-            const createdMs = o.created_at ? new Date(o.created_at).getTime() : Date.now();
-            const elapsed = Math.max(0, Math.round((Date.now() - createdMs) / 60000));
+            const itemsByOrderId = new Map<string, OrderItemLookupRow[]>();
+            ((orderItemsData || []) as OrderItemLookupRow[]).forEach((it) => {
+              const arr = itemsByOrderId.get(it.order_id) || [];
+              arr.push(it);
+              itemsByOrderId.set(it.order_id, arr);
+            });
 
-            const childItems = itemsByOrderId.get(o.id) || [];
-            const details = childItems.map((ci) => ({
-              name: ci.menu_item?.name || 'Dish Item',
-              quantity: ci.quantity || 1,
-              notes: ci.menu_item?.category,
-            }));
+            const statusMap = statusMapRef.current;
+            const tableMap = tableMapRef.current;
+            const deptMap = deptMapRef.current;
 
-            const tableNum = o.dining_table_id ? tableMap.get(o.dining_table_id) : null;
-            const roomOrTable = tableNum
-              ? tableNum
-              : o.room_number
-              ? `Room ${o.room_number}`
-              : o.guest_name || 'Dine-In';
+            orders.forEach((o) => {
+              const statusName = statusMap.get(o.status_id ?? 1) || 'Pending';
+              const step = mapStatusToQueueStep(o.status_id, statusName);
+              const parsedMs = o.created_at ? new Date(o.created_at).getTime() : NaN;
+              const createdAtMs = Number.isFinite(parsedMs) ? parsedMs : Date.now();
+              const elapsed = Math.max(0, Math.round((Date.now() - createdAtMs) / 60000));
+
+              const childItems = itemsByOrderId.get(o.id) || [];
+              const details = childItems.map((ci) => {
+                const mi = Array.isArray(ci.menu_item) ? ci.menu_item[0] : ci.menu_item;
+                return {
+                  name: mi?.name || 'Dish Item',
+                  quantity: Number(ci.quantity) || 1,
+                  notes: mi?.category || undefined,
+                };
+              });
+
+              const tableNum = o.dining_table_id ? tableMap.get(o.dining_table_id) : null;
+              const roomOrTable = tableNum
+                ? tableNum
+                : o.room_number
+                ? `Room ${o.room_number}`
+                : o.guest_name || 'Dine-In';
+
+              queueList.push({
+                id: o.id,
+                entityType: 'order',
+                displayNumber: `ORD-${String(o.id).slice(-4).toUpperCase()}`,
+                title: `Food & Dining Order (${details.length} items)`,
+                departmentId: o.department_id || 1,
+                departmentName: deptMap.get(o.department_id ?? 1) || 'Kitchen / Restaurant',
+                guestName: o.guest_name || 'Guest',
+                roomOrTable,
+                phone: null,
+                dateOrTime: o.created_at
+                  ? new Date(o.created_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : 'Now',
+                details,
+                price: Number(o.total || 0),
+                statusId: o.status_id || ORDER_STATUS_ID.PENDING,
+                statusName,
+                statusStep: step,
+                createdAtMs,
+                elapsedMinutes: elapsed,
+                notes: o.notes,
+              });
+            });
+          }
+        } else {
+          const errPayload = (await ordersRes.json().catch(() => null)) as { error?: string } | null;
+          fetchErrors.push(errPayload?.error || `Orders feed returned ${ordersRes.status}`);
+        }
+
+        if (requestsRes.ok) {
+          const json = (await requestsRes.json()) as { requests?: ServiceRequestApiRow[] };
+          const reqs = json.requests || [];
+
+          reqs.forEach((r) => {
+            const statusName = r.status?.name || 'Pending';
+            const step = mapStatusToQueueStep(r.status_id, statusName);
+            const parsedMs = r.created_at ? new Date(r.created_at).getTime() : NaN;
+            const createdAtMs = Number.isFinite(parsedMs) ? parsedMs : Date.now();
+            const elapsed = Math.max(0, Math.round((Date.now() - createdAtMs) / 60000));
 
             queueList.push({
-              id: o.id,
-              entityType: 'order',
-              displayNumber: `ORD-${String(o.id).slice(-4).toUpperCase()}`,
-              title: `Food & Dining Order (${details.length} items)`,
-              departmentId: o.department_id || 1,
-              departmentName: deptMap.get(o.department_id) || 'Kitchen / Restaurant',
-              guestName: o.guest_name || 'Guest',
-              roomOrTable,
-              phone: null,
-              dateOrTime: o.created_at ? new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now',
-              details,
-              price: Number(o.total || 0),
-              statusId: o.status_id || 1,
-              statusName: statusMap.get(o.status_id) || 'Pending',
+              id: r.id,
+              entityType: 'service_request',
+              displayNumber: `REQ-${String(r.id).slice(-4).toUpperCase()}`,
+              title: r.service?.name
+                ? `${r.service.name} Request`
+                : `${r.department?.name || 'Resort'} Service`,
+              departmentId: r.department_id,
+              departmentName: r.department?.name || 'Resort Service',
+              guestName: r.guest_name,
+              roomOrTable: r.room_number ? `Room ${r.room_number}` : 'Guest Direct',
+              phone: r.guest_phone,
+              dateOrTime: `${r.requested_date}${r.requested_time ? ' @ ' + r.requested_time : ''}`,
+              details: [
+                {
+                  name: r.service?.name || r.department?.name || 'Service Booking',
+                  quantity: r.party_size || 1,
+                  notes: r.requested_time ? `Time: ${r.requested_time}` : undefined,
+                },
+              ],
+              price: Number(r.price || 0),
+              statusId: r.status_id || ORDER_STATUS_ID.PENDING,
+              statusName,
               statusStep: step,
+              createdAtMs,
               elapsedMinutes: elapsed,
-              notes: o.notes,
+              notes: r.notes,
             });
           });
+        } else {
+          const errPayload = (await requestsRes.json().catch(() => null)) as { error?: string } | null;
+          fetchErrors.push(errPayload?.error || `Service requests feed returned ${requestsRes.status}`);
         }
-      }
 
-      // Process wellness / service requests
-      if (requestsRes.ok) {
-        const json = await requestsRes.json();
-        const reqs = json.requests || [];
+        const deduped = Array.from(
+          new Map(queueList.map((item) => [`${item.entityType}:${item.id}`, item])).values()
+        );
+        deduped.sort((a, b) => a.createdAtMs - b.createdAtMs || a.id.localeCompare(b.id));
 
-        reqs.forEach((r: any) => {
-          const rawStatus = (r.status?.name || 'Pending').toLowerCase();
-          let step: QueueItem['statusStep'] = 'pending';
-          if (rawStatus.includes('cancel')) step = 'cancelled';
-          else if (rawStatus.includes('complete')) step = 'completed';
-          else if (rawStatus.includes('ready')) step = 'ready';
-          else if (rawStatus.includes('progress') || rawStatus.includes('prep')) step = 'in_progress';
-          else if (rawStatus.includes('accept') || rawStatus.includes('confirm')) step = 'accepted';
-          else step = 'pending';
-
-          const createdMs = r.created_at ? new Date(r.created_at).getTime() : Date.now();
-          const elapsed = Math.max(0, Math.round((Date.now() - createdMs) / 60000));
-
-          queueList.push({
-            id: r.id,
-            entityType: 'service_request',
-            displayNumber: `REQ-${String(r.id).slice(-4).toUpperCase()}`,
-            title: r.service?.name ? `${r.service.name} Request` : `${r.department?.name || 'Resort'} Service`,
-            departmentId: r.department_id,
-            departmentName: r.department?.name || 'Resort Service',
-            guestName: r.guest_name,
-            roomOrTable: r.room_number ? `Room ${r.room_number}` : 'Guest Direct',
-            phone: r.guest_phone,
-            dateOrTime: `${r.requested_date}${r.requested_time ? ' @ ' + r.requested_time : ''}`,
-            details: [
-              {
-                name: r.service?.name || r.department?.name || 'Service Booking',
-                quantity: r.party_size || 1,
-                notes: r.requested_time ? `Time: ${r.requested_time}` : undefined,
-              },
-            ],
-            price: Number(r.price || 0),
-            statusId: r.status_id || 1,
-            statusName: r.status?.name || 'Pending',
-            statusStep: step,
-            elapsedMinutes: elapsed,
-            notes: r.notes,
-          });
-        });
-      }
-
-      // Sort by newest active first
-      queueList.sort((a, b) => b.elapsedMinutes - a.elapsedMinutes);
-      setItems(queueList);
-    } catch (err: any) {
-      if (!isSilent) {
-        setErrorMsg('Failed to load department queue items.');
-      }
-    } finally {
-      if (!isSilent) {
+        if (queueList.length > 0 || fetchErrors.length < 2) {
+          setItems(deduped);
+        }
+        if (fetchErrors.length > 0 && !isSilent) {
+          setErrorMsg(fetchErrors.join(' · '));
+        }
+      } catch {
+        if (!isSilent) {
+          setErrorMsg('Failed to load department queue items.');
+        }
+      } finally {
+        inFlightRef.current = false;
         setLoading(false);
       }
-    }
-  }, []);
+    },
+    [ensureLookupCaches, selectedDepartmentId]
+  );
 
   useEffect(() => {
-    loadUserContext();
-    fetchQueue();
+    let mounted = true;
 
-    // 15-second background polling resilience interval for tablet wakeups & missed websockets
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (token && mounted) {
+          const res = await fetch('/api/staff/me', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok && mounted) {
+            const json = await res.json();
+            const deptNames: string[] = json.profile?.departmentNames || [];
+            const deptIds: number[] = json.profile?.departmentIds || [];
+            const combined = deptIds.map((id: number, idx: number) => ({
+              id,
+              name: deptNames[idx] || `Department ${id}`,
+            }));
+            setUserDepts(combined);
+          }
+        }
+      } catch {
+        // Ignore profile preload failure
+      }
+      if (mounted) {
+        void fetchQueue(true);
+      }
+    })();
+
     const pollInterval = setInterval(() => {
-      fetchQueue(true);
+      void fetchQueue(true);
     }, 15000);
 
-    // Immediate sync on reconnection or tab visibility change
     const handleOnline = () => {
       setConnectionStatus('live');
-      fetchQueue(true);
+      void fetchQueue(true);
     };
     const handleOffline = () => {
       setConnectionStatus('reconnecting');
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        fetchQueue(true);
+        void fetchQueue(true);
       }
     };
 
@@ -269,11 +369,10 @@ export default function DepartmentQueuePage() {
     window.addEventListener('offline', handleOffline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Realtime subscriptions
     const orderChannel = supabase
       .channel('queue:orders')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchQueue(true);
+        void fetchQueue(true);
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
@@ -285,9 +384,13 @@ export default function DepartmentQueuePage() {
 
     const reqChannel = supabase
       .channel('queue:service_requests')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_requests' }, () => {
-        fetchQueue(true);
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'service_requests' },
+        () => {
+          void fetchQueue(true);
+        }
+      )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('live');
@@ -297,6 +400,7 @@ export default function DepartmentQueuePage() {
       });
 
     return () => {
+      mounted = false;
       clearInterval(pollInterval);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -304,15 +408,19 @@ export default function DepartmentQueuePage() {
       supabase.removeChannel(orderChannel);
       supabase.removeChannel(reqChannel);
     };
-  }, [loadUserContext, fetchQueue]);
+  }, [fetchQueue]);
 
-  // Transition handler using shared update_entity_status RPC with optimistic locking
-  const handleTransition = async (item: QueueItem, nextStatusId: number, nextStepName: string) => {
+  const handleTransition = async (
+    item: QueueItem,
+    nextStatusId: number,
+    nextStepName: string
+  ) => {
+    if (updatingId === item.id) return;
     setUpdatingId(item.id);
     setErrorMsg(null);
 
     try {
-      const { data, error } = await supabase.rpc('update_entity_status', {
+      const { error } = await supabase.rpc('update_entity_status', {
         p_entity_type: item.entityType,
         p_entity_id: item.id,
         p_to_status_id: nextStatusId,
@@ -322,69 +430,90 @@ export default function DepartmentQueuePage() {
 
       if (error) {
         if (error.message && error.message.includes('STATE_CONFLICT')) {
-          setErrorMsg('Conflict: Item status was modified by another staff member or guest. Queue refreshed.');
+          setErrorMsg(
+            'Conflict: Item status was modified by another staff member or guest. Queue refreshed.'
+          );
         } else {
           setErrorMsg(error.message || `Could not transition item to ${nextStepName}.`);
         }
-        fetchQueue();
       } else {
-        // Optimistic local state update
+        const nextStep = mapStatusToQueueStep(nextStatusId, nextStepName);
         setItems((prev) =>
-          prev.map((it) => (it.id === item.id ? { ...it, statusId: nextStatusId, statusName: nextStepName } : it))
+          prev.map((it) =>
+            it.id === item.id && it.entityType === item.entityType
+              ? { ...it, statusId: nextStatusId, statusName: nextStepName, statusStep: nextStep }
+              : it
+          )
         );
-        fetchQueue();
       }
+      await fetchQueue(true);
     } catch {
       setErrorMsg('Connection error during status update.');
-      fetchQueue();
+      await fetchQueue(true);
     } finally {
       setUpdatingId(null);
     }
   };
 
-  // Filter items
   const filteredItems = useMemo(() => {
-    return items.filter((it) => {
-      // Department filter
+    const filtered = items.filter((it) => {
       if (deptFilter !== 'All' && it.departmentName !== deptFilter) {
         return false;
       }
-      // Status tab filter
       if (activeTab === 'active') {
         return it.statusStep !== 'completed' && it.statusStep !== 'cancelled';
       }
       return it.statusStep === activeTab;
     });
+
+    if (activeTab === 'completed') {
+      return [...filtered].sort((a, b) => b.createdAtMs - a.createdAtMs || a.id.localeCompare(b.id));
+    }
+    return filtered;
   }, [items, deptFilter, activeTab]);
 
   const counts = useMemo(() => {
+    const scoped =
+      deptFilter === 'All' ? items : items.filter((i) => i.departmentName === deptFilter);
     return {
-      active: items.filter((i) => i.statusStep !== 'completed' && i.statusStep !== 'cancelled').length,
-      pending: items.filter((i) => i.statusStep === 'pending').length,
-      accepted: items.filter((i) => i.statusStep === 'accepted').length,
-      in_progress: items.filter((i) => i.statusStep === 'in_progress').length,
-      ready: items.filter((i) => i.statusStep === 'ready').length,
-      completed: items.filter((i) => i.statusStep === 'completed').length,
+      active: scoped.filter(
+        (i) => i.statusStep !== 'completed' && i.statusStep !== 'cancelled'
+      ).length,
+      pending: scoped.filter((i) => i.statusStep === 'pending').length,
+      accepted: scoped.filter((i) => i.statusStep === 'accepted').length,
+      in_progress: scoped.filter((i) => i.statusStep === 'in_progress').length,
+      ready: scoped.filter((i) => i.statusStep === 'ready').length,
+      completed: scoped.filter((i) => i.statusStep === 'completed').length,
     };
-  }, [items]);
+  }, [items, deptFilter]);
 
   const uniqueDepts = useMemo(() => {
-    const set = new Set(items.map((i) => i.departmentName));
-    return Array.from(set);
-  }, [items]);
+    const set = new Set<string>([
+      ...userDepts.map((d) => d.name),
+      ...items.map((i) => i.departmentName),
+    ]);
+    return Array.from(set).filter(Boolean).sort();
+  }, [items, userDepts]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* ─── HEADER ─── */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[#E6DFD1] pb-5">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Department Queue</h1>
+          <p className="text-[11px] font-bold uppercase tracking-[.22em] text-[#7A5A27]">
+            Operations Board
+          </p>
+          <div className="flex flex-wrap items-center gap-2.5 mt-0.5">
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold text-[#163D32] tracking-tight">
+              Department Queue
+            </h1>
             <div
+              role="status"
+              aria-live="polite"
               className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border transition-colors ${
                 connectionStatus === 'live'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-amber-50 text-amber-700 border-amber-300 animate-pulse'
+                  ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                  : 'bg-amber-50 text-amber-900 border-amber-300 animate-pulse'
               }`}
               title={
                 connectionStatus === 'live'
@@ -394,24 +523,26 @@ export default function DepartmentQueuePage() {
             >
               <span
                 className={`h-2 w-2 rounded-full ${
-                  connectionStatus === 'live' ? 'bg-emerald-500' : 'bg-amber-500'
+                  connectionStatus === 'live' ? 'bg-emerald-600' : 'bg-amber-600'
                 }`}
               />
-              <span>{connectionStatus === 'live' ? 'Live Queue' : 'Reconnecting (Polling Active)'}</span>
+              <span>{connectionStatus === 'live' ? 'Live Queue' : 'Reconnecting (Polling)'}</span>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Accept, track, and complete live food orders and wellness service requests across all resort stations.
+          <p className="text-xs text-[#52645D] mt-1">
+            Accept, track, and complete live food orders and wellness service requests across all
+            resort stations.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {uniqueDepts.length > 1 && (
             <div className="relative">
               <select
+                aria-label="Filter queue by department"
                 value={deptFilter}
                 onChange={(e) => setDeptFilter(e.target.value)}
-                className="appearance-none rounded-xl border border-gray-300 bg-white py-2 pl-3.5 pr-8 text-xs font-bold text-gray-700 shadow-xs focus:ring-2 focus:ring-[#0E7480] outline-none"
+                className="appearance-none rounded-xl border border-[#D5CCB9] bg-white py-2 pl-3.5 pr-8 text-xs font-bold text-[#163D32] shadow-xs focus:border-[#163D32] focus:ring-2 focus:ring-[#C5A46D]/30 outline-none"
               >
                 <option value="All">All Departments</option>
                 {uniqueDepts.map((d) => (
@@ -420,113 +551,161 @@ export default function DepartmentQueuePage() {
                   </option>
                 ))}
               </select>
-              <Filter className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Filter
+                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#7A5A27]"
+                aria-hidden="true"
+              />
             </div>
           )}
 
           <button
+            type="button"
             onClick={() => fetchQueue()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded-xl shadow-xs hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#163D32] bg-white border border-[#D5CCB9] rounded-xl shadow-xs hover:bg-[#F5F0E6] transition-colors"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-[#0E7480] ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <RefreshCw
+              className={`h-3.5 w-3.5 text-[#7A5A27] ${loading ? 'animate-spin' : ''}`}
+              aria-hidden="true"
+            />{' '}
+            Refresh
           </button>
         </div>
       </div>
 
       {/* Alert banner */}
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-3 text-red-800 text-xs font-semibold">
-          <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
-          <span>{errorMsg}</span>
+        <div
+          role="alert"
+          className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between gap-3 text-red-900 text-xs font-semibold"
+        >
+          <span className="flex items-center gap-2.5">
+            <AlertCircle className="h-4 w-4 text-red-700 shrink-0" aria-hidden="true" />
+            <span>{errorMsg}</span>
+          </span>
+          <button
+            type="button"
+            aria-label="Dismiss error"
+            onClick={() => setErrorMsg(null)}
+            className="rounded-lg p-1 text-red-700 hover:bg-red-100"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
         </div>
       )}
 
       {/* ─── STATUS STAGES TABS ─── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         <button
+          type="button"
           onClick={() => setActiveTab('active')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
             activeTab === 'active'
-              ? 'bg-[#0B252C] text-white shadow-md'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              ? 'bg-[#163D32] text-[#F5F0E6] border border-[#C5A46D]/30 shadow-xs'
+              : 'bg-white text-[#52645D] border border-[#E6DFD1] hover:bg-[#EDE6D8]'
           }`}
         >
           <span>All Active</span>
-          <span className="rounded-full bg-white/20 px-1.5 py-0.2 text-[10px]">{counts.active}</span>
+          <span
+            className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+              activeTab === 'active' ? 'bg-[#C5A46D]/25 text-[#F5F0E6]' : 'bg-[#F5F0E6] text-[#163D32]'
+            }`}
+          >
+            {counts.active}
+          </span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('pending')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
             activeTab === 'pending'
-              ? 'bg-amber-600 text-white shadow-md'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              ? 'bg-amber-700 text-white shadow-xs'
+              : 'bg-white text-[#52645D] border border-[#E6DFD1] hover:bg-[#EDE6D8]'
           }`}
         >
           <span>1. Pending (Needs Accept)</span>
-          <span className="rounded-full bg-amber-100 text-amber-900 px-1.5 py-0.2 text-[10px]">{counts.pending}</span>
+          <span className="rounded-full bg-amber-100 text-amber-900 px-1.5 py-0.5 text-[10px]">
+            {counts.pending}
+          </span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('accepted')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
             activeTab === 'accepted'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              ? 'bg-blue-700 text-white shadow-xs'
+              : 'bg-white text-[#52645D] border border-[#E6DFD1] hover:bg-[#EDE6D8]'
           }`}
         >
           <span>2. Accepted</span>
-          <span className="rounded-full bg-blue-100 text-blue-900 px-1.5 py-0.2 text-[10px]">{counts.accepted}</span>
+          <span className="rounded-full bg-blue-100 text-blue-900 px-1.5 py-0.5 text-[10px]">
+            {counts.accepted}
+          </span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('in_progress')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
             activeTab === 'in_progress'
-              ? 'bg-purple-600 text-white shadow-md'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              ? 'bg-purple-700 text-white shadow-xs'
+              : 'bg-white text-[#52645D] border border-[#E6DFD1] hover:bg-[#EDE6D8]'
           }`}
         >
           <span>3. In Progress</span>
-          <span className="rounded-full bg-purple-100 text-purple-900 px-1.5 py-0.2 text-[10px]">{counts.in_progress}</span>
+          <span className="rounded-full bg-purple-100 text-purple-900 px-1.5 py-0.5 text-[10px]">
+            {counts.in_progress}
+          </span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('ready')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
             activeTab === 'ready'
-              ? 'bg-teal-600 text-white shadow-md'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              ? 'bg-sky-700 text-white shadow-xs'
+              : 'bg-white text-[#52645D] border border-[#E6DFD1] hover:bg-[#EDE6D8]'
           }`}
         >
           <span>4. Ready</span>
-          <span className="rounded-full bg-teal-100 text-teal-900 px-1.5 py-0.2 text-[10px]">{counts.ready}</span>
+          <span className="rounded-full bg-sky-100 text-sky-900 px-1.5 py-0.5 text-[10px]">
+            {counts.ready}
+          </span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('completed')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
             activeTab === 'completed'
-              ? 'bg-emerald-600 text-white shadow-md'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              ? 'bg-emerald-700 text-white shadow-xs'
+              : 'bg-white text-[#52645D] border border-[#E6DFD1] hover:bg-[#EDE6D8]'
           }`}
         >
           <span>5. Completed</span>
-          <span className="rounded-full bg-emerald-100 text-emerald-900 px-1.5 py-0.2 text-[10px]">{counts.completed}</span>
+          <span className="rounded-full bg-emerald-100 text-emerald-900 px-1.5 py-0.5 text-[10px]">
+            {counts.completed}
+          </span>
         </button>
       </div>
 
       {/* ─── QUEUE CARDS GRID ─── */}
       {loading ? (
-        <div className="p-16 text-center text-gray-400 bg-white rounded-2xl border border-gray-200 flex flex-col items-center justify-center gap-2">
-          <RefreshCw className="h-6 w-6 animate-spin text-[#0E7480]" />
+        <div className="p-16 text-center text-[#52645D] bg-white rounded-2xl border border-[#E6DFD1] flex flex-col items-center justify-center gap-2">
+          <RefreshCw className="h-6 w-6 animate-spin text-[#7A5A27]" aria-hidden="true" />
           <p className="text-xs font-semibold">Loading live queue...</p>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="p-16 text-center text-gray-500 bg-white rounded-2xl border border-gray-200">
-          <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-2 opacity-80" />
-          <p className="text-base font-bold text-gray-800">Queue is Clear</p>
-          <p className="text-xs text-gray-400 mt-1">No items found for current department and filter tab.</p>
+        <div className="p-16 text-center text-[#52645D] bg-white rounded-2xl border border-[#E6DFD1]">
+          <CheckCircle2
+            className="h-10 w-10 text-[#C5A46D] mx-auto mb-2"
+            aria-hidden="true"
+          />
+          <p className="font-display text-lg font-semibold text-[#163D32]">Queue is Clear</p>
+          <p className="text-xs text-[#52645D] mt-1">
+            No items found for current department and filter tab.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -540,128 +719,136 @@ export default function DepartmentQueuePage() {
 
             return (
               <div
-                key={item.id}
-                className="bg-white rounded-2xl border border-gray-200/90 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between overflow-hidden"
+                key={`${item.entityType}:${item.id}`}
+                className="bg-white rounded-2xl border border-[#E6DFD1] shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between overflow-hidden"
               >
                 {/* Card Top */}
                 <div className="p-5">
-                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#E6DFD1]">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-black text-[#0B252C] bg-gray-100 px-2.5 py-1 rounded-lg">
+                      <span className="text-xs font-mono font-bold text-[#163D32] bg-[#F5F0E6] border border-[#E6DFD1] px-2.5 py-1 rounded-lg">
                         {item.displayNumber}
                       </span>
-                      <span className="text-xs font-bold text-[#0E7480] bg-[#0E7480]/10 px-2 py-0.5 rounded-md">
+                      <span className="text-xs font-bold text-[#7A5A27] bg-[#F5F0E6] px-2 py-0.5 rounded-md">
                         {item.roomOrTable}
                       </span>
                     </div>
 
                     <span
-                      className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                      className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
                         item.elapsedMinutes > 30
-                          ? 'bg-red-100 text-red-700 animate-pulse'
-                          : 'bg-gray-100 text-gray-600'
+                          ? 'bg-red-100 text-red-800 animate-pulse'
+                          : 'bg-[#F5F0E6] text-[#52645D]'
                       }`}
                     >
-                      <Clock className="h-3 w-3" />
+                      <Clock className="h-3 w-3" aria-hidden="true" />
                       {item.elapsedMinutes}m ago
                     </span>
                   </div>
 
                   {/* Department & Guest info */}
                   <div className="py-2.5 flex items-center justify-between text-xs">
-                    <span className="inline-flex items-center gap-1 font-semibold text-gray-600">
-                      <Building2 className="h-3.5 w-3.5 text-[#0E7480]" /> {item.departmentName}
+                    <span className="inline-flex items-center gap-1 font-semibold text-[#52645D]">
+                      <Building2 className="h-3.5 w-3.5 text-[#7A5A27]" aria-hidden="true" />{' '}
+                      {item.departmentName}
                     </span>
-                    <span className="font-bold text-gray-900 flex items-center gap-1">
-                      <User className="h-3.5 w-3.5 text-gray-400" /> {item.guestName}
+                    <span className="font-bold text-[#163D32] flex items-center gap-1">
+                      <User className="h-3.5 w-3.5 text-[#7A5A27]" aria-hidden="true" />{' '}
+                      {item.guestName}
                     </span>
                   </div>
 
                   {/* Title & Items List */}
                   <div className="mt-1 space-y-2">
-                    <p className="text-sm font-extrabold text-gray-900">{item.title}</p>
-                    <div className="space-y-1.5 bg-gray-50/75 p-2.5 rounded-xl border border-gray-100">
+                    <p className="text-sm font-bold text-[#163D32]">{item.title}</p>
+                    <div className="space-y-1.5 bg-[#F5F0E6]/65 p-2.5 rounded-xl border border-[#E6DFD1]">
                       {item.details.map((d, idx) => (
                         <div key={idx} className="flex items-center justify-between text-xs">
-                          <span className="text-gray-700">{d.name}</span>
-                          <span className="font-bold text-[#C9902F]">×{d.quantity}</span>
+                          <span className="text-[#163D32] font-medium">{d.name}</span>
+                          <span className="font-bold text-[#7A5A27]">×{d.quantity}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {item.notes && (
-                    <p className="mt-2 text-xs text-amber-800 bg-amber-50 p-2 rounded-lg font-medium">
+                    <p className="mt-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 p-2 rounded-lg font-medium">
                       Note: {item.notes}
                     </p>
                   )}
 
-                  <div className="mt-3 flex items-center justify-between pt-2 border-t border-gray-100 text-xs font-bold">
-                    <span className="text-gray-400">Total Price</span>
-                    <span className="text-emerald-700 text-sm">{item.price.toLocaleString()} ETB</span>
+                  <div className="mt-3 flex items-center justify-between pt-2 border-t border-[#E6DFD1] text-xs font-bold">
+                    <span className="text-[#52645D]">Total Price</span>
+                    <span className="text-[#163D32] text-sm">
+                      {item.price.toLocaleString()} ETB
+                    </span>
                   </div>
                 </div>
 
                 {/* Card Action Pipeline Footer */}
-                <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
-                  {/* Step 1: Pending -> Accept */}
+                <div className="p-3 bg-[#F5F0E6]/75 border-t border-[#E6DFD1] flex items-center gap-2">
                   {isPending && (
                     <>
                       <button
+                        type="button"
                         disabled={isBusy}
-                        onClick={() => handleTransition(item, 7, 'Accepted')} // 7 = Accepted
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                        onClick={() => handleTransition(item, 7, 'Accepted')}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                       >
-                        <Check className="h-3.5 w-3.5" /> Accept Request
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" /> Accept Request
                       </button>
                       <button
+                        type="button"
+                        aria-label={`Decline and cancel ${item.displayNumber}`}
                         disabled={isBusy}
-                        onClick={() => handleTransition(item, 9, 'Cancelled')} // 9 = Cancelled
-                        className="py-2 px-3 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                        onClick={() => handleTransition(item, 9, 'Cancelled')}
+                        className="py-2 px-3 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
                         title="Decline / Cancel"
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
                     </>
                   )}
 
-                  {/* Step 2: Accepted -> In Progress */}
                   {isAccepted && (
                     <button
+                      type="button"
                       disabled={isBusy}
-                      onClick={() => handleTransition(item, 8, 'In Progress')} // 8 = In Progress (or 3 Preparing)
-                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                      onClick={() => handleTransition(item, 8, 'In Progress')}
+                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                     >
-                      <Play className="h-3.5 w-3.5" /> Start Service / Prep
+                      <Play className="h-3.5 w-3.5" aria-hidden="true" /> Start Service / Prep
                     </button>
                   )}
 
-                  {/* Step 3: In Progress -> Ready */}
                   {isInProgress && (
                     <button
+                      type="button"
                       disabled={isBusy}
-                      onClick={() => handleTransition(item, 4, 'Ready')} // 4 = Ready
-                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                      onClick={() => handleTransition(item, 4, 'Ready')}
+                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold text-[#F5F0E6] bg-[#163D32] hover:bg-[#0F2D24] border border-[#C5A46D]/30 rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                     >
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Mark Ready
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#C5A46D]" aria-hidden="true" />{' '}
+                      Mark Ready
                     </button>
                   )}
 
-                  {/* Step 4: Ready -> Completed */}
                   {isReady && (
                     <button
+                      type="button"
                       disabled={isBusy}
-                      onClick={() => handleTransition(item, 6, 'Completed')} // 6 = Completed
-                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                      onClick={() => handleTransition(item, 6, 'Completed')}
+                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                     >
-                      <Check className="h-3.5 w-3.5" /> Mark Completed & Fulfilled
+                      <Check className="h-3.5 w-3.5" aria-hidden="true" /> Mark Completed &amp;
+                      Fulfilled
                     </button>
                   )}
 
-                  {/* Completed */}
                   {isCompleted && (
-                    <div className="w-full py-1 text-center text-xs font-extrabold text-emerald-700 flex items-center justify-center gap-1.5">
-                      <CheckCircle2 className="h-4 w-4" /> Fulfilled & Closed
+                    <div className="w-full py-1 text-center text-xs font-bold text-emerald-900 flex items-center justify-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-700" aria-hidden="true" />{' '}
+                      Fulfilled &amp; Closed
                     </div>
                   )}
                 </div>

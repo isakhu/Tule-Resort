@@ -70,6 +70,20 @@ export async function getResortServices(): Promise<ResortService[]> {
   return mapped.length > 0 ? mapped : FALLBACK_RESORT_SERVICES;
 }
 
+export function resolveServiceHref(
+  serviceId: string,
+  mode: 'landing' | 'action' = 'landing',
+): string {
+  const normalized = serviceId.trim().toLowerCase();
+  if (normalized === 'rooms') return '/guest/rooms';
+  if (normalized === 'restaurant') return '/guest/restaurant';
+  if (normalized === 'cafeteria') return '/guest/cafeteria';
+  if (normalized === 'pool-passes' || normalized === 'tule-aqua') return '/guest/tule-aqua';
+  if (normalized === 'experiences') return '/guest/services';
+  if (mode === 'action') return `/guest/${encodeURIComponent(serviceId)}/request`;
+  return `/guest/${encodeURIComponent(serviceId)}`;
+}
+
 export async function getResortService(serviceId: string): Promise<ResortService | undefined> {
   const services = await getResortServices();
   return services.find((service) => service.id === serviceId);
