@@ -68,16 +68,20 @@ function mapFallbackMenuItems(): MenuItem[] {
   }));
 }
 
+function normalizeTuleCopy(value: string | null | undefined, fallback = ''): string {
+  return (value ?? fallback).replace(/\\bHaile\\b/gi, 'Tule');
+}
+
 function mapSupabaseMenuRow(row: SupabaseMenuRow): MenuItem {
   const joinedDepartment = Array.isArray(row.department) ? row.department[0] : row.department;
   return {
     id: String(row.id ?? ''),
-    name: row.name ?? 'Untitled item',
+    name: normalizeTuleCopy(row.name, 'Untitled item'),
     amharicName: row.amharic_name ?? '',
-    category: row.category ?? 'General',
+    category: normalizeTuleCopy(row.category, 'General'),
     price: Number(row.price ?? 0),
     imageUrl: row.image_url ?? '',
-    description: row.description ?? '',
+    description: normalizeTuleCopy(row.description),
     isAvailable: row.is_available ?? row.is_active ?? true,
     dietaryTags: normalizeDietaryTags(row.dietary_tags ?? row.dietary ?? []),
     departmentId: row.department_id ?? joinedDepartment?.id ?? null,
