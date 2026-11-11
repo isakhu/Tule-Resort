@@ -199,8 +199,8 @@ export default function RoomsExploreClient({
         <div className="absolute top-1/3 -right-20 h-96 w-96 rounded-full bg-[#8A9B83]/15 blur-[130px] pointer-events-none" />
 
         {/* Top Gold Bookmark Banner */}
-        <div className="absolute right-6 sm:right-12 top-0 z-20 flex flex-col items-center">
-          <div className="relative flex flex-col items-center bg-gradient-to-b from-[#D4B87D] via-[#C5A46D] to-[#A6834A] px-4 sm:px-6 pt-5 pb-7 text-center shadow-[0_15px_35px_rgba(0,0,0,0.4)]">
+        <div className="absolute right-3 sm:right-12 top-0 z-20 flex flex-col items-center">
+          <div className="relative flex flex-col items-center bg-gradient-to-b from-[#D4B87D] via-[#C5A46D] to-[#A6834A] px-2.5 sm:px-6 pt-3 sm:pt-5 pb-5 sm:pb-7 text-center shadow-[0_15px_35px_rgba(0,0,0,0.4)]">
             <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl border border-[#163D32]/40 bg-[#163D32]/10">
               <BedDouble className="h-5 w-5 sm:h-6 sm:w-6 text-[#163D32] stroke-[2.2]" />
             </div>
@@ -214,14 +214,14 @@ export default function RoomsExploreClient({
 
         <div className="relative mx-auto max-w-7xl px-4 pt-8 pb-14 sm:px-6 md:pt-12 md:pb-20">
           {/* Top Brand & Navigation */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pr-32 sm:pr-44">
+          <div className="flex flex-wrap items-center justify-between gap-3 pr-24 sm:pr-44">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-black/20 overflow-hidden shadow-inner">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/tule-resort-logo.png" alt="Tule Resort" className="h-full w-full object-contain" />
               </div>
               <div>
-                <span className="block text-xs font-black uppercase tracking-[.28em] text-[#C5A46D]">
+                <span className="block text-[10px] sm:text-xs font-black uppercase tracking-[.2em] sm:tracking-[.28em] text-[#C5A46D]">
                   TULE RESORT &amp; SPA
                 </span>
                 <span className="block text-[10px] font-semibold uppercase tracking-wider text-[#F5F0E6]/70">
@@ -230,16 +230,16 @@ export default function RoomsExploreClient({
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Link
                 href="/guest"
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-bold text-[#F5F0E6]/80 transition hover:border-[#C5A46D]/60 hover:text-[#C5A46D]"
+                className="inline-flex min-h-10 items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2.5 sm:px-4 py-2 text-[10px] sm:text-xs font-bold text-[#F5F0E6]/80 transition hover:border-[#C5A46D]/60 hover:text-[#C5A46D]"
               >
                 ← Guest Services
               </Link>
               <Link
                 href="/guest/restaurant"
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#C5A46D]/40 bg-[#0F2D24]/80 px-4 py-2 text-xs font-bold text-[#F5F0E6] transition hover:bg-[#C5A46D] hover:text-[#163D32]"
+                className="hidden sm:inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#C5A46D]/40 bg-[#0F2D24]/80 px-4 py-2 text-xs font-bold text-[#F5F0E6] transition hover:bg-[#C5A46D] hover:text-[#163D32]"
               >
                 <UtensilsCrossed className="h-3.5 w-3.5 text-[#C5A46D]" /> Lakeside Dining
               </Link>
@@ -370,7 +370,7 @@ export default function RoomsExploreClient({
         <div className="mx-auto max-w-7xl space-y-3">
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             {/* Category tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
+            <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0 md:pb-0 no-scrollbar snap-x snap-proximity">
               {CATEGORIES.map((cat) => {
                 const active = activeCategory === cat.id;
                 return (
@@ -378,7 +378,7 @@ export default function RoomsExploreClient({
                     key={cat.id}
                     type="button"
                     onClick={() => updateFilters({ category: cat.id })}
-                    className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition-all ${
+                    className={`min-h-11 shrink-0 snap-start whitespace-nowrap rounded-full px-3.5 sm:px-4 py-2 text-xs font-bold transition-all ${
                       active
                         ? 'bg-[#163D32] text-[#F5F0E6] shadow-md shadow-[#163D32]/20 font-black'
                         : 'border border-[#163D32]/15 bg-white text-[#26312D]/80 hover:border-[#C5A46D] hover:text-[#163D32]'
@@ -391,9 +391,9 @@ export default function RoomsExploreClient({
             </div>
 
             {/* Search and Sort controls */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex w-full flex-col items-stretch gap-2.5 sm:flex-row sm:items-center">
               {/* Search box */}
-              <div className="relative flex-1 md:w-64">
+              <div className="relative w-full min-w-0 sm:flex-1 md:w-64">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52645D]" />
                 <input
                   type="text"
@@ -406,12 +406,12 @@ export default function RoomsExploreClient({
               </div>
 
               {/* Sort dropdown */}
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <select
                   value={sortBy}
                   onChange={(e) => updateFilters({ sort: normalizeSortParam(e.target.value) })}
                   aria-label="Sort rooms"
-                  className="rounded-full border border-[#163D32]/15 bg-white px-4 py-2 text-xs font-bold text-[#26312D] outline-none focus:border-[#C5A46D] cursor-pointer"
+                  className="min-h-11 w-full rounded-full border border-[#163D32]/15 bg-white px-4 py-2 text-xs font-bold text-[#26312D] outline-none focus:border-[#C5A46D] cursor-pointer sm:w-auto"
                 >
                   <option value="featured">Featured</option>
                   <option value="price-asc">Price: Low to High</option>
@@ -485,7 +485,7 @@ export default function RoomsExploreClient({
             <button
               type="button"
               onClick={() => updateFilters({ availableOnly: !availableOnly })}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-bold transition ${
+              className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-bold transition ${
                 availableOnly
                   ? 'bg-[#163D32] text-[#C5A46D] border border-[#163D32]'
                   : 'border border-[#163D32]/15 bg-white text-[#26312D] hover:border-[#C5A46D]'
