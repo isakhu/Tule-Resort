@@ -482,3 +482,42 @@ body {
     box-shadow: none !important;
   }
 }
+
+/* ── Mobile usability baseline ───────────────────────────────── */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+img,
+video,
+svg {
+  max-width: 100%;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid #C5A46D;
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  /* Prevent iOS Safari from zooming the page when a form field receives focus. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
