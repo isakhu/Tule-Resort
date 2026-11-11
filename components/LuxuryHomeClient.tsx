@@ -370,7 +370,7 @@ export default function LuxuryHomeClient({
               />
             </span>
             <div>
-              <span className="block font-display text-xl font-medium tracking-wide sm:text-2xl text-[#F5F0E6]">
+              <span className="block font-display text-lg font-medium tracking-wide sm:text-2xl text-[#F5F0E6]">
                 Tule Resort
               </span>
               <span className="block text-[8px] font-black uppercase tracking-[.28em] text-[#C5A46D] sm:text-[9px]">
@@ -408,7 +408,7 @@ export default function LuxuryHomeClient({
           </nav>
 
           {/* Right Header Actions */}
-          <div className="flex shrink-0 items-center gap-2.5 sm:gap-3.5">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-3.5">
             <LanguageSwitcher />
 
             <Link
@@ -420,9 +420,10 @@ export default function LuxuryHomeClient({
 
             <Link
               href="/guest/booking"
-              className="group inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-[#C5A46D] px-3.5 py-2.5 text-[10px] font-black uppercase tracking-[.15em] text-[#163D32] shadow-[0_4px_20px_rgba(197,164,109,.28)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#B8955E] hover:shadow-[0_8px_25px_rgba(197,164,109,.4)] sm:px-6"
+              className="group inline-flex h-10 w-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#C5A46D] px-0 py-2.5 text-[10px] font-black uppercase tracking-[.15em] text-[#163D32] shadow-[0_4px_20px_rgba(197,164,109,.28)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#B8955E] hover:shadow-[0_8px_25px_rgba(197,164,109,.4)] sm:h-auto sm:w-auto sm:px-6 sm:gap-2"
             >
-              <span>{copy.book}</span>
+              <span className="hidden sm:inline">{copy.book}</span>
+              <span className="sr-only sm:hidden">{copy.book}</span>
               <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </Link>
 
@@ -432,7 +433,7 @@ export default function LuxuryHomeClient({
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle navigation menu"
               aria-expanded={mobileMenuOpen}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-black/20 text-[#F5F0E6] lg:hidden hover:bg-black/40 transition"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-black/20 text-[#F5F0E6] lg:hidden hover:bg-black/40 transition"
             >
               {mobileMenuOpen ? <X className="h-5 w-5 text-[#C5A46D]" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -446,13 +447,13 @@ export default function LuxuryHomeClient({
           role="dialog"
           aria-modal="true"
           aria-label="Mobile navigation"
-          className="fixed inset-0 z-40 flex flex-col overflow-y-auto overscroll-contain bg-[#163D32]/98 backdrop-blur-2xl px-6 pt-24 pb-8 text-[#F5F0E6] lg:hidden animate-fade-in-up"
+          className="fixed inset-0 z-40 flex flex-col overflow-y-auto overscroll-contain bg-[#163D32]/98 backdrop-blur-2xl px-5 sm:px-6 pt-24 pb-[calc(2rem+env(safe-area-inset-bottom))] text-[#F5F0E6] lg:hidden animate-fade-in-up"
         >
           <div className="flex flex-col gap-6 text-sm font-bold uppercase tracking-[.2em] border-b border-[#C5A46D]/20 pb-8">
             <a
               href="#about"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
+              className="flex min-h-11 items-center text-[#F5F0E6]/90 hover:text-[#C5A46D] transition"
             >
               About Tule Resort
             </a>
