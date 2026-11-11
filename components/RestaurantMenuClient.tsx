@@ -190,10 +190,10 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
   }, [hydrated, cart, items]);
 
   return (
-    <main id="menu" className="relative min-h-screen bg-[#F5F0E6] pb-28 pt-8 text-[#26312D]">
+    <main id="menu" className="relative min-h-screen bg-[#F5F0E6] pb-32 pt-6 sm:pb-28 sm:pt-8 text-[#26312D]">
       {/* Top Banner & Search — Deep Forest Green */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-[#163D32] p-6 text-[#F5F0E6] shadow-2xl md:p-10 border border-[#C5A46D]/20">
+        <div className="relative overflow-hidden rounded-[1.8rem] sm:rounded-[2.5rem] bg-[#163D32] p-4 sm:p-6 text-[#F5F0E6] shadow-2xl md:p-10 border border-[#C5A46D]/20">
           <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#C5A46D]/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-[#8A9B83]/20 blur-3xl" />
 
@@ -214,7 +214,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                   Tule Resort Lakeside Dining ({items.length} Specialties)
                 </span>
               </div>
-              <h2 className="font-display font-medium text-3xl tracking-tight sm:text-4xl md:text-5xl uppercase leading-none">
+              <h2 className="font-display font-medium text-2xl leading-tight tracking-tight sm:text-4xl md:text-5xl uppercase sm:leading-none">
                 FRESH. FLAVORFUL.<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F5F0E6] via-[#C5A46D] to-[#D4B87D] italic">
                   LAKESIDE GASTRONOMY.
@@ -240,7 +240,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
 
           {/* Search Bar inside banner */}
           <div className="relative mt-8">
-            <div className="relative flex items-center">
+            <div className="relative flex min-w-0 items-center">
               <Search className="pointer-events-none absolute left-5 h-5 w-5 text-[#52645D]" />
               <input
                 type="search"
@@ -248,7 +248,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search across all dishes & drinks (e.g. Tibs, Tilapia, Kitfo, Boba, Pizza, Burger, Coffee...)"
-                className="w-full rounded-full border border-white/20 bg-white py-4 pl-14 pr-16 text-sm font-bold text-[#26312D] placeholder:text-[#52645D] shadow-lg outline-none transition focus:border-[#C5A46D] focus:ring-4 focus:ring-[#C5A46D]/20"
+                className="w-full min-w-0 rounded-2xl sm:rounded-full border border-white/20 bg-white py-3.5 sm:py-4 pl-12 sm:pl-14 pr-14 sm:pr-16 text-base sm:text-sm font-bold text-[#26312D] placeholder:text-[#52645D] shadow-lg outline-none transition focus:border-[#C5A46D] focus:ring-4 focus:ring-[#C5A46D]/20"
               />
               {searchQuery && (
                 <button
@@ -295,9 +295,9 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
 
       {/* Results Header */}
       <section className="mx-auto mt-6 max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between border-b border-[#163D32]/10 pb-4">
+        <div className="flex flex-col items-start gap-2 border-b border-[#163D32]/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="font-display text-2xl font-medium tracking-tight text-[#26312D]">
+            <h3 className="font-display text-xl sm:text-2xl font-medium tracking-tight text-[#26312D] break-words">
               {searchQuery ? `Search Results for "${searchQuery}"` : `Resort Dining Menu (${filteredItems.length} Specialties)`}
             </h3>
             <p className="text-xs font-bold text-[#8A9B83]">
@@ -349,7 +349,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                   return (
                     <article
                       key={item.id}
-                      className="group relative flex flex-col justify-between overflow-hidden rounded-[2.2rem] border border-[#163D32]/10 bg-white p-6 shadow-[0_12px_32px_rgba(22,61,50,0.05)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(22,61,50,0.1)] hover:border-[#C5A46D]/60"
+                      className="group relative flex min-w-0 flex-col justify-between overflow-hidden rounded-[1.7rem] sm:rounded-[2.2rem] border border-[#163D32]/10 bg-white p-4 sm:p-6 shadow-[0_12px_32px_rgba(22,61,50,0.05)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(22,61,50,0.1)] hover:border-[#C5A46D]/60"
                     >
                       {/* Pod Header: Title & Badges */}
                       <div>
@@ -365,9 +365,9 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
                         </div>
 
                         {/* Alternating Layout */}
-                        <div className={`mt-4 flex items-center gap-4 ${isEven ? 'flex-row' : 'flex-row-reverse'}`}>
+                        <div className={`mt-4 flex min-w-0 items-center gap-3 sm:gap-4 ${isEven ? 'flex-row' : 'flex-row-reverse'}`}>
                           {/* Circular Food Plate Image */}
-                          <div className="relative h-28 w-28 sm:h-32 sm:w-32 shrink-0 overflow-hidden rounded-full shadow-[0_12px_24px_rgba(0,0,0,0.15)] ring-4 ring-[#F5F0E6]">
+                          <div className="relative h-20 w-20 sm:h-32 sm:w-32 shrink-0 overflow-hidden rounded-full shadow-[0_12px_24px_rgba(0,0,0,0.15)] ring-4 ring-[#F5F0E6]">
                             <Image
                               src={failedImgIds[item.id] ? FALLBACK_FOOD_IMAGE : item.imageUrl}
                               alt={item.name}
@@ -383,7 +383,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
 
                           {/* Title & Scalloped Flower Price Badge */}
                           <div className="flex flex-1 flex-col justify-center">
-                            <h4 className="font-display font-medium text-xl sm:text-2xl tracking-tight text-[#26312D] leading-tight line-clamp-2">
+                            <h4 className="font-display font-medium text-lg sm:text-2xl tracking-tight text-[#26312D] leading-tight line-clamp-2 break-words">
                               {item.name}
                             </h4>
 
@@ -455,8 +455,8 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
 
       {/* Floating Bottom Cart Bar when items are selected */}
       {totalItems > 0 && (
-        <aside className="fixed bottom-6 left-1/2 z-50 w-[92%] max-w-2xl -translate-x-1/2">
-          <div className="flex items-center justify-between rounded-full bg-[#163D32] p-3 pl-6 text-[#F5F0E6] shadow-2xl ring-2 ring-[#C5A46D]">
+        <aside className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 mx-auto w-auto max-w-2xl sm:bottom-6 sm:left-1/2 sm:w-[92%] sm:-translate-x-1/2">
+          <div className="flex flex-col gap-2 rounded-2xl bg-[#163D32] p-3 text-[#F5F0E6] shadow-2xl ring-2 ring-[#C5A46D] sm:flex-row sm:items-center sm:justify-between sm:rounded-full sm:py-3 sm:pl-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-[#C5A46D]">Order Summary</p>
               <p className="text-base font-black">
@@ -465,7 +465,7 @@ export default function RestaurantMenuClient({ items }: { items: MenuItem[] }) {
             </div>
             <Link
               href="/guest/order"
-              className="inline-flex items-center gap-2 rounded-full bg-[#C5A46D] px-6 py-3 text-xs font-black uppercase tracking-[.14em] text-[#163D32] shadow-lg transition hover:scale-105 active:scale-95"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#C5A46D] px-5 py-3 text-xs font-black uppercase tracking-[.14em] text-[#163D32] shadow-lg transition hover:scale-105 active:scale-95 sm:w-auto sm:px-6"
             >
               <ShoppingBag className="h-4 w-4" />
               Checkout Now
